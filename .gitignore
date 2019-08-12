@@ -1,0 +1,8 @@
+*
+!*/
+!.gitignore
+
+.ipynb_checkpoints/
+
+*.ipynb
+!*.py
