@@ -26,7 +26,7 @@ class Node:
         returns: [L x n_schema_pins] matrix of references to Nodes
         """
         assert(schemas is not None)
-        return [a for schema in self.schemas]
+        return [schema.preconditions for schema in self.schemas]
 
 
 class Attribute(Node):
