@@ -5,7 +5,7 @@ registered events happen and triggers the requisite consequences if applicable.
 import random
 from abc import abstractmethod, ABCMeta
 
-from schema_games.breakout.constants import _MAX_SPEED
+from environment.schema_games.breakout.constants import _MAX_SPEED
 
 
 ###############################################################################
