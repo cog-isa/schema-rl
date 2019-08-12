@@ -1,22 +1,24 @@
 class Schema:
     """Grounded schema type."""
-    def __init__(self, preconditions):
-        '''
+    def __init__(self, attribute_preconditions, action_preconditions):
+        """
         preconditions: list of Nodes
-        '''
-        self.preconditions = preconditions
+        """
+        self.attribute_preconditions = attribute_preconditions
+        self.action_preconditions = action_preconditions
+        self.preconditions = self.attribute_preconditions + self.action_preconditions
 
 
 class Node:
     def __init__(self):
         """
-        #node_type: one of {attribute, action, reward}
-
         value: bool variable
         schemas: list of schemas
+        is_discovered: has node been seen during graph traversal
         """
         self.value = None
         self.schemas = None
+        self.is_discovered = False
 
     def add_schemas(self, schemas):
         self.schemas = schemas
