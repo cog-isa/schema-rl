@@ -3,7 +3,7 @@ from scipy.optimize import linprog
 
 
 class SchemaNet:
-    def __init__(self, N, M=53, A=2, L=100, window_size=2):
+    def __init__(self, N=0, M=53, A=2, L=100, window_size=2):
         self._M = M
         self.neighbour_num = (window_size * 2 + 1) ** 2 + A
         self._W = [np.zeros(self.neighbour_num * M) + 1] * M
@@ -101,7 +101,7 @@ if __name__ == '__main__':
                   [0, 0, 0, 0, 0],
                   [0, 0, 0, 0, 0],
                   [1, 1, 0, 1, 1]])
-    schemanet = SchemaNet(M=5, window_size=0)
-    schemanet.fit(X, y, max_num_schemas=4)
+    schemanet = SchemaNet(M=5, A=0, window_size=0)
+    schemanet.fit(X, y)
 
 

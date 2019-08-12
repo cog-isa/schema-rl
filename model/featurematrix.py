@@ -95,4 +95,3 @@ if __name__ == '__main__':
     X = np.array(X)
     print(X.shape)
     print(X)
-
