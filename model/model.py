@@ -1,5 +1,7 @@
 import numpy as np
 
+from .featurematrix import FeatureMatrix
+
 
 class SchemaNetwork:
     def __init__(self, N, M, A, L, T):
@@ -25,10 +27,15 @@ class SchemaNetwork:
         # second - negative reward
         self._R = []
 
-        self.required_actions = []
+        self.planned_actions = [[] for _ in range(self._T)]
 
-    def _reset_actions(self):
-        self.required_actions.clear()
+        self._proxy_env = None
+
+    def set_proxy_env(self, proxy_env):
+        self._proxy_env = proxy_env
+
+    def _reset_plan(self):
+        self.planned_actions.clear()
 
     def _predict_next_attributes(self, X):
         """
@@ -37,7 +44,7 @@ class SchemaNetwork:
         # check dimensions
         assert (X.shape == (self._N, (self._M * self._R + self._A)))
         for W in self._W:
-            assert (W.shape == ((self._M * self._R + self._A), self._L))
+            assert (W.shape[0] == (self._M * self._R + self._A))
             assert (W.dtype == bool)
 
         # expecting (N x M) matrix
@@ -71,44 +78,53 @@ class SchemaNetwork:
         X: matrix [N x (MR + A)]
         V: matrix [1 x (MN + A)]
         """
-        current_state = X
+        current_X = X
+        current_V = V
         for t in range(self._T):
-            next_state = self._predict_next_attributes(current_state)
-            # have no X to predict further
-            # to construct it we need to measure distance between entities (to make [MR] part of the vector)
-            # we need position attributes!
+            # compute (N x M) matrix of next attributes
+            next_X = self._predict_next_attributes(current_X)
+
+            # transform state to [N x (MR + A)] matrix
+            next_X = None
+
+    def _backtrace_schema(self, schema):
+        """
+        Determines if schema is reachable
+        Keeps track of action path
+
+        is_reachable: can it be certainly activated given the state at t = 0
+        """
+
+        # lazy combining preconditions by AND -> assuming True
+        schema.is_reachable = True
+
+        for precondition in schema.attribute_preconditions:
+            if precondition.is_reachable is None:
+                # this node is NOT at t = 0 AND we have not computed it's value
+                # dfs over precondition's schemas
+                self._backtrace_attribute(precondition)
+            if not precondition.is_reachable:
+                # schema can *never* be reachable, break and try another schema
+                schema.is_reachable = False
+                break
 
     def _backtrace_attribute(self, node):
         """
-        is_reachable: can it be activated under constraints of initial distribution at t = 0
+        Determines if node is reachable
+
+        is_reachable: can it be certainly activated given the state at t = 0
         """
-        node.is_discovered = True
-        if node.value is not None:
-            # this node is at t = 0, say back that it can be activated
-            return node.value
 
         # lazy combining schemas by OR -> assuming False
-        is_attr_reachable = False
+        node.is_reachable = False
 
-        # dfs over schemas
         for schema in node.schemas:
-            # lazy combining preconditions by AND -> assuming True
-            is_schema_reachable = True
-            for precondition in schema.attribute_preconditions:
-                if not precondition.is_discovered:
-                    # dfs over precondition's schemas
-                    is_precondition_reachable = self._backtrace_attribute(precondition)
-                    if not is_precondition_reachable:
-                        # schema can *never* be reachable, break and try another schema
-                        is_schema_reachable = False
-                        break
+            if schema.is_reachable is None:
+                self._backtrace_schema(schema)
 
-            if is_schema_reachable:
+            if schema.is_reachable:
                 # attribute is reachable by this schema
                 self.required_actions.append(schema.action_preconditions)
-                is_attr_reachable = True
                 break
             else:
-                self._reset_actions()
-
-        return is_attr_reachable
+                self._reset_actions()  # ???
