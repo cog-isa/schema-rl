@@ -20,8 +20,8 @@ class Node:
         """
         self.is_feasible = None
         self.is_reachable = None
-        # reachable by this required actions
-        self.required_actions = [None for _ in range()]
+        # reachable by this schema
+        self.reachable_by = None
         self.value = None
         self.schemas = None
         self.ancestor_actions = None

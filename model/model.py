@@ -1,5 +1,6 @@
 import numpy as np
-#from featurematrix import FeatureMatrix
+
+from .featurematrix import FeatureMatrix
 
 
 class SchemaNetwork:
@@ -26,10 +27,15 @@ class SchemaNetwork:
         # second - negative reward
         self._R = []
 
-        self.required_actions = []
+        self.planned_actions = [[] for _ in range(self._T)]
 
-    def _reset_actions(self):
-        self.required_actions.clear()
+        self._proxy_env = None
+
+    def set_proxy_env(self, proxy_env):
+        self._proxy_env = proxy_env
+
+    def _reset_plan(self):
+        self.planned_actions.clear()
 
     def _predict_next_attributes(self, X):
         """
@@ -75,10 +81,11 @@ class SchemaNetwork:
         current_X = X
         current_V = V
         for t in range(self._T):
-            next_X = self._predict_next_attributes(current_state)
-            # have no X to predict further
-            # to construct it we need to measure distance between entities (to make [MR] part of the vector)
-            # we need position attributes!
+            # compute (N x M) matrix of next attributes
+            next_X = self._predict_next_attributes(current_X)
+
+            # transform state to [N x (MR + A)] matrix
+            next_X = None
 
     def _backtrace_schema(self, schema):
         """
@@ -120,5 +127,4 @@ class SchemaNetwork:
                 self.required_actions.append(schema.action_preconditions)
                 break
             else:
-                self._reset_actions()#???
-
+                self._reset_actions()  # ???
