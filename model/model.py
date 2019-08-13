@@ -1,4 +1,5 @@
 import numpy as np
+from featurematrix import FeatureMatrix
 
 
 class SchemaNetwork:
@@ -37,7 +38,7 @@ class SchemaNetwork:
         # check dimensions
         assert (X.shape == (self._N, (self._M * self._R + self._A)))
         for W in self._W:
-            assert (W.shape == ((self._M * self._R + self._A), self._L))
+            assert (W.shape[0] == (self._M * self._R + self._A))
             assert (W.dtype == bool)
 
         # expecting (N x M) matrix
@@ -71,9 +72,10 @@ class SchemaNetwork:
         X: matrix [N x (MR + A)]
         V: matrix [1 x (MN + A)]
         """
-        current_state = X
+        current_X = X
+        current_V = V
         for t in range(self._T):
-            next_state = self._predict_next_attributes(current_state)
+            next_X = self._predict_next_attributes(current_state)
             # have no X to predict further
             # to construct it we need to measure distance between entities (to make [MR] part of the vector)
             # we need position attributes!
