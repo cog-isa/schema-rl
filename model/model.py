@@ -1,5 +1,5 @@
 import numpy as np
-from featurematrix import FeatureMatrix
+#from featurematrix import FeatureMatrix
 
 
 class SchemaNetwork:
@@ -80,37 +80,45 @@ class SchemaNetwork:
             # to construct it we need to measure distance between entities (to make [MR] part of the vector)
             # we need position attributes!
 
+    def _backtrace_schema(self, schema):
+        """
+        Determines if schema is reachable
+        Keeps track of action path
+
+        is_reachable: can it be certainly activated given the state at t = 0
+        """
+
+        # lazy combining preconditions by AND -> assuming True
+        schema.is_reachable = True
+
+        for precondition in schema.attribute_preconditions:
+            if precondition.is_reachable is None:
+                # this node is NOT at t = 0 AND we have not computed it's value
+                # dfs over precondition's schemas
+                self._backtrace_attribute(precondition)
+            if not precondition.is_reachable:
+                # schema can *never* be reachable, break and try another schema
+                schema.is_reachable = False
+                break
+
     def _backtrace_attribute(self, node):
         """
-        is_reachable: can it be activated under constraints of initial distribution at t = 0
+        Determines if node is reachable
+
+        is_reachable: can it be certainly activated given the state at t = 0
         """
-        node.is_discovered = True
-        if node.value is not None:
-            # this node is at t = 0, say back that it can be activated
-            return node.value
 
         # lazy combining schemas by OR -> assuming False
-        is_attr_reachable = False
+        node.is_reachable = False
 
-        # dfs over schemas
         for schema in node.schemas:
-            # lazy combining preconditions by AND -> assuming True
-            is_schema_reachable = True
-            for precondition in schema.attribute_preconditions:
-                if not precondition.is_discovered:
-                    # dfs over precondition's schemas
-                    is_precondition_reachable = self._backtrace_attribute(precondition)
-                    if not is_precondition_reachable:
-                        # schema can *never* be reachable, break and try another schema
-                        is_schema_reachable = False
-                        break
+            if schema.is_reachable is None:
+                self._backtrace_schema(schema)
 
-            if is_schema_reachable:
+            if schema.is_reachable:
                 # attribute is reachable by this schema
                 self.required_actions.append(schema.action_preconditions)
-                is_attr_reachable = True
                 break
             else:
-                self._reset_actions()
+                self._reset_actions()#???
 
-        return is_attr_reachable

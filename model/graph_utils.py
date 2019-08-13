@@ -1,12 +1,14 @@
 class Schema:
     """Grounded schema type."""
+
     def __init__(self, attribute_preconditions, action_preconditions):
         """
         preconditions: list of Nodes
         """
+        self.is_reachable = None
         self.attribute_preconditions = attribute_preconditions
         self.action_preconditions = action_preconditions
-        self.preconditions = self.attribute_preconditions + self.action_preconditions
+        self.ancestor_actions = None
 
 
 class Node:
@@ -16,9 +18,13 @@ class Node:
         schemas: list of schemas
         is_discovered: has node been seen during graph traversal
         """
+        self.is_feasible = None
+        self.is_reachable = None
+        # reachable by this required actions
+        self.required_actions = [None for _ in range()]
         self.value = None
         self.schemas = None
-        self.is_discovered = False
+        self.ancestor_actions = None
 
     def add_schemas(self, schemas):
         self.schemas = schemas
@@ -27,7 +33,7 @@ class Node:
         """
         returns: [L x n_schema_pins] matrix of references to Nodes
         """
-        assert(schemas is not None)
+        assert (schemas is not None)
         return [schema.preconditions for schema in self.schemas]
 
 
@@ -42,17 +48,17 @@ class Attribute(Node):
         super().__init__()
 
 
-class Action(Node):
-    def __init__(self, action_idx):
+class Action:
+    def __init__(self, name, time_step):
         """
         action_idx: action unique idx
         """
-        self.action_idx = action_idx
-        super().__init__()
+        self.name = name
+        self.time_step = time_step
 
 
 class Reward(Node):
     def __init__(self, sign):
-        assert(sign in ('pos', 'neg'))
+        assert (sign in ('pos', 'neg'))
         self.sign = sign
         super().__init__()
