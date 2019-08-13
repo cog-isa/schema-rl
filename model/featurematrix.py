@@ -55,7 +55,11 @@ class FeatureMatrix:
     def transform_index_to_pos(self, index):
         return index//self.shape[1], index % self.shape[1]
 
-    def get_neighbours(self, ind, action, matrix=self.matrix, add_all_actions=False):
+    def get_neighbours(self, ind, action, matrix=None, add_all_actions=False):
+
+        if matrix is None:
+            matrix = self.matrix
+
         pos = self.transform_index_to_pos(ind)
         x = pos[0]
         y = pos[1]
