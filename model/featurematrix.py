@@ -73,21 +73,21 @@ class FeatureMatrix:
 
         zeros = np.zeros(self.attrs_num)
 
-        entity_indexes = []
+        entity_indices = []
 
         for i in range(-self.window_size, self.window_size):
             for j in range(-self.window_size, self.window_size):
                 if x + i < 0 or x + i >= self.shape[0] or y+j < 0 or y+j >= self.shape[1]:
                     res.append(zeros)
-                    entity_indexes.append(-1) # adding empty entity
+                    entity_indices.append(-1) # adding empty entity
                 else:
                     idx = self.transform_pos_to_index([x + i, y + j])
                     res.append(matrix[idx])
-                    entity_indexes.append(idx) # adding entity's index
+                    entity_indices.append(idx) # adding entity's index
 
         res.append(action_vec)
 
-        return np.concatenate(res), entity_indexes
+        return np.concatenate(res), entity_indices
 
     def transform_matrix(self, action, custom_matrix=None, add_all_actions=False):
         if custom_matrix is not None:
@@ -98,10 +98,10 @@ class FeatureMatrix:
         transformed_matrix = []
         idx_matrix = []
         for i in range(0, self.entities_num):
-            transformed_vec, entity_indexes = \
+            transformed_vec, entity_indices = \
                 self.get_neighbours(i, action, matrix=matrix, add_all_actions=add_all_actions)
             transformed_matrix.append(transformed_vec)
-            idx_matrix.append(entity_indexes)
+            idx_matrix.append(entity_indices)
 
         return np.array([transformed_matrix]), idx_matrix
 

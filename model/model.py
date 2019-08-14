@@ -1,4 +1,5 @@
 import numpy as np
+from .graph_utils import *
 
 from .featurematrix import FeatureMatrix
 
@@ -30,6 +31,8 @@ class SchemaNetwork:
         self.planned_actions = [[] for _ in range(self._T)]
 
         self._proxy_env = None
+        self._attribute_tensor = None
+        self._attribute_graph = None
 
     def set_proxy_env(self, proxy_env):
         self._proxy_env = proxy_env
@@ -37,23 +40,66 @@ class SchemaNetwork:
     def _reset_plan(self):
         self.planned_actions.clear()
 
-    def _predict_next_attributes(self, X):
+    def _gen_attribute_tensor(self):
+        shape = (self._N, self._M, self._T)
+        self._attribute_tensor = np.empty(shape, dtype=bool)
+
+    def _gen_attribute_matrix(self):
+        n_rows = self._N
+        n_cols = self._M
+        matrix = [
+            [Attribute(entity_idx, attribute_idx) for attribute_idx in range(n_cols)]
+            for entity_idx in range(n_rows)]
+        return matrix
+
+    def _gen_attribute_graph(self):
+        n_times = self._T
+        tensor = [self._gen_attribute_matrix() for t in range(n_times)]
+        #self._attribute_tensor = tensor
+
+    def _get_env_state(self):
+        state = self._proxy_env.transform_matrix(0,
+                                                 custom_matrix=None,
+                                                 add_all_actions=True)
+
+    def _convert_matrix(self, X):
         """
-        X: matrix of entities, [N x (MR + A)]
+        Convert (N x M) matrix to (N x (MR + A))
+        """
+        converted_matrix= self._proxy_env.transform_matrix(0,
+                                                           custom_matrix=X,
+                                                           add_all_actions=True)
+        return converted_matrix
+
+    def _init_attribute_layer(self, X):
+        """
+        :param X: (N x M) ndarray of attributes at time t = 0
+        """
+        self._attribute_tensor[:, :, 0] = X.copy()
+        n_rows = self._N
+        n_cols = self._M
+        for i in range(n_rows):
+            for j in range(n_cols):
+                self._attribute_tensor[i][j][0].value = X[i, j]
+
+    def _predict_next_attributes(self, t):
+        """
+        t: time at which last known attributes are located
+        predict from t to (t + 1)
         """
         # check dimensions
-        assert (X.shape == (self._N, (self._M * self._R + self._A)))
-        for W in self._W:
-            assert (W.shape[0] == (self._M * self._R + self._A))
-            assert (W.dtype == bool)
+        #assert (X.shape == (self._N, (self._M * self._R + self._A)))
+        #for W in self._W:
+            #assert (W.shape[0] == (self._M * self._R + self._A))
+            #assert (W.dtype == bool)
 
-        # expecting (N x M) matrix
-        prediction = np.zeros((self._N, self._M))
+        X = self._attribute_tensor[:, :, t]
+        next_X = self._attribute_tensor[:, :, t+1]
+
         for idx, W in enumerate(self._W):
             prediction_matrix = ~(~X @ W)
-            prediction[:idx] = prediction_matrix.sum(axis=1)
-
-        return prediction
+            # TODO: set schemas here
+            next_X[:idx] = prediction_matrix.any(axis=1)
 
     def _predict_next_rewards(self, X):
         """
@@ -78,11 +124,13 @@ class SchemaNetwork:
         X: matrix [N x (MR + A)]
         V: matrix [1 x (MN + A)]
         """
-        current_X = X
-        current_V = V
+        self._gen_attribute_tensor()
+
+        curr_X = X
+        curr_V = V
         for t in range(self._T):
             # compute (N x M) matrix of next attributes
-            next_X = self._predict_next_attributes(current_X)
+            self._predict_next_attributes(t)
 
             # transform state to [N x (MR + A)] matrix
             next_X = None
