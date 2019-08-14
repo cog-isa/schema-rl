@@ -10,6 +10,7 @@ class FeatureMatrix:
         self.attrs_num = attrs_num
         self.window_size = window_size
         self.action_space = action_space
+        self.entities_num = shape[0] * shape[1]
 
         self.ball_attr = 0
         self.paddle_attr = 1
@@ -72,16 +73,21 @@ class FeatureMatrix:
 
         zeros = np.zeros(self.attrs_num)
 
+        entity_indexes = []
+
         for i in range(-self.window_size, self.window_size):
             for j in range(-self.window_size, self.window_size):
                 if x + i < 0 or x + i >= self.shape[0] or y+j < 0 or y+j >= self.shape[1]:
                     res.append(zeros)
+                    entity_indexes.append(-1) # adding empty entity
                 else:
-                    res.append(matrix[self.transform_pos_to_index([x + i, y + j])])
+                    idx = self.transform_pos_to_index([x + i, y + j])
+                    res.append(matrix[idx])
+                    entity_indexes.append(idx) # adding entity's index
 
         res.append(action_vec)
 
-        return np.concatenate(res)
+        return np.concatenate(res), entity_indexes
 
     def transform_matrix(self, action, custom_matrix=None, add_all_actions=False):
         if custom_matrix is not None:
@@ -89,8 +95,15 @@ class FeatureMatrix:
         else:
             matrix = self.matrix
 
-        return np.array([self.get_neighbours(i, action, matrix=matrix, add_all_actions=add_all_actions)
-                         for i in range(0, self.shape[0]*self.shape[1])])
+        transformed_matrix = []
+        idx_matrix = []
+        for i in range(0, self.entities_num):
+            transformed_vec, entity_indexes = \
+                self.get_neighbours(i, action, matrix=matrix, add_all_actions=add_all_actions)
+            transformed_matrix.append(transformed_vec)
+            idx_matrix.append(entity_indexes)
+
+        return np.array([transformed_matrix]), idx_matrix
 
 
 if __name__ == '__main__':
@@ -102,7 +115,7 @@ if __name__ == '__main__':
     print("--- %s seconds ---" % (end - start))
     start = time.time()
     # TODO: make it faster (bin type of data, but relaxed LP optimisation???)
-    X = mat.transform_matrix(1)
+    X = mat.transform_matrix(1)[0]
     end = time.time()
     print("--- %s seconds ---" % (end - start))
     X = np.array(X)

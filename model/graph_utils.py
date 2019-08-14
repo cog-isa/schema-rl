@@ -33,7 +33,7 @@ class Node:
         """
         returns: [L x n_schema_pins] matrix of references to Nodes
         """
-        assert (schemas is not None)
+        assert (self.schemas is not None)
         return [schema.preconditions for schema in self.schemas]
 
 
