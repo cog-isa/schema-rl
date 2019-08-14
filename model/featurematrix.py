@@ -17,6 +17,8 @@ class FeatureMatrix:
         self.wall_attr = 2
         self.brick_attr = 3
 
+        self.planned_action = None
+
         for ball in env.balls:
             if ball.is_entity:
                 for state, eid in env.parse_object_into_pixels(ball):
@@ -89,7 +91,10 @@ class FeatureMatrix:
 
         return np.concatenate(res), entity_indices
 
-    def transform_matrix(self, action, custom_matrix=None, add_all_actions=False):
+    def get_attribute_matrix(self):
+        return self.matrix.copy()
+
+    def transform_matrix(self, custom_matrix=None, add_all_actions=False):
         if custom_matrix is not None:
             matrix = custom_matrix
         else:
@@ -99,7 +104,7 @@ class FeatureMatrix:
         idx_matrix = []
         for i in range(0, self.entities_num):
             transformed_vec, entity_indices = \
-                self.get_neighbours(i, action, matrix=matrix, add_all_actions=add_all_actions)
+                self.get_neighbours(i, self.planned_action, matrix=matrix, add_all_actions=add_all_actions)
             transformed_matrix.append(transformed_vec)
             idx_matrix.append(entity_indices)
 
@@ -115,7 +120,8 @@ if __name__ == '__main__':
     print("--- %s seconds ---" % (end - start))
     start = time.time()
     # TODO: make it faster (bin type of data, but relaxed LP optimisation???)
-    X = mat.transform_matrix(1)[0]
+    mat.planned_action = 1
+    X = mat.transform_matrix()[0]
     end = time.time()
     print("--- %s seconds ---" % (end - start))
     X = np.array(X)

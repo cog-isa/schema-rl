@@ -28,8 +28,6 @@ class SchemaNetwork:
         # second - negative reward
         self._R = []
 
-        self.planned_actions = [[] for _ in range(self._T)]
-
         self._proxy_env = None
         self._attribute_tensor = None
         self._attribute_graph = None
@@ -37,14 +35,11 @@ class SchemaNetwork:
     def set_proxy_env(self, proxy_env):
         self._proxy_env = proxy_env
 
-    def _reset_plan(self):
-        self.planned_actions.clear()
-
     def _gen_attribute_tensor(self):
         shape = (self._N, self._M, self._T)
         self._attribute_tensor = np.empty(shape, dtype=bool)
 
-    def _gen_attribute_matrix(self):
+    def _gen_attribute_matrix_deprecated(self):
         n_rows = self._N
         n_cols = self._M
         matrix = [
@@ -57,30 +52,39 @@ class SchemaNetwork:
         tensor = [self._gen_attribute_matrix() for t in range(n_times)]
         #self._attribute_tensor = tensor
 
-    def _get_env_state(self):
-        state = self._proxy_env.transform_matrix(0,
-                                                 custom_matrix=None,
-                                                 add_all_actions=True)
+    def _get_env_attribute_matrix(self):
+        """
+        Get observed state at t = 0 as (N x M) matrix
+        """
+        attribute_matrix = self._proxy_env.get_attribute_matrix()
+        return attribute_matrix
 
     def _convert_matrix(self, X):
         """
-        Convert (N x M) matrix to (N x (MR + A))
+        Convert (N x M) matrix to (N x (MR + A)) matrix
         """
-        converted_matrix= self._proxy_env.transform_matrix(0,
-                                                           custom_matrix=X,
+        converted_matrix= self._proxy_env.transform_matrix(custom_matrix=X,
                                                            add_all_actions=True)
         return converted_matrix
+
+    def _init_attribute_tensor(self, X):
+        """
+        :param X: (N x M) ndarray of attributes at time t = 0
+        """
+        time = 0
+        self._attribute_tensor[:, :, time] = X.copy()
 
     def _init_attribute_layer(self, X):
         """
         :param X: (N x M) ndarray of attributes at time t = 0
         """
-        self._attribute_tensor[:, :, 0] = X.copy()
+        time = 0
+        self._attribute_tensor[:, :, time] = X.copy()
         n_rows = self._N
         n_cols = self._M
         for i in range(n_rows):
             for j in range(n_cols):
-                self._attribute_tensor[i][j][0].value = X[i, j]
+                self._attribute_tensor[i][j][time].value = X[i, j]
 
     def _predict_next_attributes(self, t):
         """
@@ -126,53 +130,10 @@ class SchemaNetwork:
         """
         self._gen_attribute_tensor()
 
-        curr_X = X
-        curr_V = V
+        attribute_matrix = self._get_env_attribute_matrix()
+        self._init_attribute_tensor(attribute_matrix)
+
         for t in range(self._T):
             # compute (N x M) matrix of next attributes
             self._predict_next_attributes(t)
-
-            # transform state to [N x (MR + A)] matrix
-            next_X = None
-
-    def _backtrace_schema(self, schema):
-        """
-        Determines if schema is reachable
-        Keeps track of action path
-
-        is_reachable: can it be certainly activated given the state at t = 0
-        """
-
-        # lazy combining preconditions by AND -> assuming True
-        schema.is_reachable = True
-
-        for precondition in schema.attribute_preconditions:
-            if precondition.is_reachable is None:
-                # this node is NOT at t = 0 AND we have not computed it's value
-                # dfs over precondition's schemas
-                self._backtrace_attribute(precondition)
-            if not precondition.is_reachable:
-                # schema can *never* be reachable, break and try another schema
-                schema.is_reachable = False
-                break
-
-    def _backtrace_attribute(self, node):
-        """
-        Determines if node is reachable
-
-        is_reachable: can it be certainly activated given the state at t = 0
-        """
-
-        # lazy combining schemas by OR -> assuming False
-        node.is_reachable = False
-
-        for schema in node.schemas:
-            if schema.is_reachable is None:
-                self._backtrace_schema(schema)
-
-            if schema.is_reachable:
-                # attribute is reachable by this schema
-                self.required_actions.append(schema.action_preconditions)
-                break
-            else:
-                self._reset_actions()  # ???
+            self._predict_next_rewards(t)
