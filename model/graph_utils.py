@@ -38,15 +38,21 @@ class Node:
 
 
 class Attribute(Node):
-    def __init__(self, entity_idx, attribute_idx):
+    def __init__(self, global_idx, entity_idx, attribute_idx):
         """
         entity_idx: entity unique idx
         attribute_idx: attribute index in entity's attribute vector
         """
+        self.global_idx = global_idx
         self.entity_idx = entity_idx
         self.attribute_idx = attribute_idx
         super().__init__()
 
+    def _find_active_schema_indices(self, prediction_matrix, Ws, attribute_matrix):
+        """
+        """
+        schema_indices = np.nonzero(prediction_matrix)
+        return schema_indices
 
 class Action:
     def __init__(self, name, time_step):
