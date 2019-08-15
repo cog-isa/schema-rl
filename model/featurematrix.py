@@ -79,8 +79,8 @@ class FeatureMatrix:
 
         entity_indices = []
 
-        for i in range(-self.window_size, self.window_size):
-            for j in range(-self.window_size, self.window_size):
+        for i in range(-self.window_size, self.window_size + 1):
+            for j in range(-self.window_size, self.window_size + 1):
                 if x + i < 0 or x + i >= self.shape[0] or y + j < 0 or y + j >= self.shape[1]:
                     res.append(zeros)
                     entity_indices.append(zero_attributes)  # adding empty entity

@@ -7,12 +7,11 @@ from .graph_utils import *
 
 class SchemaNetwork(Constants):
     def __init__(self, W, R):
-        # list of M matrices, each of [(MR + A) x L] shape
+        """
+        :param W: list of M matrices, each of [(MR + A) x L] shape
+        :param R: list of 2 matrices, each of [(MN + A) x L] shape, 1st - pos, 2nd - neg
+        """
         self._W = W
-
-        # list of 2 matrices, each of [(MN + A) x L] shape
-        # first - positive reward
-        # second - negative reward
         self._R = R
 
         self._proxy_env = None
