@@ -10,7 +10,7 @@ class Planner(Constants):
 
     def _reset_plan(self):
         pass
-        #self.planned_actions.clear()
+        # self.planned_actions.clear()
 
     def _backtrace_schema(self, schema, depth):
         """
@@ -27,7 +27,7 @@ class Planner(Constants):
             if precondition.is_reachable is None:
                 # this node is NOT at t = 0 AND we have not computed it's value
                 # dfs over precondition's schemas
-                self._backtrace_attribute(precondition, depth+1)
+                self._backtrace_attribute(precondition, depth + 1)
             if not precondition.is_reachable:
                 # schema can *never* be reachable, break and try another schema
                 schema.is_reachable = False
@@ -49,8 +49,12 @@ class Planner(Constants):
 
             if schema.is_reachable:
                 # attribute is reachable by this schema
-                t = self.T - depth
+                t = self.T - depth - 1
                 self.planned_actions[t, :] = schema.action_preconditions
                 break
             else:
                 self._reset_plan()  # full reset?
+
+    def backward_pass(self, node):
+        depth = 0
+        self._backtrace_attribute(node, depth)

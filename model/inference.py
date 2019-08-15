@@ -1,5 +1,7 @@
 import numpy as np
 from .constants import Constants
+from .tensor_handler import TensorHandler
+from .planner import Planner
 from .graph_utils import *
 
 #from .featurematrix import FeatureMatrix
@@ -15,9 +17,15 @@ class SchemaNetwork(Constants):
         # second - negative reward
         self._R = R
 
-        self._proxy_env = None
         self._attribute_nodes = None  # tensor (N x M x T)
+        self._reward_nodes = None # tensor (T x REWARD_SPACE_DIM)
         self._action_nodes = None  # tensor (T x ACTION_SPACE_DIM)
+
+        self._tensor_handler = TensorHandler(self._W, self._R, self._attribute_nodes)
+        self._planner = Planner()
+
+    def set_proxy_env(self, env):
+        self._tensor_handler.set_proxy_env(env)
 
     def _gen_attribute_node_matrix(self):
         n_rows = self.N
@@ -47,18 +55,18 @@ class SchemaNetwork(Constants):
             for j in range(n_cols):
                 self._attribute_nodes[i][j][t].value = self._attribute_tensor[i, j, t]
 
-    def _forward_pass(self, X, V):
+    def _forward_pass(self):
         """
         X: matrix [N x (MR + A)]
         V: matrix [1 x (MN + A)]
         """
         self._gen_attribute_nodes()
-        self._gen_actions_nodes()
+        self._gen_action_nodes()
 
-        attribute_matrix = self._get_env_attribute_matrix()
-        self._init_attribute_tensor(attribute_matrix)
+        # set connections of attribute_nodes
+        self._tensor_handler.forward_pass()
 
-        for t in range(self._T):
-            # compute (N x M) matrix of next attributes
-            self._predict_next_attributes(t)
-            #self._predict_next_rewards(t)
+    def _plan_actions(self):
+        self._forward_pass()
+
+        # find closest positive reward

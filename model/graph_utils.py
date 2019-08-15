@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class Schema:
     """Grounded schema type."""
 
@@ -18,10 +21,9 @@ class Node:
         schemas: list of schemas
         is_discovered: has node been seen during graph traversal
         """
-        self.is_feasible = None
+        # self.is_feasible = None
         self.is_reachable = None
-        # reachable by this schema
-        self.reachable_by = None
+        self.reachable_by = None # reachable by this schema
         self.value = None
         self.schemas = []
         self.ancestor_actions = None
@@ -44,7 +46,7 @@ class Node:
                 else:
                     assert False
             self.schemas.append(
-                Schema(attribute_preconditions, action_preconditions)
+                Schema(attribute_preconditions, np.array(action_preconditions))
             )
 
     def get_ancestors(self):
