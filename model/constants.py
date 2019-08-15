@@ -11,3 +11,4 @@ class Constants:
     A = 3
     L = 5
     T = 50
+    ACTION_SPACE_DIM = 2

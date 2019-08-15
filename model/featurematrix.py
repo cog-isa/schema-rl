@@ -1,12 +1,13 @@
 import numpy as np
 from environment.schema_games.breakout.games import StandardBreakout
 import time
+from .graph_utils import Attribute, Action
 
 
 class FeatureMatrix:
-    def __init__(self, env, shape=(117, 94), attrs_num=53, window_size=2, action_space=3):
+    def __init__(model, env, shape=(117, 94), attrs_num=53, window_size=2, action_space=3):
         self.shape = shape
-        self.matrix = np.zeros((shape[0]*shape[1], attrs_num))
+        self.matrix = np.zeros((shape[0] * shape[1], attrs_num))
         self.attrs_num = attrs_num
         self.window_size = window_size
         self.action_space = action_space
@@ -32,7 +33,7 @@ class FeatureMatrix:
                 pos = list(state.keys())[0][1]
                 for i in range(-11, 12):
                     for j in range(-1, 3):
-                        ind = self.transform_pos_to_index((pos[0]+j, pos[1]+i))
+                        ind = self.transform_pos_to_index((pos[0] + j, pos[1] + i))
                         self.matrix[ind][self.paddle_attr] = 1
 
                 print(eid)
@@ -53,10 +54,10 @@ class FeatureMatrix:
                     self.matrix[ind][self.brick_attr] = 1
 
     def transform_pos_to_index(self, pos):
-        return pos[0]*self.shape[1] + pos[1]
+        return pos[0] * self.shape[1] + pos[1]
 
     def transform_index_to_pos(self, index):
-        return index//self.shape[1], index % self.shape[1]
+        return index // self.shape[1], index % self.shape[1]
 
     def get_neighbours(self, ind, action, matrix=None, add_all_actions=False):
 
@@ -71,23 +72,29 @@ class FeatureMatrix:
         if add_all_actions:
             action_vec = np.ones(self.action_space)
         else:
-            action_vec = np.eye(self.action_space)[action-1]
+            action_vec = np.eye(self.action_space)[action - 1]
 
         zeros = np.zeros(self.attrs_num)
+        zero_attributes = [None for _ in range(self.attrs_num)]
 
         entity_indices = []
 
         for i in range(-self.window_size, self.window_size):
             for j in range(-self.window_size, self.window_size):
-                if x + i < 0 or x + i >= self.shape[0] or y+j < 0 or y+j >= self.shape[1]:
+                if x + i < 0 or x + i >= self.shape[0] or y + j < 0 or y + j >= self.shape[1]:
                     res.append(zeros)
-                    entity_indices.append(-1) # adding empty entity
+                    entity_indices.append(zero_attributes)  # adding empty entity
                 else:
                     idx = self.transform_pos_to_index([x + i, y + j])
                     res.append(matrix[idx])
-                    entity_indices.append(idx) # adding entity's index
+                    entity_indices.append(
+                        [Attribute(idx, attr_idx) for attr_idx in range(self.attrs_num)]
+                    )  # adding entity's index
 
         res.append(action_vec)
+        # add dummy actions
+        actions = [Action(idx) for idx in range(self.action_space)]
+        entity_indices.append(actions)
 
         return np.concatenate(res), entity_indices
 
@@ -108,7 +115,7 @@ class FeatureMatrix:
             transformed_matrix.append(transformed_vec)
             idx_matrix.append(entity_indices)
 
-        return np.array([transformed_matrix]), idx_matrix
+        return np.array([transformed_matrix]), np.array(idx_matrix)
 
 
 if __name__ == '__main__':

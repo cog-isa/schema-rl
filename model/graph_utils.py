@@ -23,11 +23,29 @@ class Node:
         # reachable by this schema
         self.reachable_by = None
         self.value = None
-        self.schemas = None
+        self.schemas = []
         self.ancestor_actions = None
 
-    def add_schemas(self, schemas):
-        self.schemas = schemas
+    def add_schemas(self, schemas_preconditions, attribute_nodes, t, action_nodes):
+        """
+        list of lists
+        """
+        # attributes
+        for single_schema_preconditions in schemas_preconditions[:3]:
+            attribute_preconditions = []
+            action_preconditions = []
+            for precondition in single_schema_preconditions:
+                if type(precondition) is Attribute:
+                    i = precondition.entity_idx
+                    j = precondition.attribute_idx
+                    attribute_preconditions.append(attribute_nodes[i, j, t])
+                elif type(precondition) is Action:
+                    action_preconditions.append(action_nodes[t, precondition.idx])
+                else:
+                    assert False
+            self.schemas.append(
+                Schema(attribute_preconditions, action_preconditions)
+            )
 
     def get_ancestors(self):
         """
@@ -38,7 +56,7 @@ class Node:
 
 
 class Attribute(Node):
-    def __init__(self, global_idx, entity_idx, attribute_idx):
+    def __init__(self, entity_idx, attribute_idx, global_idx=None):
         """
         entity_idx: entity unique idx
         attribute_idx: attribute index in entity's attribute vector
@@ -48,19 +66,13 @@ class Attribute(Node):
         self.attribute_idx = attribute_idx
         super().__init__()
 
-    def _find_active_schema_indices(self, prediction_matrix, Ws, attribute_matrix):
-        """
-        """
-        schema_indices = np.nonzero(prediction_matrix)
-        return schema_indices
 
 class Action:
-    def __init__(self, name, time_step):
+    def __init__(self, idx):
         """
         action_idx: action unique idx
         """
-        self.name = name
-        self.time_step = time_step
+        self.idx = idx
 
 
 class Reward(Node):
