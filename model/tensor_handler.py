@@ -3,47 +3,65 @@ from .constants import Constants
 
 
 class TensorHandler(Constants):
-    def __init__(self, W, R, attribute_nodes):
+    def __init__(self, W, R, attribute_nodes, reward_nodes):
         self._W = W
         self._R = R
 
         self._proxy_env = None
         self._attribute_tensor = None
-        self._attribute_nodes = attribute_nodes  # from SchemaNetwork
+        self._reward_tensor = None
 
-    def set_proxy_env(self, proxy_env):
-        self._proxy_env = proxy_env
+        # from SchemaNetwork
+        self._attribute_nodes = attribute_nodes
+        self._reward_nodes = reward_nodes
 
-    def get_env_state(self):
+    def set_proxy_env(self, env):
+        self._proxy_env = env
+
+    def _get_env_state(self):
         """
-        Get observed state at t = 0 as (N x M) matrix
+        Get observed state at t = 0
+        :returns (N x M) matrix
         """
         assert (self._proxy_env is not None)
         attribute_matrix = self._proxy_env.get_attribute_matrix()
         return attribute_matrix
 
-    def gen_attribute_tensor(self):
+    def _gen_attribute_tensor(self):
         shape = (self.N, self.M, self.T)
         self._attribute_tensor = np.empty(shape, dtype=bool)
 
-    def _convert_matrix(self, X):
+    def _gen_reward_tensor(self):
+        shape = (self.T, self.REWARD_SPACE_DIM)
+        self._reward_tensor = np.empty(shape, dtype=bool)
+
+    def _convert_matrix(self, X, input_format):
         """
         Convert (N x M) matrix to (N x (MR + A)) matrix
         """
-        converted_matrix = self._proxy_env.transform_matrix(custom_matrix=X,
-                                                            add_all_actions=True)
+        assert (input_format in ('attribute', 'reward'))
+
+        if input_format == 'attribute':
+            # convert to (MR + A)
+            converted_matrix = self._proxy_env.transform_matrix(custom_matrix=X,
+                                                                add_all_actions=True)
+        else:
+            # convert to (MN + A)
+            converted_matrix = None  # implement it in FeatureMatrix
+
         return converted_matrix
 
-    def init_attribute_tensor(self, X):
+    def _init_first_attribute_layer(self, X):
         """
         :param X: (N x M) ndarray of attributes at time t = 0
         """
         time = 0
         self._attribute_tensor[:, :, time] = X.copy()
 
+    @staticmethod
     def _find_attribute_active_schemas(self, X_nodes, entity_idx, W, prediction_matrix):
         """
-        X_nodes - matrix of Attribute() and Actions()
+        X_nodes - matrix of objects {Attribute() and Action()}
         """
         schema_mask = prediction_matrix[entity_idx, :]
         precondition_masks = W[:, schema_mask].T
@@ -56,7 +74,21 @@ class TensorHandler(Constants):
             )
         return schemas_preconditions
 
-    def predict_next_attributes(self, t):
+    @staticmethod
+    def _find_reward_active_schemas(self, X_nodes, R, prediction_matrix):
+        """
+        :param X_nodes: matrix of objects {Attribute() and Action()} [1 x (MN+A)] shape
+        :param prediction_matrix: (1 x L) shape
+        :returns schemas: ndarray matrix of precondition objects
+        """
+        schema_mask = prediction_matrix
+        precondition_masks = R[:, schema_mask].T
+        schemas = []
+        for mask in precondition_masks:
+            schemas.append(X_nodes[mask])
+        return np.array(schemas, dtype=object)
+
+    def _predict_next_attribute_layer(self, t):
         """
         t: time at which last known attributes are located
         predict from t to (t + 1)
@@ -65,7 +97,7 @@ class TensorHandler(Constants):
         X, X_nodes = self._convert_matrix(X)  # convert it to (N x (MR + A)) and get X_nodes
         next_X = self._attribute_tensor[:, :, t + 1]
 
-        assert (X_nodes.shape[0] == (self.N))
+        assert (X_nodes.shape[0] == self.N)
 
         for attr_idx, W in enumerate(self._W):
             prediction_matrix = ~(~X @ W)
@@ -78,14 +110,45 @@ class TensorHandler(Constants):
 
             next_X[:attr_idx] = prediction_matrix.any(axis=1)
 
-    def predict_next_rewards(self, X):
+    def _predict_next_reward_layer(self, t):
         """
-        X: vector of all attributes and actions, [1 x (NM + A)]
+        t: time at which last known attributes are located
+        predict from t to (t + 1)
         """
-        # expecting 2 rewards: pos and neg
-        predictions = []
-        for R in self._R:
-            prediction = ~(~X @ R)
-            predictions.append(prediction)
+        X = self._reward_tensor[t, :]  # get (N x M) matrix
+        X, X_nodes = self._convert_matrix(X)  # convert it to (N x (MN + A)) and get X_nodes
+        next_X = self._reward_tensor[:, :, t + 1]
 
-        return tuple(predictions)
+        #assert (X_nodes.shape[0] == self.N)
+
+        for reward_idx, R in enumerate(self._R):
+            prediction_matrix = ~(~X @ R)
+            # set schemas here
+            schemas = self._find_reward_active_schemas(X_nodes, R, prediction_matrix)
+            self._reward_nodes[t + 1, reward_idx] \
+                .add_schemas(schemas, self._reward_nodes, t)
+
+
+            next_X[:attr_idx] = prediction_matrix.any(axis=1)
+
+    def forward_pass(self):
+        """
+        Fill attribute_nodes with schema information
+        X: matrix [N x (MR + A)]
+        V: matrix [1 x (MN + A)]
+        """
+        # create tensors for storing state
+        self._gen_attribute_tensor()
+        self._gen_reward_tensor()
+
+        # init first matrix from env
+        attribute_matrix = self._get_env_state()
+        self._init_first_attribute_layer(attribute_matrix)
+
+        # propagate forward
+        for t in range(self.T):
+            # compute (N x M) matrix of next attributes
+            self._predict_next_attribute_layer(t)
+
+            # R not yet implemented
+            # self._predict_next_rewards(t)
