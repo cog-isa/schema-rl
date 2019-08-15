@@ -2,18 +2,18 @@ import numpy as np
 from .constants import Constants
 from .graph_utils import *
 
-from .featurematrix import FeatureMatrix
+#from .featurematrix import FeatureMatrix
 
 
 class SchemaNetwork(Constants):
-    def __init__(self):
+    def __init__(self, W, R):
         # list of M matrices, each of [(MR + A) x L] shape
-        self._W = []
+        self._W = W
 
         # list of 2 matrices, each of [(MN + A) x L] shape
         # first - positive reward
         # second - negative reward
-        self._R = []
+        self._R = R
 
         self._proxy_env = None
         self._attribute_nodes = None  # tensor (N x M x T)

@@ -5,7 +5,7 @@ from .graph_utils import Attribute, Action
 
 
 class FeatureMatrix:
-    def __init__(model, env, shape=(117, 94), attrs_num=53, window_size=2, action_space=3):
+    def __init__(self, env, shape=(117, 94), attrs_num=53, window_size=2, action_space=3):
         self.shape = shape
         self.matrix = np.zeros((shape[0] * shape[1], attrs_num))
         self.attrs_num = attrs_num
@@ -92,7 +92,6 @@ class FeatureMatrix:
                     )  # adding entity's index
 
         res.append(action_vec)
-        # add dummy actions
         actions = [Action(idx) for idx in range(self.action_space)]
         entity_indices.append(actions)
 
