@@ -1,17 +1,17 @@
 import numpy as np
 from environment.schema_games.breakout.games import StandardBreakout
 import time
-from .graph_utils import Attribute, Action
+from .graph_utils import MetaFactory
 
 
 class FeatureMatrix:
     def __init__(self, env, shape=(117, 94), attrs_num=53, window_size=2, action_space=3):
         self.shape = shape
-        self.matrix = np.zeros((shape[0] * shape[1], attrs_num))
+        self.entities_num = shape[0] * shape[1]
         self.attrs_num = attrs_num
+        self.matrix = np.zeros((self.entities_num, self.attrs_num))
         self.window_size = window_size
         self.action_space = action_space
-        self.entities_num = shape[0] * shape[1]
 
         self.ball_attr = 0
         self.paddle_attr = 1
@@ -19,6 +19,7 @@ class FeatureMatrix:
         self.brick_attr = 3
 
         self.planned_action = None
+        self._meta_factory = MetaFactory()
 
         for ball in env.balls:
             if ball.is_entity:
@@ -60,42 +61,42 @@ class FeatureMatrix:
         return index // self.shape[1], index % self.shape[1]
 
     def get_neighbours(self, ind, action, matrix=None, add_all_actions=False):
-
         if matrix is None:
             matrix = self.matrix
-
-        pos = self.transform_index_to_pos(ind)
-        x = pos[0]
-        y = pos[1]
-        res = []
 
         if add_all_actions:
             action_vec = np.ones(self.action_space)
         else:
             action_vec = np.eye(self.action_space)[action - 1]
 
-        zeros = np.zeros(self.attrs_num)
-        zero_attributes = [None for _ in range(self.attrs_num)]
+        x, y = self.transform_index_to_pos(ind)
 
-        entity_indices = []
+        zeros = np.zeros(self.attrs_num)
+
+        res = []
+
+        metadata_row = []
 
         for i in range(-self.window_size, self.window_size + 1):
             for j in range(-self.window_size, self.window_size + 1):
                 if x + i < 0 or x + i >= self.shape[0] or y + j < 0 or y + j >= self.shape[1]:
                     res.append(zeros)
-                    entity_indices.append(zero_attributes)  # adding empty entity
+
+                    meta_fake_entity = self._meta_factory.gen_meta_entity(0, fake=True)
+                    metadata_row.append(meta_fake_entity)
                 else:
-                    idx = self.transform_pos_to_index([x + i, y + j])
-                    res.append(matrix[idx])
-                    entity_indices.append(
-                        [Attribute(idx, attr_idx) for attr_idx in range(self.attrs_num)]
-                    )  # adding entity's index
+                    entity_idx = self.transform_pos_to_index([x + i, y + j])
+                    res.append(matrix[entity_idx])
+
+                    meta_entity = self._meta_factory.gen_meta_entity(entity_idx, fake=False)
+                    metadata_row.append(meta_entity)
 
         res.append(action_vec)
-        actions = [Action(idx) for idx in range(self.action_space)]
-        entity_indices.append(actions)
 
-        return np.concatenate(res), entity_indices
+        meta_actions = self._meta_factory.gen_meta_actions()
+        metadata_row.append(meta_actions)
+
+        return np.concatenate(res), metadata_row
 
     def get_attribute_matrix(self):
         return self.matrix.copy()
@@ -107,14 +108,14 @@ class FeatureMatrix:
             matrix = self.matrix
 
         transformed_matrix = []
-        idx_matrix = []
+        metadata_matrix = []
         for i in range(0, self.entities_num):
-            transformed_vec, entity_indices = \
+            transformed_vec, metadata_row = \
                 self.get_neighbours(i, self.planned_action, matrix=matrix, add_all_actions=add_all_actions)
             transformed_matrix.append(transformed_vec)
-            idx_matrix.append(entity_indices)
+            metadata_matrix.append(metadata_row)
 
-        return np.array([transformed_matrix]), np.array(idx_matrix)
+        return np.array([transformed_matrix]), np.array(metadata_matrix)
 
 
 if __name__ == '__main__':

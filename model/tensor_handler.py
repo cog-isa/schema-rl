@@ -28,35 +28,33 @@ class TensorHandler(Constants):
         return attribute_matrix
 
     def _gen_attribute_tensor(self):
-        shape = (self.N, self.M, self.T)
+        shape = (self.T, self.N, self.M)
         self._attribute_tensor = np.empty(shape, dtype=bool)
 
     def _gen_reward_tensor(self):
         shape = (self.T, self.REWARD_SPACE_DIM)
         self._reward_tensor = np.empty(shape, dtype=bool)
 
-    def _convert_matrix(self, X, input_format):
+    def _transform_matrix(self, matrix, input_format):
         """
-        Convert (N x M) matrix to (N x (MR + A)) matrix
+        for 'attribute: convert (N x M) to (N x (MR + A))
+        for 'reward': convert (N x M) to (1 x (MN + A))
         """
         assert (input_format in ('attribute', 'reward'))
 
         if input_format == 'attribute':
-            # convert to (MR + A)
-            converted_matrix = self._proxy_env.transform_matrix(custom_matrix=X,
+            transformed_matrix = self._proxy_env.transform_matrix(custom_matrix=matrix,
                                                                 add_all_actions=True)
         else:
-            # convert to (MN + A)
-            converted_matrix = None  # implement it in FeatureMatrix
+            transformed_matrix = None  # implement it in FeatureMatrix
+        return transformed_matrix
 
-        return converted_matrix
-
-    def _init_first_attribute_layer(self, X):
+    def _init_first_attribute_layer(self, matrix):
         """
-        :param X: (N x M) ndarray of attributes at time t = 0
+        :param matrix: (N x M) ndarray of attributes at time t = 0
         """
         time = 0
-        self._attribute_tensor[:, :, time] = X.copy()
+        self._attribute_tensor[time, :, :] = matrix.copy()
 
     @staticmethod
     def _find_attribute_active_schemas(self, X_nodes, entity_idx, W, prediction_matrix):
