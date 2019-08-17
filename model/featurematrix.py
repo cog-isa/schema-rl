@@ -63,18 +63,15 @@ class FeatureMatrix:
     def get_neighbours(self, ind, action, matrix=None, add_all_actions=False):
         if matrix is None:
             matrix = self.matrix
-
         if add_all_actions:
             action_vec = np.ones(self.action_space)
         else:
             action_vec = np.eye(self.action_space)[action - 1]
 
         x, y = self.transform_index_to_pos(ind)
-
         zeros = np.zeros(self.attrs_num)
 
         res = []
-
         metadata_row = []
 
         for i in range(-self.window_size, self.window_size + 1):
@@ -101,7 +98,7 @@ class FeatureMatrix:
     def get_attribute_matrix(self):
         return self.matrix.copy()
 
-    def transform_matrix(self, custom_matrix=None, add_all_actions=False):
+    def transform_matrix(self, custom_matrix=None, add_all_actions=False, output_format='attribute'):
         if custom_matrix is not None:
             matrix = custom_matrix
         else:
@@ -109,13 +106,20 @@ class FeatureMatrix:
 
         transformed_matrix = []
         metadata_matrix = []
-        for i in range(0, self.entities_num):
-            transformed_vec, metadata_row = \
-                self.get_neighbours(i, self.planned_action, matrix=matrix, add_all_actions=add_all_actions)
-            transformed_matrix.append(transformed_vec)
-            metadata_matrix.append(metadata_row)
 
-        return np.array([transformed_matrix]), np.array(metadata_matrix)
+        if output_format == 'attribute':
+            for i in range(0, self.entities_num):
+                transformed_vec, metadata_row = \
+                    self.get_neighbours(i, self.planned_action, matrix=matrix, add_all_actions=add_all_actions)
+                transformed_matrix.append(transformed_vec)
+                metadata_matrix.append(metadata_row)
+                transformed_matrix = np.array([transformed_matrix])
+                metadata_matrix = np.array(metadata_matrix)
+        elif output_format == 'reward':
+            # should return (1 x (NM + A)) matrix
+            raise NotImplementedError
+
+        return transformed_matrix, metadata_matrix
 
 
 if __name__ == '__main__':

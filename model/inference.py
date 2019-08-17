@@ -30,41 +30,35 @@ class SchemaNetwork(Constants):
         n_cols = self.M
         matrix = [
             [Attribute(entity_idx, attribute_idx) for attribute_idx in range(n_cols)]
-            for entity_idx in range(n_rows)]
+            for entity_idx in range(n_rows)
+        ]
         return matrix
 
     def _gen_attribute_nodes(self):
-        n_times = self.T
-        tensor = [self._gen_attribute_node_matrix() for t in range(n_times)]
+        tensor = [self._gen_attribute_node_matrix() for _ in range(self.T)]
         self._attribute_nodes = np.array(tensor)
 
     def _gen_action_nodes(self):
-        action_nodes = [[Action(0) for dim in range(self.ACTION_SPACE_DIM)]
-                        for t in range(self.T)]
+        action_nodes = [
+            [Action(idx) for idx in range(self.ACTION_SPACE_DIM)]
+            for _ in range(self.T)
+        ]
         self._action_nodes = np.array(action_nodes)
 
-    def _set_node_layer(self, t):
-        """
-        t: time step
-        """
-        n_rows = self.N
-        n_cols = self.M
-        for i in range(n_rows):
-            for j in range(n_cols):
-                self._attribute_nodes[i][j][t].value = self._attribute_tensor[i, j, t]
+    def _gen_reward_nodes(self):
+        reward_nodes = [
+            [Reward(idx) for idx in range(self.REWARD_SPACE_DIM)]
+            for _ in range(self.T)
+        ]
+        self._reward_nodes = np.array(reward_nodes)
 
     def _forward_pass(self):
         """
-        X: matrix [N x (MR + A)]
-        V: matrix [1 x (MN + A)]
+        proxy_env must be set before calling this
         """
         self._gen_attribute_nodes()
         self._gen_action_nodes()
+        self._gen_reward_nodes()
 
-        # set connections of attribute_nodes
+        # instantiate schemas, determine nodes feasibility
         self._tensor_handler.forward_pass()
-
-    def _plan_actions(self):
-        self._forward_pass()
-
-        # find closest positive reward

@@ -1,16 +1,19 @@
 import numpy as np
 from .constants import Constants
+from .graph_utils import Action
 
 
 class Planner(Constants):
-    def __init__(self):
-        # (T x 2)
-        self.planned_actions = np.empty((self.T, self.ACTION_SPACE_DIM),
-                                        dtype=object)
+    def __init__(self, attribute_nodes, action_nodes, reward_nodes):
+        self.planned_actions = np.full(self.T, Action.not_planned_idx, dtype=int)
+
+        # from SchemaNetwork
+        self._attribute_nodes = attribute_nodes
+        self._action_nodes = action_nodes
+        self._reward_nodes = reward_nodes
 
     def _reset_plan(self):
-        pass
-        # self.planned_actions.clear()
+        self.planned_actions[:] = Action.not_planned_idx
 
     def _backtrace_schema(self, schema, depth):
         """
@@ -55,6 +58,34 @@ class Planner(Constants):
             else:
                 self._reset_plan()  # full reset?
 
-    def backward_pass(self, node):
-        depth = 0
-        self._backtrace_attribute(node, depth)
+    def _find_closest_reward(self, reward_sign):
+        """
+        Returns closest reward_node of sign reward_sign
+        or None if such reward was not found
+        """
+        assert (reward_sign in Reward.allowed_signs)
+
+        closest_reward_node = None
+        for node in self._reward_nodes[:, Reward.pos_idx]:
+            if node.is_feasible:
+                closest_reward_node = node
+                break
+
+        return closest_reward_node
+
+    def _plan_actions(self):
+        self._forward_pass()
+
+        # find closest positive reward
+        pos_reward_node = self._find_closest_reward('pos')
+        if pos_reward_node is not None:
+            # backtrace from it
+            pass
+        else:
+            # find closest negative reward
+            neg_reward_node = self._find_closest_reward('neg')
+            if neg_reward_node is not None:
+                # backtrace from it
+                pass
+            else:
+                raise AssertionError

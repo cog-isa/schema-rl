@@ -22,7 +22,8 @@ class Node:
         schemas: list of schemas
         is_discovered: has node been seen during graph traversal
         """
-        # self.is_feasible = None
+        self.is_feasible = False
+
         self.is_reachable = None
         self.reachable_by = None  # reachable by this schema
         self.value = None
@@ -30,6 +31,10 @@ class Node:
         self.ancestor_actions = None
 
     def add_schema(self, preconditions):
+        # in current implementation schemas are instantiated only on feasible nodes
+        if not self.is_feasible:
+            self.is_feasible = True
+
         attribute_preconditions = []
         action_preconditions = []
 
@@ -39,7 +44,7 @@ class Node:
             elif type(precondition) is Action:
                 adding_list = action_preconditions
             else:
-                assert False
+                raise AssertionError
             adding_list.append(precondition)
 
         self.schemas.append(
@@ -74,6 +79,8 @@ class FakeAttribute:
 
 
 class Action:
+    not_planned_idx = -1
+
     def __init__(self, idx):
         """
         action_idx: action unique idx
@@ -82,9 +89,12 @@ class Action:
 
 
 class Reward(Node):
-    def __init__(self, sign):
-        assert (sign in ('pos', 'neg'))
-        self.sign = sign
+    pos_idx = 0
+    allowed_signs = ('pos', 'neg')
+
+    def __init__(self, idx):
+        self.idx = idx
+        self.sign = self.allowed_signs[idx]
         super().__init__()
 
 

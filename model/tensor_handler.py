@@ -20,7 +20,7 @@ class TensorHandler(Constants):
     def set_proxy_env(self, env):
         self._proxy_env = env
 
-    def _get_env_state(self):
+    def _get_env_attribute_matrix(self):
         """
         Get observed state at t = 0
         :returns (N x M) matrix
@@ -39,9 +39,9 @@ class TensorHandler(Constants):
 
     def _make_reference_matrix(self, metadata_matrix, t):
         """
-        :param metadata_matrix: (N x (MR + A)) matrix of MetaObject's
+        :param metadata_matrix: (N x (MR + A)) or (1 x (NM + A)) matrix of MetaObject's
         :param t: layer of tensor to which references are established
-        :return: (N x (MR + A)) matrix of references to nodes
+        :return: (N x (MR + A)) or (1 x (NM + A)) matrix of references to nodes
         """
         n_rows, m_cols = metadata_matrix.shape
         reference_matrix = np.empty((n_rows, m_cols), dtype=object)
@@ -55,25 +55,22 @@ class TensorHandler(Constants):
                 elif meta_object.obj_type is Action:
                     reference = self._action_nodes[t, meta_object.action_idx]
                 else:
-                    assert False
+                    raise AssertionError
                 reference_matrix[i, j] = reference
         return reference_matrix
 
-    def _transform_matrix(self, matrix, t, input_format):
+    def _transform_matrix(self, matrix, t, output_format):
         """
         for 'attribute: convert (N x M) to (N x (MR + A))
         for 'reward': convert (N x M) to (1 x (MN + A))
         :param t: time step where we got matrix
         """
-        assert (input_format in ('attribute', 'reward'))
+        assert (output_format in ('attribute', 'reward'))
 
-        if input_format == 'attribute':
-            transformed_matrix, metadata_matrix = \
-                self._proxy_env.transform_matrix(custom_matrix=matrix, add_all_actions=True)
-        else:
-            # implement it in FeatureMatrix
-            raise NotImplementedError
-
+        transformed_matrix, metadata_matrix = \
+            self._proxy_env.transform_matrix(custom_matrix=matrix,
+                                             add_all_actions=True,
+                                             output_format=output_format)
         reference_matrix = self._make_reference_matrix(metadata_matrix, t)
         return transformed_matrix, reference_matrix
 
@@ -97,19 +94,17 @@ class TensorHandler(Constants):
                 preconditions = reference_matrix[entity_idx, mask]
                 self._attribute_nodes[t, entity_idx, attribute_idx].add_schema(preconditions)
 
-    @staticmethod
-    def _find_reward_active_schemas(self, X_nodes, R, prediction_matrix):
+    def _instantiate_reward_grounded_schemas(self, reward_idx, t, reference_matrix, R, predicted_matrix):
         """
-        :param X_nodes: matrix of objects {Attribute() and Action()} [1 x (MN+A)] shape
-        :param prediction_matrix: (1 x L) shape
-        :returns schemas: ndarray matrix of precondition objects
+        :param reference_matrix: (1 x (MN + A))
+        :param t: schema output time
         """
-        schema_mask = prediction_matrix
-        precondition_masks = R[:, schema_mask].T
-        schemas = []
+        activity_mask = predicted_matrix[:]
+        precondition_masks = R[:, activity_mask].T
+
         for mask in precondition_masks:
-            schemas.append(X_nodes[mask])
-        return np.array(schemas, dtype=object)
+            preconditions = reference_matrix[mask]
+            self._reward_nodes[t, reward_idx].add_schema(preconditions)
 
     def _predict_next_attribute_layer(self, t):
         """
@@ -117,7 +112,7 @@ class TensorHandler(Constants):
         predict from t to (t + 1)
         """
         src_matrix = self._attribute_tensor[t, :, :]  # get (N x M) matrix
-        transformed_matrix, reference_matrix = self._transform_matrix(src_matrix, t, 'attribute')
+        transformed_matrix, reference_matrix = self._transform_matrix(src_matrix, t, output_format='attribute')
 
         for attr_idx, W in enumerate(self._W):
             predicted_matrix = ~(~transformed_matrix @ W)
@@ -129,40 +124,27 @@ class TensorHandler(Constants):
         t: time at which last known attributes are located
         predict from t to (t + 1)
         """
-        X = self._reward_tensor[t, :]  # get (N x M) matrix
-        X, X_nodes = self._convert_matrix(X)  # convert it to (N x (MN + A)) and get X_nodes
-        next_X = self._reward_tensor[:, :, t + 1]
-
-        #assert (X_nodes.shape[0] == self.N)
+        src_matrix = self._attribute_tensor[t, :, :]  # get (N x M) matrix
+        transformed_matrix, reference_matrix = self._transform_matrix(src_matrix, t, output_format='reward')
 
         for reward_idx, R in enumerate(self._R):
-            prediction_matrix = ~(~X @ R)
-            # set schemas here
-            schemas = self._find_reward_active_schemas(X_nodes, R, prediction_matrix)
-            self._reward_nodes[t + 1, reward_idx] \
-                .add_schemas(schemas, self._reward_nodes, t)
-
-
-            next_X[:attr_idx] = prediction_matrix.any(axis=1)
+            predicted_matrix = ~(~transformed_matrix @ R)
+            self._instantiate_reward_grounded_schemas(reward_idx, t + 1, reference_matrix, R, predicted_matrix)
+            self._reward_tensor[t + 1, reward_idx] = predicted_matrix.any(axis=1)
 
     def forward_pass(self):
         """
-        Fill attribute_nodes with schema information
-        X: matrix [N x (MR + A)]
-        V: matrix [1 x (MN + A)]
+        Fill attribute_nodes and reward_nodes with schema information
         """
         # create tensors for storing state
         self._gen_attribute_tensor()
         self._gen_reward_tensor()
 
         # init first matrix from env
-        attribute_matrix = self._get_env_state()
+        attribute_matrix = self._get_env_attribute_matrix()
         self._init_first_attribute_layer(attribute_matrix)
 
         # propagate forward
         for t in range(self.T):
-            # compute (N x M) matrix of next attributes
             self._predict_next_attribute_layer(t)
-
-            # R not yet implemented
-            # self._predict_next_rewards(t)
+            self._predict_next_reward_layer(t)
