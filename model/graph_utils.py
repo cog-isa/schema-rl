@@ -9,9 +9,9 @@ class Schema:
         """
         preconditions: list of Nodes
         """
-        self.is_reachable = None
         self.attribute_preconditions = attribute_preconditions
         self.action_preconditions = action_preconditions
+        self.is_reachable = None
         self.ancestor_actions = None
 
 
@@ -29,26 +29,22 @@ class Node:
         self.schemas = []
         self.ancestor_actions = None
 
-    def add_schemas(self, schemas_preconditions, attribute_nodes, t, action_nodes):
-        """
-        list of lists
-        """
-        # attributes
-        for single_schema_preconditions in schemas_preconditions[:3]:
-            attribute_preconditions = []
-            action_preconditions = []
-            for precondition in single_schema_preconditions:
-                if type(precondition) is Attribute:
-                    i = precondition.entity_idx
-                    j = precondition.attribute_idx
-                    attribute_preconditions.append(attribute_nodes[i, j, t])
-                elif type(precondition) is Action:
-                    action_preconditions.append(action_nodes[t, precondition.idx])
-                else:
-                    assert False
-            self.schemas.append(
-                Schema(attribute_preconditions, np.array(action_preconditions))
-            )
+    def add_schema(self, preconditions):
+        attribute_preconditions = []
+        action_preconditions = []
+
+        for precondition in preconditions:
+            if type(precondition) is Attribute:
+                adding_list = attribute_preconditions
+            elif type(precondition) is Action:
+                adding_list = action_preconditions
+            else:
+                assert False
+            adding_list.append(precondition)
+
+        self.schemas.append(
+            Schema(attribute_preconditions, action_preconditions)
+        )
 
     def get_ancestors(self):
         """

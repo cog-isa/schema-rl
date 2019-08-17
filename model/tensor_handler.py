@@ -1,9 +1,10 @@
 import numpy as np
 from .constants import Constants
+from .graph_utils import MetaObject, Attribute, FakeAttribute, Action
 
 
 class TensorHandler(Constants):
-    def __init__(self, W, R, attribute_nodes, reward_nodes):
+    def __init__(self, W, R, attribute_nodes, action_nodes, reward_nodes):
         self._W = W
         self._R = R
 
@@ -13,6 +14,7 @@ class TensorHandler(Constants):
 
         # from SchemaNetwork
         self._attribute_nodes = attribute_nodes
+        self._action_nodes = action_nodes
         self._reward_nodes = reward_nodes
 
     def set_proxy_env(self, env):
@@ -35,19 +37,45 @@ class TensorHandler(Constants):
         shape = (self.T, self.REWARD_SPACE_DIM)
         self._reward_tensor = np.empty(shape, dtype=bool)
 
-    def _transform_matrix(self, matrix, input_format):
+    def _make_reference_matrix(self, metadata_matrix, t):
+        """
+        :param metadata_matrix: (N x (MR + A)) matrix of MetaObject's
+        :param t: layer of tensor to which references are established
+        :return: (N x (MR + A)) matrix of references to nodes
+        """
+        n_rows, m_cols = metadata_matrix.shape
+        reference_matrix = np.empty((n_rows, m_cols), dtype=object)
+        for i in range(n_rows):
+            for j in range(m_cols):
+                meta_object = metadata_matrix[i, j]
+                if meta_object.obj_type is Attribute:
+                    reference = self._attribute_nodes[t, meta_object.entity_idx, meta_object.attribute_idx]
+                elif meta_object.obj_type is FakeAttribute:
+                    reference = None
+                elif meta_object.obj_type is Action:
+                    reference = self._action_nodes[t, meta_object.action_idx]
+                else:
+                    assert False
+                reference_matrix[i, j] = reference
+        return reference_matrix
+
+    def _transform_matrix(self, matrix, t, input_format):
         """
         for 'attribute: convert (N x M) to (N x (MR + A))
         for 'reward': convert (N x M) to (1 x (MN + A))
+        :param t: time step where we got matrix
         """
         assert (input_format in ('attribute', 'reward'))
 
         if input_format == 'attribute':
-            transformed_matrix = self._proxy_env.transform_matrix(custom_matrix=matrix,
-                                                                add_all_actions=True)
+            transformed_matrix, metadata_matrix = \
+                self._proxy_env.transform_matrix(custom_matrix=matrix, add_all_actions=True)
         else:
-            transformed_matrix = None  # implement it in FeatureMatrix
-        return transformed_matrix
+            # implement it in FeatureMatrix
+            raise NotImplementedError
+
+        reference_matrix = self._make_reference_matrix(metadata_matrix, t)
+        return transformed_matrix, reference_matrix
 
     def _init_first_attribute_layer(self, matrix):
         """
@@ -56,21 +84,18 @@ class TensorHandler(Constants):
         time = 0
         self._attribute_tensor[time, :, :] = matrix.copy()
 
-    @staticmethod
-    def _find_attribute_active_schemas(self, X_nodes, entity_idx, W, prediction_matrix):
+    def _instantiate_attribute_grounded_schemas(self, attribute_idx, t, reference_matrix, W, predicted_matrix):
         """
-        X_nodes - matrix of objects {Attribute() and Action()}
+        :param reference_matrix: (N x (MR + A))
+        :param t: schema output time
         """
-        schema_mask = prediction_matrix[entity_idx, :]
-        precondition_masks = W[:, schema_mask].T
+        for entity_idx in range(self.N):
+            activity_mask = predicted_matrix[entity_idx, :]
+            precondition_masks = W[:, activity_mask].T
 
-        schemas_preconditions = []
-        row_nodes = X_nodes[entity_idx]
-        for mask in precondition_masks:
-            schemas_preconditions.append(
-                [node for node, flag in zip(row_nodes, mask) if flag]
-            )
-        return schemas_preconditions
+            for mask in precondition_masks:
+                preconditions = reference_matrix[entity_idx, mask]
+                self._attribute_nodes[t, entity_idx, attribute_idx].add_schema(preconditions)
 
     @staticmethod
     def _find_reward_active_schemas(self, X_nodes, R, prediction_matrix):
@@ -91,22 +116,13 @@ class TensorHandler(Constants):
         t: time at which last known attributes are located
         predict from t to (t + 1)
         """
-        X = self._attribute_tensor[:, :, t]  # get (N x M) matrix
-        X, X_nodes = self._convert_matrix(X)  # convert it to (N x (MR + A)) and get X_nodes
-        next_X = self._attribute_tensor[:, :, t + 1]
-
-        assert (X_nodes.shape[0] == self.N)
+        src_matrix = self._attribute_tensor[t, :, :]  # get (N x M) matrix
+        transformed_matrix, reference_matrix = self._transform_matrix(src_matrix, t, 'attribute')
 
         for attr_idx, W in enumerate(self._W):
-            prediction_matrix = ~(~X @ W)
-            # set schemas here
-            for entity_idx in range(self.N):
-                schemas_preconditions = \
-                    self._find_attribute_active_schemas(X_nodes, entity_idx, W, prediction_matrix)
-                self._attribute_nodes[entity_idx, attr_idx, t+1]\
-                    .add_schemas(schemas_preconditions, self._attribute_nodes, t)
-
-            next_X[:attr_idx] = prediction_matrix.any(axis=1)
+            predicted_matrix = ~(~transformed_matrix @ W)
+            self._instantiate_attribute_grounded_schemas(attr_idx, t+1, reference_matrix, W, predicted_matrix)
+            self._attribute_tensor[t + 1, :, attr_idx] = predicted_matrix.any(axis=1)
 
     def _predict_next_reward_layer(self, t):
         """

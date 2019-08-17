@@ -18,7 +18,8 @@ class SchemaNetwork(Constants):
         self._action_nodes = None  # tensor (T x ACTION_SPACE_DIM)
         self._reward_nodes = None  # tensor (T x REWARD_SPACE_DIM)
 
-        self._tensor_handler = TensorHandler(self._W, self._R, self._attribute_nodes, self._reward_nodes)
+        self._tensor_handler = TensorHandler(self._W, self._R, self._attribute_nodes,
+                                             self._action_nodes, self._reward_nodes)
         self._planner = Planner()
 
     def set_proxy_env(self, env):
