@@ -40,12 +40,16 @@ class Node:
 
         for precondition in preconditions:
             if type(precondition) is Attribute:
-                adding_list = attribute_preconditions
+                attribute_preconditions.append(precondition)
             elif type(precondition) is Action:
-                adding_list = action_preconditions
+                # assuming only one action precondition
+                # it's needed for simple action planning during reward backtrace
+                if len(action_preconditions) >= 1:
+                    print('schema is preconditioned more than on one action')
+                    raise AssertionError
+                action_preconditions.append(precondition)
             else:
                 raise AssertionError
-            adding_list.append(precondition)
 
         self.schemas.append(
             Schema(attribute_preconditions, action_preconditions)

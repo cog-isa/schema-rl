@@ -52,7 +52,7 @@ class SchemaNetwork(Constants):
         ]
         self._reward_nodes = np.array(reward_nodes)
 
-    def _forward_pass(self):
+    def plan_actions(self):
         """
         proxy_env must be set before calling this
         """
@@ -62,3 +62,10 @@ class SchemaNetwork(Constants):
 
         # instantiate schemas, determine nodes feasibility
         self._tensor_handler.forward_pass()
+
+        # planning actions
+        self._planner.plan_actions()
+
+        actions = self._planner.planned_actions
+
+        return actions

@@ -1,11 +1,12 @@
 import numpy as np
 from .constants import Constants
-from .graph_utils import Action
+from .graph_utils import Action, Reward
 
 
 class Planner(Constants):
     def __init__(self, attribute_nodes, action_nodes, reward_nodes):
         self.planned_actions = np.full(self.T, Action.not_planned_idx, dtype=int)
+        self.epsilon = 0.1
 
         # from SchemaNetwork
         self._attribute_nodes = attribute_nodes
@@ -19,10 +20,8 @@ class Planner(Constants):
         """
         Determines if schema is reachable
         Keeps track of action path
-
         is_reachable: can it be certainly activated given the state at t = 0
         """
-
         # lazy combining preconditions by AND -> assuming True
         schema.is_reachable = True
 
@@ -30,19 +29,17 @@ class Planner(Constants):
             if precondition.is_reachable is None:
                 # this node is NOT at t = 0 AND we have not computed it's value
                 # dfs over precondition's schemas
-                self._backtrace_attribute(precondition, depth + 1)
+                self._backtrace_node(precondition, depth + 1)
             if not precondition.is_reachable:
                 # schema can *never* be reachable, break and try another schema
                 schema.is_reachable = False
                 break
 
-    def _backtrace_attribute(self, node, depth):
+    def _backtrace_node(self, node, depth):
         """
         Determines if node is reachable
-
         is_reachable: can it be certainly activated given the state at t = 0
         """
-
         # lazy combining schemas by OR -> assuming False
         node.is_reachable = False
 
@@ -53,7 +50,7 @@ class Planner(Constants):
             if schema.is_reachable:
                 # attribute is reachable by this schema
                 t = self.T - depth - 1
-                self.planned_actions[t, :] = schema.action_preconditions
+                self.planned_actions[t] = schema.action_preconditions[0].idx
                 break
             else:
                 self._reset_plan()  # full reset?
@@ -73,19 +70,25 @@ class Planner(Constants):
 
         return closest_reward_node
 
-    def _plan_actions(self):
-        self._forward_pass()
-
+    def plan_actions(self):
         # find closest positive reward
         pos_reward_node = self._find_closest_reward('pos')
         if pos_reward_node is not None:
             # backtrace from it
-            pass
+            self._backtrace_node(pos_reward_node, 0)
         else:
             # find closest negative reward
             neg_reward_node = self._find_closest_reward('neg')
             if neg_reward_node is not None:
                 # backtrace from it
-                pass
+                self._backtrace_node(neg_reward_node, 0)
             else:
                 raise AssertionError
+
+        make_random_action = np.random.choice([True, False],
+                                              size=1,
+                                              p=[self.epsilon, 1 - self.epsilon])
+
+        if make_random_action:
+            pass
+
