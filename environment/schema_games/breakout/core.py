@@ -7,12 +7,12 @@ from itertools import product
 import gym
 from gym.envs.classic_control import rendering
 
-from environment.schema_games.printing import red, blue, yellow, green, cyan, purple
-from environment.schema_games.utils import blockedrange, offset_nzis_from_position
-from environment.schema_games.breakout.objects import \
+from schema_games.printing import red, blue, yellow, green, cyan, purple
+from schema_games.utils import blockedrange, offset_nzis_from_position
+from schema_games.breakout.objects import \
     BreakoutObject, Ball, Paddle, Wall, \
     PaddleShrinkingWall, WallOfPunishment, MoveableObject, MomentumObject
-from environment.schema_games.breakout.constants import \
+from schema_games.breakout.constants import \
     _MAX_SPEED, ALLOW_BOUNCE_AGAINST_PHYSICS, CLASSIC_BACKGROUND_COLOR, \
     BOUNCE_STOCHASTICITY, CORRUPT_RENDERED_IMAGE, DEBUGGING, \
     DEFAULT_HEIGHT, DEFAULT_PADDLE_SHAPE, DEFAULT_WALL_THICKNESS, \

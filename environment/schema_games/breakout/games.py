@@ -11,12 +11,12 @@ import numpy as np
 import random
 from itertools import product
 
-from environment.schema_games.breakout.core import BreakoutEngine
-from environment.schema_games.breakout.objects import \
+from schema_games.breakout.core import BreakoutEngine
+from schema_games.breakout.objects import \
     AcceleratorBrick, Brick, \
     HorizontallyMovingObstacle, ResetterBrick, Wall, WallOfPunishment
-from environment.schema_games.breakout.events import BallAcceleratesEvent
-from environment.schema_games.breakout.constants import \
+from schema_games.breakout.events import BallAcceleratesEvent
+from schema_games.breakout.constants import \
     _MAX_SPEED, CLASSIC_BACKGROUND_COLOR, CLASSIC_PADDLE_COLOR, \
     CLASSIC_BALL_COLOR, CLASSIC_BRICK_COLORS, CLASSIC_WALL_COLOR, \
     DEFAULT_BRICK_REWARD, DEFAULT_BRICK_SHAPE, DEFAULT_NUM_BRICKS_ROWS

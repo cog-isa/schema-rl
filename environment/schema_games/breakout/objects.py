@@ -2,10 +2,10 @@ import copy
 import numpy as np
 import random
 
-from environment.schema_games.utils import \
+from schema_games.utils import \
     compute_edge_nzis, compute_shape_from_nzis, \
     get_distinct_colors, shape_to_nzis, offset_nzis_from_position
-from environment.schema_games.breakout.constants import \
+from schema_games.breakout.constants import \
     _MAX_SPEED, _BALL_SHAPE, CLASSIC_BALL_COLOR, DEFAULT_PADDLE_COLOR, \
     CLASSIC_WALL_COLOR, MAX_NZIS_PER_ENTITY, CLASSIC_BRICK_COLORS
 
