@@ -4,13 +4,11 @@ from .graph_utils import Action, Reward
 
 
 class Planner(Constants):
-    def __init__(self, attribute_nodes, action_nodes, reward_nodes):
+    def __init__(self, reward_nodes):
         self.planned_actions = np.full(self.T, Action.not_planned_idx, dtype=int)
         self.epsilon = 0.1
 
         # from SchemaNetwork
-        self._attribute_nodes = attribute_nodes
-        self._action_nodes = action_nodes
         self._reward_nodes = reward_nodes
 
     def _reset_plan(self):

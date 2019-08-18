@@ -20,7 +20,7 @@ class SchemaNetwork(Constants):
 
         self._tensor_handler = TensorHandler(self._W, self._R, self._attribute_nodes,
                                              self._action_nodes, self._reward_nodes)
-        self._planner = Planner()
+        self._planner = Planner(self._reward_nodes)
 
     def set_proxy_env(self, env):
         self._tensor_handler.set_proxy_env(env)
