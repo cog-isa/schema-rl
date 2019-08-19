@@ -20,6 +20,7 @@ class SchemaNet:
         print('current net:\n', [self._W[i].shape for i in range(len(self._W))])
 
     def predict_attr(self, X, i):
+        X = np.array(X)
         if len(self._W[i].shape) == 1:
             print(X == 0, X.shape, self._W[i].shape)
             return (X == 0) @ self._W[i] == 0
