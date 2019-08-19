@@ -7,7 +7,7 @@ class SchemaNet:
     def __init__(self, N=0, M=53, A=2, L=100, window_size=2):
         self._M = M
         self.neighbour_num = (window_size * 2 + 1) ** 2
-        print('neighbour_num', self.neighbour_num)
+        print('neighbour_num_', self.neighbour_num)
         self._W = [np.zeros(self.neighbour_num * M + A) + 1] * M
         self.solved = np.array([])
         self._A = A
@@ -20,6 +20,7 @@ class SchemaNet:
         print('current net:\n', [self._W[i].shape for i in range(len(self._W))])
 
     def predict_attr(self, X, i):
+        X = np.array(X)
         if len(self._W[i].shape) == 1:
             return (X == 0) @ self._W[i] == 0
         return ((X == 0) @ self._W[i] == 0).any(axis=1) != 0

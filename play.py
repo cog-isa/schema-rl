@@ -31,7 +31,7 @@ def play(model,
             reward_mem.append(reward)
             # TODO: transform_matrix takes terribly long
             if i % learning_freq == 0:
-                X = np.vstack((matrix.transform_matrix(action=action) for matrix in memory))
+                X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory))
                 y = np.vstack((matrix.matrix.T for matrix in memory))
                 model.fit(X, y)
                 memory = []
