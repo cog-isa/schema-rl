@@ -37,7 +37,6 @@ class FeatureMatrix:
                         ind = self.transform_pos_to_index((pos[0]+j, pos[1]+i))
                         self.matrix[ind][self.paddle_attr] = 1
 
-                print(eid)
 
         for wall in env.walls:
             if wall.is_entity:
@@ -101,6 +100,15 @@ class FeatureMatrix:
 
     def get_attribute_matrix(self):
         return self.matrix.copy()
+
+    def transform_matrix_with_action(self, action, custom_matrix=None, add_all_actions=False):
+        if custom_matrix is not None:
+            matrix = custom_matrix
+        else:
+            matrix = self.matrix
+
+        return np.array([self.get_neighbours(i, action, matrix=matrix, add_all_actions=add_all_actions)
+                         for i in range(0, self.shape[0]*self.shape[1])])
 
     def transform_matrix(self, custom_matrix=None, add_all_actions=False, output_format='attribute'):
 

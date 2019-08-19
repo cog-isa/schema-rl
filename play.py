@@ -15,7 +15,7 @@ def play(model,
     memory = []
     reward_mem = []
 
-    reward_model = SchemaNet(M=attrs_num*attr_num, A=2, L=100, window_size=0)
+    #reward_model = SchemaNet(M=attrs_num*attr_num, A=2, L=100, window_size=0)
 
     for i in range(step_num):
         env = game_type(return_state_as_image=False)
@@ -31,14 +31,14 @@ def play(model,
             reward_mem.append(reward)
             # TODO: transform_matrix takes terribly long
             if i % learning_freq == 0:
-                X = np.vstack((matrix.transform_matrix(action=action) for matrix in memory))
+                X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory))
                 y = np.vstack((matrix.matrix.T for matrix in memory))
                 model.fit(X, y)
                 memory = []
             if i % 10 == 9:
                 X = np.array([np.vstack(matrix.matrix) for matrix in memory])
                 y = np.array(reward_mem)
-                reward_model.fit(X, y)
+                #reward_model.fit(X, y)
 
             print(reward, end='; ')
         print('step:', i)
