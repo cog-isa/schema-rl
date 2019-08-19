@@ -6,10 +6,13 @@ class Constants:
     L: number of schemas
     T: size of look-ahead window
     """
-    N = 117 * 94
-    M = 53
+    SCREEN_WIDTH = 10  # 94
+    SCREEN_HEIGHT = 10  # 117
+
+    N = SCREEN_WIDTH * SCREEN_HEIGHT
+    M = 10  # 53
     A = 3
     L = 5
-    T = 50
+    T = 3  # 50
     ACTION_SPACE_DIM = 3
     REWARD_SPACE_DIM = 2

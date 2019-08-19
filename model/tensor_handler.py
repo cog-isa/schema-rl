@@ -26,7 +26,9 @@ class TensorHandler(Constants):
         :returns (N x M) matrix
         """
         assert (self._proxy_env is not None)
-        attribute_matrix = self._proxy_env.get_attribute_matrix()
+        # attribute_matrix = self._proxy_env.get_attribute_matrix()
+        # stub
+        attribute_matrix = np.ones((self.N, self.M))
         return attribute_matrix
 
     def _gen_attribute_tensor(self):
@@ -99,7 +101,8 @@ class TensorHandler(Constants):
         :param reference_matrix: (1 x (MN + A))
         :param t: schema output time
         """
-        activity_mask = predicted_matrix[:]
+        activity_mask = np.squeeze(predicted_matrix[:])  # get rid of first dimension
+
         precondition_masks = R[:, activity_mask].T
 
         for mask in precondition_masks:

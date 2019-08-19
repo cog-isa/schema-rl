@@ -4,8 +4,8 @@ from model.featurematrix import FeatureMatrix
 from model.inference import SchemaNetwork
 
 
-W = [np.zeros((5, 5)) for _ in range(3)]
-R = [np.zeros((5, 5)) for _ in range(2)]
+W = [np.full((163, 5), True) for _ in range(3)]
+R = [np.full((1003, 5), True) for _ in range(2)]
 
 env = StandardBreakout()
 env.reset()
@@ -13,7 +13,7 @@ env.reset()
 feature_matrix = FeatureMatrix(env, attrs_num=4)
 
 model = SchemaNetwork(W, R)
-model.set_proxy_env(env)
+model.set_proxy_env(feature_matrix)
 
 actions = model.plan_actions()
 

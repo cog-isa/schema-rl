@@ -18,6 +18,10 @@ class SchemaNetwork(Constants):
         self._action_nodes = None  # tensor (T x ACTION_SPACE_DIM)
         self._reward_nodes = None  # tensor (T x REWARD_SPACE_DIM)
 
+        self._gen_attribute_nodes()
+        self._gen_action_nodes()
+        self._gen_reward_nodes()
+
         self._tensor_handler = TensorHandler(self._W, self._R, self._attribute_nodes,
                                              self._action_nodes, self._reward_nodes)
         self._planner = Planner(self._reward_nodes)
@@ -56,9 +60,6 @@ class SchemaNetwork(Constants):
         """
         proxy_env must be set before calling this
         """
-        self._gen_attribute_nodes()
-        self._gen_action_nodes()
-        self._gen_reward_nodes()
 
         # instantiate schemas, determine nodes feasibility
         self._tensor_handler.forward_pass()

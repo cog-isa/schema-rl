@@ -46,7 +46,7 @@ class Node:
                 # it's needed for simple action planning during reward backtrace
                 if len(action_preconditions) >= 1:
                     print('schema is preconditioned more than on one action')
-                    raise AssertionError
+                    # raise AssertionError
                 action_preconditions.append(precondition)
             else:
                 raise AssertionError
