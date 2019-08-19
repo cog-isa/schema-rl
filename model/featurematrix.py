@@ -107,7 +107,7 @@ class FeatureMatrix:
         else:
             matrix = self.matrix
 
-        return np.array([self.get_neighbours(i, action, matrix=matrix, add_all_actions=add_all_actions)
+        return np.array([self.get_neighbours(i, action, matrix=matrix, add_all_actions=add_all_actions)[0]
                          for i in range(0, self.shape[0]*self.shape[1])])
 
     def transform_matrix(self, custom_matrix=None, add_all_actions=False, output_format='attribute'):
