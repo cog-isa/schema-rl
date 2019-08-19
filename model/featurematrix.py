@@ -101,13 +101,41 @@ class FeatureMatrix:
     def get_attribute_matrix(self):
         return self.matrix.copy()
 
+    def get_neighbours_with_action(self, ind, action, matrix=None, add_all_actions=False):
+
+        if matrix is None:
+            matrix = self.matrix
+
+        pos = self.transform_index_to_pos(ind)
+        x = pos[0]
+        y = pos[1]
+        res = []
+
+        if add_all_actions:
+            action_vec = np.ones(self.action_space)
+        else:
+            action_vec = np.eye(self.action_space)[action-1]
+
+        zeros = np.zeros(self.attrs_num)
+
+        for i in range(-self.window_size, self.window_size+1):
+            for j in range(-self.window_size, self.window_size+1):
+                if x + i < 0 or x + i >= self.shape[0] or y+j < 0 or y+j >= self.shape[1]:
+                    res.append(zeros)
+                else:
+                    res.append(matrix[self.transform_pos_to_index([x + i, y + j])])
+
+        res.append(action_vec)
+
+        return np.concatenate(res)
+
     def transform_matrix_with_action(self, action, custom_matrix=None, add_all_actions=False):
         if custom_matrix is not None:
             matrix = custom_matrix
         else:
             matrix = self.matrix
 
-        return np.array([self.get_neighbours(i, action, matrix=matrix, add_all_actions=add_all_actions)[0]
+        return np.array([self.get_neighbours_with_action(i, action, matrix=matrix, add_all_actions=add_all_actions)
                          for i in range(0, self.shape[0]*self.shape[1])])
 
     def transform_matrix(self, custom_matrix=None, add_all_actions=False, output_format='attribute'):
