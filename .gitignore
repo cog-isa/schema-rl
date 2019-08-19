@@ -3,9 +3,7 @@
 !.gitignore
 
 .ipynb_checkpoints/
-*.ipynb
 
+*.ipynb
 !*.py
 !*.md
-
-venv

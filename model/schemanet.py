@@ -1,18 +1,23 @@
 import numpy as np
 from scipy.optimize import linprog
-
+from tqdm import tqdm
+import torch
 
 class SchemaNet:
     def __init__(self, N=0, M=53, A=2, L=100, window_size=2):
         self._M = M
-        self.neighbour_num = (window_size * 2 + 1) ** 2 + A
-        self._W = [np.zeros(self.neighbour_num * M) + 1] * M
+        self.neighbour_num = (window_size * 2 + 1) ** 2
+        print('neighbour_num', self.neighbour_num)
+        self._W = [np.zeros(self.neighbour_num * M + A) + 1] * M
         self.solved = np.array([])
         self._A = A
         self._L = L
 
+        self.reward = []
+        self.memory = []
+
     def log(self):
-        print('current net:\n', self._W)
+        print('current net:\n', [self._W[i].shape for i in range(len(self._W))])
 
     def predict_attr(self, X, i):
         if len(self._W[i].shape) == 1:
@@ -25,11 +30,26 @@ class SchemaNet:
     def add(self, schemas, i):
         self._W[i] = np.vstack((self._W[i].T, schemas.T)).T
 
-    def solve_lp(self, zero_pred, c, A_ub, b_ub, A_eq, b_eq):
+    def scipy_solve_lp(self, zero_pred, c, A_ub, b_ub, A_eq, b_eq, options={'maxiter': 2, "disp": False}):
         if len(zero_pred) == 0:
-            return linprog(c=c, A_eq=A_eq, b_eq=b_eq).x.round(2)
+            return linprog(c=c, A_eq=A_eq, b_eq=b_eq, options=options).x.round(2)
         else:
-            return linprog(c=c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq).x.round(2)
+            return linprog(c=c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, options=options).x.round(2)
+
+    """def torch_solve_lp(self, zero_pred, c, A_ub, b_ub, A_eq, b_eq):
+
+        def function_to_optim(x):
+            x*c
+
+        opt_func = lambda x:
+
+        #c = torch.tensor((1 - ones_pred).sum(axis=0))
+        #A_eq = torch.tensor(1 - self.solved)
+        #b_eq = torch.tensor(np.zeros(self.solved.shape[0]))
+        #A_ub = torch.tensor(zero_pred - 1)
+        #b_ub = torch.tensor(np.zeros(zero_pred.shape[0]) - 1)"""
+
+
 
     def get_not_predicted(self, X, y, i):
         ind = (self.predict_attr(X, i) != y) | (y == 0)
@@ -51,8 +71,8 @@ class SchemaNet:
         b_eq = np.zeros(self.solved.shape[0])
         A_ub = zero_pred - 1
         b_ub = np.zeros(zero_pred.shape[0]) - 1
-
-        w = self.solve_lp(zero_pred, c, A_ub, b_ub, A_eq, b_eq)
+        # optimisation is looooooooooooooooong
+        w = self.scipy_solve_lp(zero_pred, c, A_ub, b_ub, A_eq, b_eq)
 
         preds = ((X == 0) @ w) == 0
         self.solved = np.vstack((self.solved, X[preds * (self.predict_attr(X, i) == 0)]))
@@ -62,19 +82,19 @@ class SchemaNet:
 
         zero_pred = X[y == 0]
 
-        c = np.zeros(self.neighbour_num * self._M) + 1
+        c = np.zeros(self.neighbour_num * self._M + self._A)
         A_eq = (1 - self.solved)
         b_eq = np.zeros(self.solved.shape[0])
         A_ub = (zero_pred - 1)
         b_ub = np.zeros(zero_pred.shape[0]) - 1
 
-        return self.solve_lp(zero_pred, c, A_ub, b_ub, A_eq, b_eq)
+        return self.scipy_solve_lp(zero_pred, c, A_ub, b_ub, A_eq, b_eq)
 
     def fit(self, X, Y, log=True):
 
-        for i in range(self._M):
+        for i in tqdm(range(self._M)):
 
-            for j in range(self._L):
+            for j in tqdm(range(self._L)):
 
                 if (self.predict_attr(X, i) == Y[i]).all():
                     if log:
@@ -84,24 +104,27 @@ class SchemaNet:
                 x, y = self.get_not_predicted(X, Y[i], i)
 
                 self.get_schema(x, y, i)
-                w = self.simplify_schema(x, y)
+                w = (self.simplify_schema(x, y) > 0.1) * 1
                 self.add(w, i)
                 if log:
                     self.log()
 
 
+
 if __name__ == '__main__':
-    X = np.array([[0, 1, 0, 1, 0],
-                  [0, 1, 1, 0, 0],
-                  [0, 0, 0, 0, 1],
-                  [1, 1, 1, 0, 0],
-                  [0, 0, 0, 1, 1]])
+    X = np.array([[0, 1, 0, 1, 0, 0],
+                  [0, 1, 1, 0, 0, 0],
+                  [0, 0, 0, 0, 1, 0],
+                  [1, 1, 1, 0, 0, 0],
+                  [0, 0, 0, 1, 1, 0]])
     y = np.array([[0, 0, 0, 0, 0],
                   [0, 0, 0, 0, 0],
                   [0, 0, 0, 0, 0],
                   [0, 0, 0, 0, 0],
-                  [1, 1, 0, 1, 1]])
-    schemanet = SchemaNet(M=5, A=0, window_size=0)
+                  [0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0]])
+    schemanet = SchemaNet(M=6, A=0, window_size=0)
     schemanet.fit(X, y)
+    #print(torch.cuda.is_available())
 
 

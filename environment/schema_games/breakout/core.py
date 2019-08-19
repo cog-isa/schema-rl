@@ -5,7 +5,8 @@ import warnings
 from itertools import product
 
 import gym
-from gym.envs.classic_control import rendering
+from gym import spaces
+#from gym.envs.classic_control import rendering
 
 from ..printing import red, blue, yellow, green, cyan, purple
 from ..utils import blockedrange, offset_nzis_from_position
@@ -261,11 +262,11 @@ class BreakoutEngine(gym.Env):
         if mode == 'rgb_array':
             return self._get_image()
 
-        elif mode == 'human':
+        """elif mode == 'human':
             if self.viewer is None:
                 self.viewer = rendering.SimpleImageViewer()
 
-            self.viewer.imshow(self._get_image())
+            self.viewer.imshow(self._get_image())"""
 
     def _reset(self):
         """
