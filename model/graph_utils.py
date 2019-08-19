@@ -55,13 +55,6 @@ class Node:
             Schema(attribute_preconditions, action_preconditions)
         )
 
-    def get_ancestors(self):
-        """
-        returns: [L x n_schema_pins] matrix of references to Nodes
-        """
-        assert (self.schemas is not None)
-        return [schema.preconditions for schema in self.schemas]
-
 
 class Attribute(Node):
     def __init__(self, entity_idx, attribute_idx, global_idx=None):
