@@ -18,3 +18,4 @@ model.set_proxy_env(feature_matrix)
 actions = model.plan_actions()
 
 feature_matrix.planned_action = actions[0]
+print(feature_matrix.planned_action)

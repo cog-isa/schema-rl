@@ -32,11 +32,11 @@ class TensorHandler(Constants):
         return attribute_matrix
 
     def _gen_attribute_tensor(self):
-        shape = (self.T, self.N, self.M)
+        shape = (self.T + 1, self.N, self.M)
         self._attribute_tensor = np.empty(shape, dtype=bool)
 
     def _gen_reward_tensor(self):
-        shape = (self.T, self.REWARD_SPACE_DIM)
+        shape = (self.T + 1, self.REWARD_SPACE_DIM)
         self._reward_tensor = np.empty(shape, dtype=bool)
 
     def _make_reference_matrix(self, metadata_matrix, t):
@@ -101,7 +101,8 @@ class TensorHandler(Constants):
         :param reference_matrix: (1 x (MN + A))
         :param t: schema output time
         """
-        activity_mask = np.squeeze(predicted_matrix[:])  # get rid of first dimension
+        activity_mask = np.squeeze(predicted_matrix)  # get rid of first dimension
+        reference_matrix = np.squeeze(reference_matrix)
 
         precondition_masks = R[:, activity_mask].T
 

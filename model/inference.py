@@ -39,20 +39,20 @@ class SchemaNetwork(Constants):
         return matrix
 
     def _gen_attribute_nodes(self):
-        tensor = [self._gen_attribute_node_matrix() for _ in range(self.T)]
+        tensor = [self._gen_attribute_node_matrix() for _ in range(self.T + 1)]
         self._attribute_nodes = np.array(tensor)
 
     def _gen_action_nodes(self):
         action_nodes = [
             [Action(idx) for idx in range(self.ACTION_SPACE_DIM)]
-            for _ in range(self.T)
+            for _ in range(self.T + 1)
         ]
         self._action_nodes = np.array(action_nodes)
 
     def _gen_reward_nodes(self):
         reward_nodes = [
             [Reward(idx) for idx in range(self.REWARD_SPACE_DIM)]
-            for _ in range(self.T)
+            for _ in range(self.T + 1)
         ]
         self._reward_nodes = np.array(reward_nodes)
 
