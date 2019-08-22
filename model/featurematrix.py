@@ -91,7 +91,7 @@ class FeatureMatrix(Constants):
         res = []
         metadata_row = []
 
-        action_vec = np.full(self.action_space, True)
+        action_vec = np.full(self.ACTION_SPACE_DIM, True)
         zeros = np.full(self.M, False)
 
         for i in range(-self.window_size, self.window_size):
@@ -133,7 +133,8 @@ class FeatureMatrix(Constants):
         elif output_format == 'reward':
             # should return (1 x (NM + A)) matrix
             print('reaching stub!')
-            transformed_matrix = np.full((1, self.N * self.M + self.A), True)
+            shape = (self.N * self.M + self.ACTION_SPACE_DIM)
+            transformed_matrix = np.full((1, shape), True)
             metadata_matrix = []
             for entity_idx in range(self.N):
                 metadata_matrix.extend(

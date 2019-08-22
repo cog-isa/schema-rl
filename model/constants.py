@@ -11,7 +11,6 @@ class Constants:
 
     N = SCREEN_WIDTH * SCREEN_HEIGHT
     M = 10  # 53
-    A = 3
     L = 5
     T = 3  # 50
     ACTION_SPACE_DIM = 2

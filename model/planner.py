@@ -44,7 +44,7 @@ class Planner(Constants):
 
         for schema in node.schemas:
             if schema.is_reachable is None:
-                self._backtrace_schema(schema, depth)
+                self._backtrace_schema(schema)
 
             if schema.is_reachable:
                 # attribute is reachable by this schema
@@ -61,7 +61,8 @@ class Planner(Constants):
         assert (reward_sign in Reward.allowed_signs)
 
         closest_reward_node = None
-        for node in self._reward_nodes[search_from:, reward_sign]:
+        reward_idx = Reward.sign2idx[reward_sign]
+        for node in self._reward_nodes[search_from:, reward_idx]:
             if node.is_feasible:
                 closest_reward_node = node
                 break
@@ -109,7 +110,7 @@ class Planner(Constants):
             planned_actions = self._plan_for_rewards('neg')
             if planned_actions is None:
                 # can't plan anything
-                print('Planner failed to plan, returning random actions')
+                print('Planner failed to plan, returning random actions.')
 
         if planned_actions is not None:
             randomness_mask = np.random.choice([True, False],
@@ -117,7 +118,7 @@ class Planner(Constants):
                                                p=[self.epsilon, 1 - self.epsilon])
             randomness_size = randomness_mask.sum()
 
-            planned_actions[randomness_mask] = np.random_randint(low=0,
+            planned_actions[randomness_mask] = np.random.randint(low=0,
                                                                  high=self.ACTION_SPACE_DIM,
                                                                  size=randomness_size)
         else:

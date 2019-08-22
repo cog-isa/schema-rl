@@ -4,8 +4,8 @@ from model.featurematrix import FeatureMatrix
 from model.inference import SchemaNetwork
 
 
-W = [np.full((163, 5), True) for _ in range(3)]
-R = [np.full((1003, 5), True) for _ in range(2)]
+W = [np.full((162, 5), True) for _ in range(3)]
+R = [np.full((1002, 5), True) for _ in range(2)]
 
 env = StandardBreakout()
 env.reset()

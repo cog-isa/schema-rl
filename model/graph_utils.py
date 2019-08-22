@@ -102,13 +102,13 @@ class Action:
 
 
 class Reward(Node):
-    pos_idx = 0
-    neg_idx = 1
-    allowed_signs = ('pos', 'neg')
+    sign2idx = {'pos': 0,
+                'neg': 1}
+
+    allowed_signs = sign2idx.keys()
 
     def __init__(self, idx, time_step):
         self.idx = idx
-        self.sign = self.allowed_signs[idx]
         self.time_step = time_step
         super().__init__()
 
