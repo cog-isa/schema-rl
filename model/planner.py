@@ -9,12 +9,13 @@ class Planner(Constants):
         self.epsilon = 0.1
 
         # from SchemaNetwork
+        # (T x REWARD_SPACE_DIM)
         self._reward_nodes = reward_nodes
 
     def _reset_plan(self):
         self.planned_actions[:] = Action.not_planned_idx
 
-    def _backtrace_schema(self, schema, depth):
+    def _backtrace_schema(self, schema):
         """
         Determines if schema is reachable
         Keeps track of action path
@@ -27,13 +28,13 @@ class Planner(Constants):
             if precondition.is_reachable is None:
                 # this node is NOT at t = 0 AND we have not computed it's value
                 # dfs over precondition's schemas
-                self._backtrace_node(precondition, depth + 1)
+                self._backtrace_node(precondition)
             if not precondition.is_reachable:
                 # schema can *never* be reachable, break and try another schema
                 schema.is_reachable = False
                 break
 
-    def _backtrace_node(self, node, depth):
+    def _backtrace_node(self, node):
         """
         Determines if node is reachable
         is_reachable: can it be certainly activated given the state at t = 0
@@ -47,13 +48,12 @@ class Planner(Constants):
 
             if schema.is_reachable:
                 # attribute is reachable by this schema
-                t = self.T - depth - 1
-                self.planned_actions[t] = schema.action_preconditions[0].idx
+                node.is_reachable = True
+                node.activating_schema = schema
+                node.activating_schema.compute_cumulative_actions()
                 break
-            else:
-                self._reset_plan()  # full reset?
 
-    def _find_closest_reward(self, reward_sign):
+    def _find_closest_reward(self, reward_sign, search_from):
         """
         Returns closest reward_node of sign reward_sign
         or None if such reward was not found
@@ -61,32 +61,69 @@ class Planner(Constants):
         assert (reward_sign in Reward.allowed_signs)
 
         closest_reward_node = None
-        for node in self._reward_nodes[:, Reward.pos_idx]:
+        for node in self._reward_nodes[search_from:, reward_sign]:
             if node.is_feasible:
                 closest_reward_node = node
                 break
 
         return closest_reward_node
 
-    def plan_actions(self):
-        # find closest positive reward
-        pos_reward_node = self._find_closest_reward('pos')
-        if pos_reward_node is not None:
+    def _plan_for_rewards(self, reward_sign):
+        """
+        :param reward_sign: POS or NEG rewards are we looking for?
+        :return: ndarray of len (T)
+                 None if cannot plan for this sign of rewards
+        """
+        planned_actions = None
+
+        search_from = 0
+        while search_from < self.T:
+            reward_node = self._find_closest_reward(reward_sign, search_from)
+
+            if reward_node is None:
+                break
+
+            search_from = reward_node.time_step + 1
+
             # backtrace from it
-            self._backtrace_node(pos_reward_node, 0)
+            self._backtrace_node(reward_node)
+            if reward_node.is_reachable:
+                # actions for reaching target reward are planned
+                planned_actions = reward_node.activativg_schema.required_cumulative_actions
+
+                # here planned_actions is len(t-1) List of len(max(x, ACTION_SPACE_DIM)) Lists]
+                # picking FIRST action as a result
+                planned_actions = [actions_at_t[0] for actions_at_t in planned_actions]
+                planned_actions = np.array(planned_actions)
+                break
+
+        return planned_actions
+
+    def plan_actions(self):
+        planned_actions = None
+
+        planned_actions = self._plan_for_rewards('pos')
+        if planned_actions is None:
+            # no positive rewards are reachable from current state,
+            # trying to find closest negative reward
+            planned_actions = self._plan_for_rewards('neg')
+            if planned_actions is None:
+                # can't plan anything
+                print('Planner failed to plan, returning random actions')
+
+        if planned_actions is not None:
+            randomness_mask = np.random.choice([True, False],
+                                               size=self.T,
+                                               p=[self.epsilon, 1 - self.epsilon])
+            randomness_size = randomness_mask.sum()
+
+            planned_actions[randomness_mask] = np.random_randint(low=0,
+                                                                 high=self.ACTION_SPACE_DIM,
+                                                                 size=randomness_size)
         else:
-            # find closest negative reward
-            neg_reward_node = self._find_closest_reward('neg')
-            if neg_reward_node is not None:
-                # backtrace from it
-                self._backtrace_node(neg_reward_node, 0)
-            else:
-                raise AssertionError
+            planned_actions = np.random.randint(low=0,
+                                                high=self.ACTION_SPACE_DIM,
+                                                size=self.T)
 
-        make_random_action = np.random.choice([True, False],
-                                              size=1,
-                                              p=[self.epsilon, 1 - self.epsilon])
-
-        if make_random_action:
-            pass
+        return planned_actions
 

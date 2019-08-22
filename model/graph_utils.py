@@ -12,7 +12,23 @@ class Schema:
         self.attribute_preconditions = attribute_preconditions
         self.action_preconditions = action_preconditions
         self.is_reachable = None
-        self.ancestor_actions = None
+        self.required_cumulative_actions = None
+
+    def _compute_cumulative_actions(self):
+        """
+        arrays are grouped by timesteps
+        """
+        self.required_cumulative_actions = []
+
+        for attribute_node in self.attribute_preconditions:
+            if attribute_node.activating_schema is not None:
+                self.required_cumulative_actions.extend(
+                    attribute_node.activating_schema.required_cumulative_actions
+                )
+
+        self.required_cumulative_actions.append(
+            [action_node.idx for action_node in self.action_preconditions]
+        )
 
 
 class Node:
@@ -25,10 +41,10 @@ class Node:
         self.is_feasible = False
 
         self.is_reachable = None
-        self.reachable_by = None  # reachable by this schema
+        self.activating_schema = None  # reachable by this schema
+
         self.value = None
         self.schemas = []
-        self.ancestor_actions = None
 
     def add_schema(self, preconditions):
         # in current implementation schemas are instantiated only on feasible nodes
@@ -87,11 +103,13 @@ class Action:
 
 class Reward(Node):
     pos_idx = 0
+    neg_idx = 1
     allowed_signs = ('pos', 'neg')
 
-    def __init__(self, idx):
+    def __init__(self, idx, time_step):
         self.idx = idx
         self.sign = self.allowed_signs[idx]
+        self.time_step = time_step
         super().__init__()
 
 

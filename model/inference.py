@@ -51,8 +51,8 @@ class SchemaNetwork(Constants):
 
     def _gen_reward_nodes(self):
         reward_nodes = [
-            [Reward(idx) for idx in range(self.REWARD_SPACE_DIM)]
-            for _ in range(self.T + 1)
+            [Reward(idx, t) for idx in range(self.REWARD_SPACE_DIM)]
+            for t in range(self.T + 1)
         ]
         self._reward_nodes = np.array(reward_nodes)
 

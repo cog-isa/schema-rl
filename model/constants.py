@@ -14,5 +14,5 @@ class Constants:
     A = 3
     L = 5
     T = 3  # 50
-    ACTION_SPACE_DIM = 3
+    ACTION_SPACE_DIM = 2
     REWARD_SPACE_DIM = 2
