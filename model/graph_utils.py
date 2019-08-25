@@ -22,13 +22,20 @@ class Schema:
         self.required_cumulative_actions = []
 
         for attribute_node in self.attribute_preconditions:
-            if attribute_node.activating_schema is not None:
+            if attribute_node.activating_schema is not None:  # if node is not at t == 0
+                assert (attribute_node.t != 0)
                 self.required_cumulative_actions.extend(
                     attribute_node.activating_schema.required_cumulative_actions
                 )
+            else:
+                assert (attribute_node.t == 0)
+
+        required_actions = [action_node.idx for action_node in self.action_preconditions]
+        if len(required_actions) == 0:
+            required_actions = [Action.not_planned_idx]
 
         self.required_cumulative_actions.append(
-            [action_node.idx for action_node in self.action_preconditions]
+            required_actions
         )
 
     def _get_margin(self):
@@ -45,8 +52,11 @@ class Schema:
         relative_harms = []
         for neg_schema in neg_schemas:
             margin = neg_schema._get_margin()
-            intersection = list(set(margin) & set(self.attribute_preconditions))
-            harm = len(intersection) / len(margin)
+            if len(margin) != 0:
+                intersection = list(set(margin) & set(self.attribute_preconditions))
+                harm = len(intersection) / len(margin)
+            else:
+                harm = 0
             relative_harms.append(harm)
         self.harmfulness = max(relative_harms)
 
@@ -106,7 +116,7 @@ class Node:
 
 
 class Attribute(Node):
-    def __init__(self, entity_idx, attribute_idx, t):
+    def __init__(self, entity_idx, attribute_idx, t, is_active):
         """
         entity_idx: entity unique idx [0, N)
         attribute_idx: attribute index in entity's attribute vector
@@ -114,6 +124,8 @@ class Attribute(Node):
         self.entity_idx = entity_idx
         self.attribute_idx = attribute_idx
         super().__init__(t)
+        if is_active:
+            self.is_reachable = True
 
 
 class FakeAttribute:

@@ -5,15 +5,11 @@ from .graph_utils import Action, Reward
 
 class Planner(Constants):
     def __init__(self, reward_nodes):
-        self.planned_actions = np.full(self.T, Action.not_planned_idx, dtype=int)
         self.epsilon = 0.1
 
         # from SchemaNetwork
         # (T x REWARD_SPACE_DIM)
         self._reward_nodes = reward_nodes
-
-    def _reset_plan(self):
-        self.planned_actions[:] = Action.not_planned_idx
 
     def _backtrace_schema(self, schema):
         """
@@ -44,8 +40,8 @@ class Planner(Constants):
 
         # avoiding negative rewards
         # neg_schemas for reward at the same time step as node's time step
-        neg_schemas = self._reward_nodes[node.t, Reward.sign2idx['neg']].schemas
-        node.sort_schemas_by_harmfulness(neg_schemas)
+        # neg_schemas = self._reward_nodes[node.t, Reward.sign2idx['neg']].schemas
+        # node.sort_schemas_by_harmfulness(neg_schemas)
 
         for schema in node.schemas:
             if schema.is_reachable is None:
@@ -89,24 +85,24 @@ class Planner(Constants):
             if reward_node is None:
                 break
 
-            search_from = reward_node.time_step + 1
+            search_from = reward_node.t + 1
 
             # backtrace from it
             self._backtrace_node(reward_node)
             if reward_node.is_reachable:
                 # actions for reaching target reward are planned
-                planned_actions = reward_node.activativg_schema.required_cumulative_actions
+                planned_actions = reward_node.activating_schema.required_cumulative_actions
 
                 # here planned_actions is len(t-1) List of len(max(x, ACTION_SPACE_DIM)) Lists]
                 # picking FIRST action as a result
-                planned_actions = [actions_at_t[0] for actions_at_t in planned_actions]
+                planned_actions = [actions_at_t[0] if actions_at_t else Action.not_planned_idx
+                                   for actions_at_t in planned_actions]
                 planned_actions = np.array(planned_actions)
                 break
 
         return planned_actions
 
     def plan_actions(self):
-        planned_actions = None
 
         planned_actions = self._plan_for_rewards('pos')
         if planned_actions is None:
@@ -119,7 +115,7 @@ class Planner(Constants):
 
         if planned_actions is not None:
             randomness_mask = np.random.choice([True, False],
-                                               size=self.T,
+                                               size=planned_actions.size,
                                                p=[self.epsilon, 1 - self.epsilon])
             randomness_size = randomness_mask.sum()
 

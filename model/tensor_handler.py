@@ -101,8 +101,8 @@ class TensorHandler(Constants):
         :param reference_matrix: (1 x (MN + A))
         :param t: schema output time
         """
-        activity_mask = np.squeeze(predicted_matrix)  # get rid of first dimension
-        reference_matrix = np.squeeze(reference_matrix)
+        activity_mask = np.squeeze(predicted_matrix, axis=0)  # get rid of first dimension
+        reference_matrix = np.squeeze(reference_matrix, axis=0)
 
         precondition_masks = R[:, activity_mask].T
 

@@ -6,7 +6,7 @@ class Constants:
     L: number of schemas
     T: size of look-ahead window
     """
-    DEBUG = True
+    DEBUG = False
 
     SCREEN_WIDTH = 3  # 94
     SCREEN_HEIGHT = 3  # 117
@@ -17,3 +17,5 @@ class Constants:
     T = 3  # 50
     ACTION_SPACE_DIM = 2
     REWARD_SPACE_DIM = 2
+
+    NEIGHBORHOOD_RADIUS = 1
