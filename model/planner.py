@@ -40,8 +40,8 @@ class Planner(Constants):
 
         # avoiding negative rewards
         # neg_schemas for reward at the same time step as node's time step
-        # neg_schemas = self._reward_nodes[node.t, Reward.sign2idx['neg']].schemas
-        # node.sort_schemas_by_harmfulness(neg_schemas)
+        neg_schemas = self._reward_nodes[node.t, Reward.sign2idx['neg']].schemas
+        node.sort_schemas_by_harmfulness(neg_schemas)
 
         for schema in node.schemas:
             if schema.is_reachable is None:
