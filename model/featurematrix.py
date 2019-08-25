@@ -81,21 +81,21 @@ class FeatureMatrix(Constants):
     def get_attribute_matrix(self):
         return self.matrix.copy()
 
-    def get_neighbours(self, ind, action, matrix=None):
+    def get_neighbours(self, central_entity_idx, action, matrix=None):
 
         if matrix is None:
             matrix = self.matrix
 
-        x, y = self.transform_idx_to_pos(ind)
+        x, y = self.transform_idx_to_pos(central_entity_idx)
 
         res = []
         metadata_row = []
 
-        action_vec = np.full(self.action_space, True)
+        action_vec = np.full(self.ACTION_SPACE_DIM, True)
         zeros = np.full(self.M, False)
 
-        for i in range(-self.window_size, self.window_size):
-            for j in range(-self.window_size, self.window_size):
+        for i in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
+            for j in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
                 if x + i < 0 or x + i >= self.SCREEN_WIDTH or y+j < 0 or y+j >= self.SCREEN_HEIGHT:
                     res.append(zeros)
                     meta_fake_entity = self._meta_factory.gen_meta_entity(0, fake=True)
@@ -133,7 +133,8 @@ class FeatureMatrix(Constants):
         elif output_format == 'reward':
             # should return (1 x (NM + A)) matrix
             print('reaching stub!')
-            transformed_matrix = np.full((1, self.N * self.M + self.A), True)
+            shape = (self.N * self.M + self.ACTION_SPACE_DIM)
+            transformed_matrix = np.full((1, shape), True)
             metadata_matrix = []
             for entity_idx in range(self.N):
                 metadata_matrix.extend(

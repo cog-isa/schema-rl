@@ -101,8 +101,8 @@ class TensorHandler(Constants):
         :param reference_matrix: (1 x (MN + A))
         :param t: schema output time
         """
-        activity_mask = np.squeeze(predicted_matrix)  # get rid of first dimension
-        reference_matrix = np.squeeze(reference_matrix)
+        activity_mask = np.squeeze(predicted_matrix, axis=0)  # get rid of first dimension
+        reference_matrix = np.squeeze(reference_matrix, axis=0)
 
         precondition_masks = R[:, activity_mask].T
 
@@ -122,6 +122,10 @@ class TensorHandler(Constants):
             predicted_matrix = ~(~transformed_matrix @ W)
             self._instantiate_attribute_grounded_schemas(attr_idx, t+1, reference_matrix, W, predicted_matrix)
             self._attribute_tensor[t + 1, :, attr_idx] = predicted_matrix.any(axis=1)
+
+        if self.DEBUG:
+            print('attribute_tensor layer at {} is:'.format(t+1))
+            print(self._attribute_tensor[t + 1, :, :])
 
     def _predict_next_reward_layer(self, t):
         """
@@ -145,10 +149,15 @@ class TensorHandler(Constants):
         self._gen_reward_tensor()
 
         # init first matrix from env
-        attribute_matrix = self._get_env_attribute_matrix()
+        print('using dummy hardcoded matrix NOT from env')
+        #attribute_matrix = self._get_env_attribute_matrix()
+        attribute_matrix = np.array([1, 0, 0, 1, 0, 0, 1, 0, 0])
+        attribute_matrix = np.reshape(attribute_matrix, (9, 1))
+        attribute_matrix = attribute_matrix.astype(bool)
+
         self._init_first_attribute_layer(attribute_matrix)
 
         # propagate forward
-        for t in range(self.T):
+        for t in range(1):#self.T):
             self._predict_next_attribute_layer(t)
             self._predict_next_reward_layer(t)

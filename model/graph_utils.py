@@ -12,23 +12,71 @@ class Schema:
         self.attribute_preconditions = attribute_preconditions
         self.action_preconditions = action_preconditions
         self.is_reachable = None
-        self.ancestor_actions = None
+        self.required_cumulative_actions = None
+        self.harmfulness = None
+
+    def compute_cumulative_actions(self):
+        """
+        arrays are grouped by timesteps
+        """
+        self.required_cumulative_actions = []
+
+        for attribute_node in self.attribute_preconditions:
+            if attribute_node.activating_schema is not None:  # if node is not at t == 0
+                assert (attribute_node.t != 0)
+                self.required_cumulative_actions.extend(
+                    attribute_node.activating_schema.required_cumulative_actions
+                )
+            else:
+                assert (attribute_node.t == 0)
+
+        required_actions = [action_node.idx for action_node in self.action_preconditions]
+        if len(required_actions) == 0:
+            required_actions = [Action.not_planned_idx]
+
+        self.required_cumulative_actions.append(
+            required_actions
+        )
+
+    def _get_margin(self):
+        """
+        margin only by attributes!
+        """
+        margin = []
+        for attr in self.attribute_preconditions:
+            if attr.is_reachable is None:
+                margin.append(attr)
+        return margin
+
+    def compute_harmfulness(self, neg_schemas):
+        relative_harms = []
+        for neg_schema in neg_schemas:
+            margin = neg_schema._get_margin()
+            if len(margin) != 0:
+                intersection = list(set(margin) & set(self.attribute_preconditions))
+                harm = len(intersection) / len(margin)
+            else:
+                harm = 0
+            relative_harms.append(harm)
+        self.harmfulness = max(relative_harms)
 
 
 class Node:
-    def __init__(self):
+    def __init__(self, t):
         """
         value: bool variable
         schemas: list of schemas
         is_discovered: has node been seen during graph traversal
         """
+        self.t = t
+
         self.is_feasible = False
 
         self.is_reachable = None
-        self.reachable_by = None  # reachable by this schema
+        self.activating_schema = None  # reachable by this schema
+
         self.value = None
         self.schemas = []
-        self.ancestor_actions = None
 
     def add_schema(self, preconditions):
         # in current implementation schemas are instantiated only on feasible nodes
@@ -55,17 +103,29 @@ class Node:
             Schema(attribute_preconditions, action_preconditions)
         )
 
+    def sort_schemas_by_harmfulness(self, neg_schemas):
+        """
+        :param neg_schemas: list of schemas for negative reward at the same time step
+                            as node's time step
+        """
+        for schema in self.schemas:
+            schema.compute_harmfulness(neg_schemas)
+
+        self.schemas = sorted(self.schemas,
+                              key=lambda x: x.harmfulness)
+
 
 class Attribute(Node):
-    def __init__(self, entity_idx, attribute_idx, global_idx=None):
+    def __init__(self, entity_idx, attribute_idx, t, is_active):
         """
         entity_idx: entity unique idx [0, N)
         attribute_idx: attribute index in entity's attribute vector
         """
         self.entity_idx = entity_idx
         self.attribute_idx = attribute_idx
-        self.global_idx = global_idx
-        super().__init__()
+        super().__init__(t)
+        if is_active:
+            self.is_reachable = True
 
 
 class FakeAttribute:
@@ -78,21 +138,23 @@ class FakeAttribute:
 class Action:
     not_planned_idx = -1
 
-    def __init__(self, idx):
+    def __init__(self, idx, t):
         """
         action_idx: action unique idx
         """
         self.idx = idx
+        self.t = t
 
 
 class Reward(Node):
-    pos_idx = 0
-    allowed_signs = ('pos', 'neg')
+    sign2idx = {'pos': 0,
+                'neg': 1}
 
-    def __init__(self, idx):
+    allowed_signs = sign2idx.keys()
+
+    def __init__(self, idx, t):
         self.idx = idx
-        self.sign = self.allowed_signs[idx]
-        super().__init__()
+        super().__init__(t)
 
 
 class MetaObject:
