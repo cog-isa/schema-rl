@@ -29,29 +29,29 @@ class SchemaNetwork(Constants):
     def set_proxy_env(self, env):
         self._tensor_handler.set_proxy_env(env)
 
-    def _gen_attribute_node_matrix(self):
+    def _gen_attribute_node_matrix(self, t):
         n_rows = self.N
         n_cols = self.M
         matrix = [
-            [Attribute(entity_idx, attribute_idx) for attribute_idx in range(n_cols)]
+            [Attribute(entity_idx, attribute_idx, t=t) for attribute_idx in range(n_cols)]
             for entity_idx in range(n_rows)
         ]
         return matrix
 
     def _gen_attribute_nodes(self):
-        tensor = [self._gen_attribute_node_matrix() for _ in range(self.T + 1)]
+        tensor = [self._gen_attribute_node_matrix(t) for t in range(self.T + 1)]
         self._attribute_nodes = np.array(tensor)
 
     def _gen_action_nodes(self):
         action_nodes = [
-            [Action(idx) for idx in range(self.ACTION_SPACE_DIM)]
-            for _ in range(self.T + 1)
+            [Action(idx, t=t) for idx in range(self.ACTION_SPACE_DIM)]
+            for t in range(self.T + 1)
         ]
         self._action_nodes = np.array(action_nodes)
 
     def _gen_reward_nodes(self):
         reward_nodes = [
-            [Reward(idx, t) for idx in range(self.REWARD_SPACE_DIM)]
+            [Reward(idx, t=t) for idx in range(self.REWARD_SPACE_DIM)]
             for t in range(self.T + 1)
         ]
         self._reward_nodes = np.array(reward_nodes)

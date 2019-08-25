@@ -13,8 +13,9 @@ class Schema:
         self.action_preconditions = action_preconditions
         self.is_reachable = None
         self.required_cumulative_actions = None
+        self.harmfulness = None
 
-    def _compute_cumulative_actions(self):
+    def compute_cumulative_actions(self):
         """
         arrays are grouped by timesteps
         """
@@ -30,14 +31,35 @@ class Schema:
             [action_node.idx for action_node in self.action_preconditions]
         )
 
+    def _get_margin(self):
+        """
+        margin only by attributes!
+        """
+        margin = []
+        for attr in self.attribute_preconditions:
+            if attr.is_reachable is None:
+                margin.append(attr)
+        return margin
+
+    def compute_harmfulness(self, neg_schemas):
+        relative_harms = []
+        for neg_schema in neg_schemas:
+            margin = neg_schema._get_margin()
+            intersection = list(set(margin) & set(self.attribute_preconditions))
+            harm = len(intersection) / len(margin)
+            relative_harms.append(harm)
+        self.harmfulness = max(relative_harms)
+
 
 class Node:
-    def __init__(self):
+    def __init__(self, t):
         """
         value: bool variable
         schemas: list of schemas
         is_discovered: has node been seen during graph traversal
         """
+        self.t = t
+
         self.is_feasible = False
 
         self.is_reachable = None
@@ -71,17 +93,27 @@ class Node:
             Schema(attribute_preconditions, action_preconditions)
         )
 
+    def sort_schemas_by_harmfulness(self, neg_schemas):
+        """
+        :param neg_schemas: list of schemas for negative reward at the same time step
+                            as node's time step
+        """
+        for schema in self.schemas:
+            schema.compute_harmfulness(neg_schemas)
+
+        self.schemas = sorted(self.schemas,
+                              key=lambda x: x.harmfulness)
+
 
 class Attribute(Node):
-    def __init__(self, entity_idx, attribute_idx, global_idx=None):
+    def __init__(self, entity_idx, attribute_idx, t):
         """
         entity_idx: entity unique idx [0, N)
         attribute_idx: attribute index in entity's attribute vector
         """
         self.entity_idx = entity_idx
         self.attribute_idx = attribute_idx
-        self.global_idx = global_idx
-        super().__init__()
+        super().__init__(t)
 
 
 class FakeAttribute:
@@ -94,11 +126,12 @@ class FakeAttribute:
 class Action:
     not_planned_idx = -1
 
-    def __init__(self, idx):
+    def __init__(self, idx, t):
         """
         action_idx: action unique idx
         """
         self.idx = idx
+        self.t = t
 
 
 class Reward(Node):
@@ -107,10 +140,9 @@ class Reward(Node):
 
     allowed_signs = sign2idx.keys()
 
-    def __init__(self, idx, time_step):
+    def __init__(self, idx, t):
         self.idx = idx
-        self.time_step = time_step
-        super().__init__()
+        super().__init__(t)
 
 
 class MetaObject:
