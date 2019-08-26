@@ -75,8 +75,6 @@ class TensorHandler(Constants):
         for 'reward': convert (N x M) to (1 x (MN + A))
         :param t: time step where we got matrix
         """
-        assert (output_format in ('attribute', 'reward'))
-
         transformed_matrix, metadata_matrix = \
             self._proxy_env.transform_matrix(matrix=matrix,
                                              output_format=output_format)
@@ -105,9 +103,11 @@ class TensorHandler(Constants):
 
     def _instantiate_reward_grounded_schemas(self, reward_idx, t, reference_matrix, R, predicted_matrix):
         """
+        THIS MAY INSTANTIATE DUPLICATE SCHEMAS!!!
         :param reference_matrix: (1 x (MN + A))
         :param t: schema output time
         """
+        """code for old flat rewards:
         activity_mask = np.squeeze(predicted_matrix, axis=0)  # get rid of first dimension
         reference_matrix = np.squeeze(reference_matrix, axis=0)
 
@@ -116,6 +116,14 @@ class TensorHandler(Constants):
         for mask in precondition_masks:
             preconditions = reference_matrix[mask]
             self._reward_nodes[t, reward_idx].add_schema(preconditions)
+        """
+        for row_idx in range(self.N):
+            activity_mask = predicted_matrix[row_idx, :]
+            precondition_masks = R[:, activity_mask].T
+
+            for mask in precondition_masks:
+                preconditions = reference_matrix[row_idx, mask]
+                self._reward_nodes[t, reward_idx].add_schema(preconditions)
 
     def _predict_next_attribute_layer(self, t):
         """
@@ -141,7 +149,7 @@ class TensorHandler(Constants):
         for reward_idx, R in enumerate(self._R):
             predicted_matrix = ~(~transformed_matrix @ R)
             self._instantiate_reward_grounded_schemas(reward_idx, t + 1, reference_matrix, R, predicted_matrix)
-            self._reward_tensor[t + 1, reward_idx] = predicted_matrix.any(axis=1)
+            self._reward_tensor[t + 1, reward_idx] = predicted_matrix.any()  # OR over all dimensions
 
     def forward_pass(self):
         """

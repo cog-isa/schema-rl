@@ -114,20 +114,20 @@ class FeatureMatrix(Constants):
 
         return np.concatenate(res), metadata_row
 
-    def transform_matrix(self, matrix, output_format='attribute'):
-
+    def transform_matrix(self, matrix, output_format):
+        assert (output_format in ('attribute', 'reward', 'flat_reward'))
         assert (matrix is not None)
 
         transformed_matrix = []
         metadata_matrix = []
 
-        if output_format == 'attribute':
+        if output_format in ('attribute', 'reward'):
             for i in range(0, self.N):
                 transformed_vec, metadata_row = \
                     self.get_neighbours(i, self.planned_action, matrix=matrix)
                 transformed_matrix.append(transformed_vec)
                 metadata_matrix.append(metadata_row)
-        elif output_format == 'reward':
+        elif output_format == 'flat_reward':
             # should return (1 x (NM + A)) matrix
             transformed_matrix = np.concatenate(
                 (matrix.flatten(), np.ones(self.ACTION_SPACE_DIM))
@@ -143,7 +143,6 @@ class FeatureMatrix(Constants):
                 self._meta_factory.gen_meta_actions()
             )
             metadata_matrix = [metadata_matrix]
-
         else:
             raise AssertionError
 
