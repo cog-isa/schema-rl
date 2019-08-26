@@ -114,12 +114,9 @@ class FeatureMatrix(Constants):
 
         return np.concatenate(res), metadata_row
 
-    def transform_matrix(self, custom_matrix=None, add_all_actions=False, output_format='attribute'):
+    def transform_matrix(self, matrix, output_format='attribute'):
 
-        if custom_matrix is not None:
-            matrix = custom_matrix
-        else:
-            matrix = self.matrix
+        assert (matrix is not None)
 
         transformed_matrix = []
         metadata_matrix = []
@@ -132,9 +129,11 @@ class FeatureMatrix(Constants):
                 metadata_matrix.append(metadata_row)
         elif output_format == 'reward':
             # should return (1 x (NM + A)) matrix
-            print('reaching stub!')
-            shape = (self.N * self.M + self.ACTION_SPACE_DIM)
-            transformed_matrix = np.full((1, shape), True)
+            transformed_matrix = np.concatenate(
+                (matrix.flatten(), np.ones(self.ACTION_SPACE_DIM))
+            )
+            transformed_matrix = np.reshape(transformed_matrix, (1, -1)).astype(bool)
+
             metadata_matrix = []
             for entity_idx in range(self.N):
                 metadata_matrix.extend(
@@ -144,7 +143,9 @@ class FeatureMatrix(Constants):
                 self._meta_factory.gen_meta_actions()
             )
             metadata_matrix = [metadata_matrix]
-            # raise NotImplementedError
+
+        else:
+            raise AssertionError
 
         transformed_matrix = np.array(transformed_matrix)
         metadata_matrix = np.array(metadata_matrix)

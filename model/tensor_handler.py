@@ -17,6 +17,10 @@ class TensorHandler(Constants):
         self._action_nodes = action_nodes
         self._reward_nodes = reward_nodes
 
+        # create tensors for storing state
+        self._gen_attribute_tensor()
+        self._gen_reward_tensor()
+        
     def set_proxy_env(self, env):
         self._proxy_env = env
 
@@ -27,8 +31,12 @@ class TensorHandler(Constants):
         """
         assert (self._proxy_env is not None)
         # attribute_matrix = self._proxy_env.get_attribute_matrix()
-        # stub
-        attribute_matrix = np.ones((self.N, self.M))
+        print('STUB: get_env_attribute_matrix()')
+
+        attribute_matrix = np.array([1, 0, 0, 1, 0, 0, 1, 0, 0])
+        attribute_matrix = np.reshape(attribute_matrix, (9, 1))
+        attribute_matrix = attribute_matrix.astype(bool)
+
         return attribute_matrix
 
     def _gen_attribute_tensor(self):
@@ -70,8 +78,7 @@ class TensorHandler(Constants):
         assert (output_format in ('attribute', 'reward'))
 
         transformed_matrix, metadata_matrix = \
-            self._proxy_env.transform_matrix(custom_matrix=matrix,
-                                             add_all_actions=True,
+            self._proxy_env.transform_matrix(matrix=matrix,
                                              output_format=output_format)
         reference_matrix = self._make_reference_matrix(metadata_matrix, t)
         return transformed_matrix, reference_matrix
@@ -123,10 +130,6 @@ class TensorHandler(Constants):
             self._instantiate_attribute_grounded_schemas(attr_idx, t+1, reference_matrix, W, predicted_matrix)
             self._attribute_tensor[t + 1, :, attr_idx] = predicted_matrix.any(axis=1)
 
-        if self.DEBUG:
-            print('attribute_tensor layer at {} is:'.format(t+1))
-            print(self._attribute_tensor[t + 1, :, :])
-
     def _predict_next_reward_layer(self, t):
         """
         t: time at which last known attributes are located
@@ -144,20 +147,11 @@ class TensorHandler(Constants):
         """
         Fill attribute_nodes and reward_nodes with schema information
         """
-        # create tensors for storing state
-        self._gen_attribute_tensor()
-        self._gen_reward_tensor()
-
         # init first matrix from env
-        print('using dummy hardcoded matrix NOT from env')
-        #attribute_matrix = self._get_env_attribute_matrix()
-        attribute_matrix = np.array([1, 0, 0, 1, 0, 0, 1, 0, 0])
-        attribute_matrix = np.reshape(attribute_matrix, (9, 1))
-        attribute_matrix = attribute_matrix.astype(bool)
-
+        attribute_matrix = self._get_env_attribute_matrix()
         self._init_first_attribute_layer(attribute_matrix)
 
         # propagate forward
-        for t in range(1):#self.T):
+        for t in range(self.T):
             self._predict_next_attribute_layer(t)
             self._predict_next_reward_layer(t)
