@@ -13,4 +13,5 @@ model.set_proxy_env(feature_matrix)
 
 actions = model.plan_actions()
 
+print('Number of actions planned: {}'.format(actions.size))
 print(actions)

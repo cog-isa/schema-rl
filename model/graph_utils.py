@@ -17,25 +17,33 @@ class Schema:
 
     def compute_cumulative_actions(self):
         """
-        arrays are grouped by timesteps
+        arrays are grouped by time steps
         """
         self.required_cumulative_actions = []
+
+        merged_history = None
 
         for attribute_node in self.attribute_preconditions:
             if attribute_node.activating_schema is not None:  # if node is not at t == 0
                 assert (attribute_node.t != 0)
-                self.required_cumulative_actions.extend(
-                    attribute_node.activating_schema.required_cumulative_actions
-                )
+
+                if merged_history is None:
+                    merged_history = [[] for _ in range(len(attribute_node
+                                                            .activating_schema
+                                                            .required_cumulative_actions))]
+
+                to_merge = attribute_node.activating_schema.required_cumulative_actions
+                assert (len(to_merge) == len(merged_history))
+                merged_history = [a + b for a, b in zip(merged_history, to_merge)]
             else:
                 assert (attribute_node.t == 0)
 
-        required_actions = [action_node.idx for action_node in self.action_preconditions]
-        if len(required_actions) == 0:
-            required_actions = [Action.not_planned_idx]
-
+        if merged_history is not None:
+            self.required_cumulative_actions.extend(
+                merged_history
+            )
         self.required_cumulative_actions.append(
-            required_actions
+            [action_node.idx for action_node in self.action_preconditions]
         )
 
     def _get_margin(self):

@@ -20,7 +20,7 @@ class SchemaNetwork(Constants):
         self._W = W
         self._R = R
 
-        self._attribute_nodes = None  # tensor (N x M x T)
+        self._attribute_nodes = None  # tensor (T x N x M)
         self._action_nodes = None  # tensor (T x ACTION_SPACE_DIM)
         self._reward_nodes = None  # tensor (T x REWARD_SPACE_DIM)
 
