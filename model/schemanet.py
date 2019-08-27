@@ -40,6 +40,9 @@ class SchemaNet:
         #print('0', (((X == 0) @ self._W[i]) == 1).any(axis=1) != 0)
         return (1 - binarize((X == 0) @ self._W[i])).any(axis=1) != 0
 
+    def schema_predict_attr(self, X, i):
+        return (1 - binarize((X == 0) @ self._W[i])) != 0
+
     def predict(self, X):
         return [self.predict_attr(X, i) for i in range(self._M)]
 
@@ -71,7 +74,7 @@ class SchemaNet:
         starting_point = torch.tensor(np.zeros(len(c)), dtype=torch.float32)
         starting_point = Variable(starting_point, requires_grad=True)
 
-        optimizer = optim.SGD([starting_point], lr=1e-1)
+        optimizer = optim.Adam([starting_point], lr=1e-1)
 
         def function_to_optim(x):
             # g = ().max()
@@ -82,7 +85,7 @@ class SchemaNet:
             #
             g = (F.relu(torch_A_ub @ x - torch_b_ub)**p).sum()
             h = ((torch_A_eq @ x - torch_b_eq)**2).sum()
-            print('debug', g, h)
+            #print('debug', g, h)
             return x @ torch_c + g + h
 
         for t in range(num_steps):
@@ -91,32 +94,44 @@ class SchemaNet:
             loss.backward()
             optimizer.step()
 
-        #print('\nsolved', self.solved)
-        #print(A_ub, '\nb', b_ub)
-        #print(A_eq, '\nb', b_eq )
-        #print('predict:', self.predict_attr(X, 5))
-        #print(torch_A_ub@starting_point)
-        w = starting_point.detach().numpy()**2 > 1
-        #print('w', starting_point)
-        #print('w', w)
-        #print('check solved', binarize(A_eq@w), A_eq@w)
-
+        w = starting_point.detach().numpy()**2 > 0.5
         return w
 
     def get_not_predicted(self, X, y, i):
+        self.remove_wrong_schemas(X, y)
         ind = (self.predict_attr(X, i) != y) | (y == 0)
         return X[ind], y[ind]
 
     def get_next_to_predict(self, X, y, i):
+
+        print('yyyy', y, y.any())
+
+        self.remove_wrong_schemas(X, y)
+
+        print("PRED", self.predict_attr(X, i).any(), (self.predict_attr(X, i) != y).any(),  y.any())
+        print(y)
+
         ind = (self.predict_attr(X, i) != y) * (y == 1)
 
-        #print ((self.predict_attr(X, i) != y) * (y == 0))
+        print('!!!!!!', self._W[i].shape, i, X[ind].shape)
+        print(X[ind])
+
+
+        if len(X[ind].shape) == 1:
+            print(')', X[ind])
+            return X[ind]
+
+        if X[ind].shape[1] == 1:
+            print(')', X[ind])
+            return X[ind]
+
         return X[ind][0]
 
     def get_schema(self, X, y, i):
 
         zero_pred = X[y == 0]
         ones_pred = X[y == 1]
+        print('y', y)
 
         self.solved = np.array([self.get_next_to_predict(X, y, i)])
 
@@ -126,38 +141,64 @@ class SchemaNet:
         A_ub = zero_pred - 1
         b_ub = np.zeros(zero_pred.shape[0]) - 1
 
-        w = self.scipy_solve_lp(c, A_ub, b_ub, A_eq, b_eq)
+        w = self.torch_solve_lp(c, A_ub, b_ub, A_eq, b_eq)
 
         #print( '\nresult', 1 - binarize((X == 0) @ w))
         #print('\nwtf', (1 - self.solved)@w)
 
         preds = 1 - binarize((X == 0) @ w)
+        #print('Preds', X[preds])
+        #print('check', preds * (self.predict_attr(X, i) == 0))
         #print((self.predict_attr(X, i) == 0)*preds)
+        ind = (preds * (self.predict_attr(X, i) == 0)) == 1
 
-        self.solved = np.vstack((self.solved, X[preds * (self.predict_attr(X, i) == 0)]))
+        print(X[ind].shape, self.solved.shape)
+        #print(self.solved[0])
+        self.solved = np.vstack((self.solved, X[ind]))
+        #print(self.solved)
         return w
 
     def simplify_schema(self, X, y):
 
         zero_pred = X[y == 0]
 
-        c = np.zeros(self.neighbour_num * self._M + self._A) + 1
+        c = np.zeros(self.neighbour_num * self._M + self._A)
         A_eq = (1 - self.solved)
         b_eq = np.zeros(self.solved.shape[0])
+        print('A', A_eq)
         A_ub = (zero_pred - 1)
         b_ub = np.zeros(zero_pred.shape[0]) - 1
-        w = self.scipy_solve_lp(c, A_ub, b_ub, A_eq, b_eq)
+        w = self.torch_solve_lp(c, A_ub, b_ub, A_eq, b_eq)
 
         #print('WTF', 1 - binarize((X == 0) @ w))
         #print(w)
 
         return w
 
+    def actuality_check_attr(self, X, y, i):
+        if len(self._W[i].shape) == 1:
+            return np.zeros(self._W[i].shape[0])
+        pred = self.schema_predict_attr(X, i).T
+        return ((y[i] - pred) == -1)
+
+    def remove_wrong_schemas(self, X, y):
+        for i in range(self._M):
+            if len(self._W[i].shape) == 1:
+                break
+            wrong_ind = self.actuality_check_attr(X, y, i).sum(axis=1)
+
+            if (wrong_ind == 0).sum() != 0:
+                print('outdated schema was detected for attribute', i)
+
+            self._W[i] = (self._W[i].T[wrong_ind == 0]).T
+
     def fit(self, X, Y, log=True):
 
         ind = X.sum(axis=1) > 0
         X = X[ind]
         Y = (Y.T[ind]).T
+
+        self.remove_wrong_schemas(X, Y)
 
         for i in tqdm(range(self._M)):
 
@@ -171,8 +212,9 @@ class SchemaNet:
                 x, y = self.get_not_predicted(X, Y[i], i)
 
                 w = binarize(self.get_schema(x, y, i))
-                print('w:', w)
-                w_ = (self.simplify_schema(x, y) > 0.1) * 1
+                #print('w:', w)
+                w = (self.simplify_schema(x, y) > 0.1) * 1
+                #print('w sipled', w_)
                 self.add(w, i)
                 if log:
                     self.log()
@@ -194,6 +236,8 @@ if __name__ == '__main__':
     schemanet = SchemaNet(M=6, A=0, window_size=0)
     schemanet.fit(X, y)
 
-    print(schemanet.predict(X))
 
+    schemanet.print()
+    schemanet.remove_wrong_schemas(X, y)
+    print('?????', schemanet.actuality_check_attr(X, y, 5))
     schemanet.print()
