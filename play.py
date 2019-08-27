@@ -2,9 +2,10 @@ from environment.schema_games.breakout.games import StandardBreakout
 from model.featurematrix import FeatureMatrix
 import numpy as np
 from model.schemanet import SchemaNet
+from model.inference import SchemaNetwork
 
 def transform_to_array(pos=0, neg=0, ent_num=94*117):
-    return (np.zeros(ent_num, 2) + np.array([pos, neg])).T
+    return (np.zeros([ent_num, 4]) + np.array([pos, neg, 0, 0])).T
 
 def check_for_update(X, old_state):
     old_state = np.array(old_state)
@@ -37,14 +38,18 @@ def play(model, reward_model,
             matrix = FeatureMatrix(env, attrs_num=attrs_num, window_size=window_size, action_space=action_space)
             memory.append(matrix)
             # make a decision
-            action = np.random.randint(2) + 1
+            decision_model = SchemaNetwork(model._W,[ reward_model._W[0], reward_model._W[1]])
+            decision_model.set_proxy_env(matrix)
+
+            actions = model.plan_actions()
+            action = actions[0] # np.random.randint(2) + 1
 
             state, reward, done, _ = env.step(action)
             reward_mem.append(reward)
 
             # TODO: transform_matrix takes terribly long
             if i % learning_freq == 0:
-                X = np.vstack((matrix.transform_matrix(action=action) for matrix in memory))
+                X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory))
                 y = np.vstack((matrix.matrix.T for matrix in memory))
 
                 ent_num, update = check_for_update(X, old_state)
