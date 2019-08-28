@@ -4,8 +4,10 @@ import numpy as np
 from model.schemanet import SchemaNet
 from model.inference import SchemaNetwork
 
+
 def transform_to_array(pos=0, neg=0, ent_num=94*117):
     return (np.zeros([ent_num, 4]) + np.array([pos, neg, 0, 0])).T
+
 
 def check_for_update(X, old_state):
     old_state = np.array(old_state)
@@ -14,7 +16,6 @@ def check_for_update(X, old_state):
         if entity not in old_state:
             update.append(entity)
     return len(update), np.array(update)
-
 
 
 def play(model, reward_model,
@@ -28,7 +29,6 @@ def play(model, reward_model,
     memory = []
     reward_mem = []
     old_state  = []
-
 
     for i in range(step_num):
         env = game_type(return_state_as_image=False)
@@ -62,7 +62,6 @@ def play(model, reward_model,
 
                 model.fit(X, y)
                 memory = []
-
 
             print('     ', reward, end='; ')
         print('step:', i)

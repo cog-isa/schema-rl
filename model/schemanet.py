@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.optimize import linprog
 from tqdm import tqdm
-import torch
+
 
 class SchemaNet:
     def __init__(self, N=0, M=53, A=2, L=100, window_size=2):
@@ -40,19 +40,6 @@ class SchemaNet:
             return linprog(c=c, A_eq=A_eq, b_eq=b_eq, options=options).x.round(2)
         else:
             return linprog(c=c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, options=options).x.round(2)
-
-    """def torch_solve_lp(self, zero_pred, c, A_ub, b_ub, A_eq, b_eq):
-
-        def function_to_optim(x):
-            x*c
-
-        opt_func = lambda x:
-
-        #c = torch.tensor((1 - ones_pred).sum(axis=0))
-        #A_eq = torch.tensor(1 - self.solved)
-        #b_eq = torch.tensor(np.zeros(self.solved.shape[0]))
-        #A_ub = torch.tensor(zero_pred - 1)
-        #b_ub = torch.tensor(np.zeros(zero_pred.shape[0]) - 1)"""
 
     def get_not_predicted(self, X, y, i):
         ind = (self.predict_attr(X, i) != y) | (y == 0)
@@ -123,7 +110,6 @@ class SchemaNet:
                 self.add(w, i)
                 if log:
                     self.log()
-
 
 
 if __name__ == '__main__':
