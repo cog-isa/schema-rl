@@ -7,12 +7,12 @@ class SchemaNet:
     def __init__(self, N=0, M=53, A=2, L=100, window_size=2):
         self._M = M
         self.neighbour_num = (window_size * 2 + 1) ** 2
-        print('neighbour_num_', self.neighbour_num)
+        print('neighbour_num', self.neighbour_num)
         self._W = [np.zeros(self.neighbour_num * M + A) + 1] * M
         self.solved = np.array([])
         self._A = A
         self._L = L
-
+        self._R = [np.zeros(self.neighbour_num * M + A) + 1] * 2
         self.reward = []
         self.memory = []
 
@@ -20,10 +20,14 @@ class SchemaNet:
         print('current net:\n', [self._W[i].shape for i in range(len(self._W))])
 
     def predict_attr(self, X, i):
-        X = np.array(X)
         if len(self._W[i].shape) == 1:
             return (X == 0) @ self._W[i] == 0
         return ((X == 0) @ self._W[i] == 0).any(axis=1) != 0
+
+    def predict_reward(self, X, is_pos=1):
+        if len(self._R[is_pos].shape) == 1:
+            return (X == 0) @ self._R[is_pos] == 0
+        return ((X == 0) @ self._R[is_pos] == 0).any(axis=1) != 0
 
     def predict(self, X):
         return [self.predict_attr(X, i) for i in range(self._M)]
@@ -127,5 +131,3 @@ if __name__ == '__main__':
     schemanet = SchemaNet(M=6, A=0, window_size=0)
     schemanet.fit(X, y)
     #print(torch.cuda.is_available())
-
-
