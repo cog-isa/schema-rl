@@ -6,16 +6,28 @@ class Constants:
     L: number of schemas
     T: size of look-ahead window
     """
-    DEBUG = True
+    DEBUG = False
 
-    SCREEN_WIDTH = 3  # 94
-    SCREEN_HEIGHT = 3  # 117
+    if DEBUG:
+        SCREEN_WIDTH = 3
+        SCREEN_HEIGHT = 3
 
-    N = 9  # SCREEN_WIDTH * SCREEN_HEIGHT
-    M = 1  # 53
-    L = 1
-    T = 3  # 50
-    ACTION_SPACE_DIM = 2
-    REWARD_SPACE_DIM = 2
+        N = 9  # SCREEN_WIDTH * SCREEN_HEIGHT
+        M = 1
+        T = 3
+        ACTION_SPACE_DIM = 2
+        REWARD_SPACE_DIM = 2
 
-    NEIGHBORHOOD_RADIUS = 1
+        NEIGHBORHOOD_RADIUS = 1
+    else:
+        SCREEN_WIDTH = 94
+        SCREEN_HEIGHT = 117
+
+        N = SCREEN_WIDTH * SCREEN_HEIGHT
+        M = 4
+        T = 3
+        ACTION_SPACE_DIM = 2
+        REWARD_SPACE_DIM = 2
+
+        NEIGHBORHOOD_RADIUS = 2
+        NEIGHBORS_NUM = 24

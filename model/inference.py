@@ -13,9 +13,16 @@ class SchemaNetwork(Constants):
         """
         # assert matrices are boolean
         for w in W:
-            assert(w.dtype == bool)
+            assert (w.dtype == bool)
+            if w.ndim != 2:
+                print(w.ndim)
+                print(w)
+                raise AssertionError
+            assert (w.shape[0] == self.M * (self.NEIGHBORS_NUM + 1) + self.ACTION_SPACE_DIM)
+
+            assert (w.shape[1] != 0)
         for r in R:
-            assert(r.dtype == bool)
+            assert (r.dtype == bool)
 
         self._W = W
         self._R = R
