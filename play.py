@@ -4,8 +4,10 @@ import numpy as np
 from model.schemanet import SchemaNet
 from model.inference import SchemaNetwork
 
+
 def transform_to_array(pos=0, neg=0, ent_num=94*117):
     return (np.zeros([ent_num, 4]) + np.array([pos, neg, 0, 0])).T
+
 
 def check_for_update(X, old_state):
     old_state = np.array(old_state)
@@ -14,7 +16,6 @@ def check_for_update(X, old_state):
         if entity not in old_state:
             update.append(entity)
     return len(update), np.array(update)
-
 
 
 def play(model, reward_model,
@@ -29,7 +30,6 @@ def play(model, reward_model,
     reward_mem = []
     old_state  = []
 
-
     for i in range(step_num):
         env = game_type(return_state_as_image=False)
         done = False
@@ -38,11 +38,12 @@ def play(model, reward_model,
             matrix = FeatureMatrix(env, attrs_num=attrs_num, window_size=window_size, action_space=action_space)
             memory.append(matrix)
             # make a decision
-            decision_model = SchemaNetwork(model._W,[ reward_model._W[0], reward_model._W[1]])
-            decision_model.set_proxy_env(matrix)
+            # decision_model = SchemaNetwork([w==1 for w in  model._W ],
+            #                               [ reward_model._W[0] ==1, reward_model._W[1] ==1])
+            #decision_model.set_proxy_env(matrix)
 
-            actions = model.plan_actions()
-            action = actions[0] # np.random.randint(2) + 1
+            #actions = decision_model.plan_actions()
+            action =  np.random.randint(2) + 1
 
             state, reward, done, _ = env.step(action)
             reward_mem.append(reward)
@@ -53,14 +54,14 @@ def play(model, reward_model,
                 y = np.vstack((matrix.matrix.T for matrix in memory))
 
                 ent_num, update = check_for_update(X, old_state)
-                y_r = transform_to_array(reward > 0, reward < 0, ent_num=ent_num)
-                old_state += list(update)
-                reward_model.fit(X, y_r)
+                if len(update) != 0:
+                    y_r = transform_to_array(reward > 0, reward < 0, ent_num=ent_num)
+                    old_state += list(update)
+                    reward_model.fit(update, y_r)
                 reward_mem = []
 
                 model.fit(X, y)
                 memory = []
-
 
             print('     ', reward, end='; ')
         print('step:', i)
