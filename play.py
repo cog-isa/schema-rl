@@ -25,7 +25,7 @@ def play(model, reward_model,
          attrs_num=4,
          action_space=2,
          attr_num=94*117,
-         learning_freq=1):
+         learning_freq=2):
     memory = []
     reward_mem = []
     old_state  = []
@@ -34,24 +34,26 @@ def play(model, reward_model,
         env = game_type(return_state_as_image=False)
         done = False
         env.reset()
+        j = 0
         while not done:
+
             matrix = FeatureMatrix(env, attrs_num=attrs_num, window_size=window_size, action_space=action_space)
             memory.append(matrix)
             # make a decision
-            # decision_model = SchemaNetwork([w==1 for w in  model._W ],
-            #                               [ reward_model._W[0] ==1, reward_model._W[1] ==1])
-            #decision_model.set_proxy_env(matrix)
+            decision_model = SchemaNetwork([w==1 for w in model._W],
+                                           [reward_model._W[0] ==1, reward_model._W[1] ==1])
+            decision_model.set_proxy_env(matrix)
 
-            #actions = decision_model.plan_actions()
-            action =  np.random.randint(2) + 1
+            actions = decision_model.plan_actions()
+            print(actions)
+            action = np.random.randint(2) + 1
 
             state, reward, done, _ = env.step(action)
             reward_mem.append(reward)
-
             # TODO: transform_matrix takes terribly long
-            if i % learning_freq == 0:
-                X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory))
-                y = np.vstack((matrix.matrix.T for matrix in memory))
+            if j % learning_freq == 1:
+                X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory[:-1]))
+                y = np.vstack((matrix.matrix.T for matrix in memory[1:]))
 
                 ent_num, update = check_for_update(X, old_state)
                 if len(update) != 0:
@@ -62,6 +64,7 @@ def play(model, reward_model,
 
                 model.fit(X, y)
                 memory = []
+            j += 1
 
             print('     ', reward, end='; ')
         print('step:', i)
