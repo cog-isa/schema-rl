@@ -54,14 +54,15 @@ class SchemaNet:
         #A_ub = torch.tensor(zero_pred - 1)
         #b_ub = torch.tensor(np.zeros(zero_pred.shape[0]) - 1)"""
 
-
-
     def get_not_predicted(self, X, y, i):
         ind = (self.predict_attr(X, i) != y) | (y == 0)
         return X[ind], y[ind]
 
     def get_next_to_predict(self, X, y, i):
         ind = (self.predict_attr(X, i) != y) * (y == 1)
+        if ind.sum() == 0:
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!1')
+            return X[0]
         return X[ind][0]
 
     def get_schema(self, X, y, i):
@@ -97,14 +98,23 @@ class SchemaNet:
 
     def fit(self, X, Y, log=True):
 
+        X = X[X.sum(axis=1) != 0]
+        Y = (Y.T[X.sum(axis=1) != 0]).T
+
         for i in tqdm(range(self._M)):
 
             for j in tqdm(range(self._L)):
 
-                if (self.predict_attr(X, i) == Y[i]).all():
-                    if log:
-                        print('all attrs are predicted for attr', i)
-                    break
+                if isinstance((self.predict_attr(X, i) == Y[i]), np.ndarray):
+                    if (self.predict_attr(X, i) == Y[i]).all():
+                        if log:
+                            print('all attrs are predicted for attr', i)
+                        break
+                else:
+                    if self.predict_attr(X, i) == Y[i]:
+                        if log:
+                            print('all attrs are predicted for attr', i)
+                        break
 
                 x, y = self.get_not_predicted(X, Y[i], i)
 

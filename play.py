@@ -38,11 +38,12 @@ def play(model, reward_model,
             matrix = FeatureMatrix(env, attrs_num=attrs_num, window_size=window_size, action_space=action_space)
             memory.append(matrix)
             # make a decision
-            decision_model = SchemaNetwork(model._W,[ reward_model._W[0], reward_model._W[1]])
-            decision_model.set_proxy_env(matrix)
+            # decision_model = SchemaNetwork([w==1 for w in  model._W ],
+            #                               [ reward_model._W[0] ==1, reward_model._W[1] ==1])
+            #decision_model.set_proxy_env(matrix)
 
-            actions = model.plan_actions()
-            action = actions[0] # np.random.randint(2) + 1
+            #actions = decision_model.plan_actions()
+            action =  np.random.randint(2) + 1
 
             state, reward, done, _ = env.step(action)
             reward_mem.append(reward)
@@ -53,9 +54,10 @@ def play(model, reward_model,
                 y = np.vstack((matrix.matrix.T for matrix in memory))
 
                 ent_num, update = check_for_update(X, old_state)
-                y_r = transform_to_array(reward > 0, reward < 0, ent_num=ent_num)
-                old_state += list(update)
-                reward_model.fit(X, y_r)
+                if len(update) != 0:
+                    y_r = transform_to_array(reward > 0, reward < 0, ent_num=ent_num)
+                    old_state += list(update)
+                    reward_model.fit(update, y_r)
                 reward_mem = []
 
                 model.fit(X, y)
