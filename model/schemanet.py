@@ -8,7 +8,7 @@ class SchemaNet:
         self._M = M
         self.neighbour_num = (window_size * 2 + 1) ** 2
         print('neighbour_num', self.neighbour_num)
-        self._W = [np.zeros(self.neighbour_num * M + A) + 1] * M
+        self._W = [np.zeros([self.neighbour_num * M + A, 1]) + 1] * M
         self.solved = np.array([])
         self._A = A
         self._L = L
@@ -123,7 +123,7 @@ if __name__ == '__main__':
                   [0, 0, 0, 0, 0],
                   [0, 0, 0, 0, 0],
                   [0, 0, 0, 0, 0],
-                  [0, 0, 0, 0, 0]])
+                  [1, 0, 0, 0, 1]])
     schemanet = SchemaNet(M=6, A=0, window_size=0)
     schemanet.fit(X, y)
     #print(torch.cuda.is_available())
