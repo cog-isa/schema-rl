@@ -29,13 +29,17 @@ class TensorHandler(Constants):
         Get observed state at t = 0
         :returns (N x M) matrix
         """
-        assert (self._proxy_env is not None)
-        # attribute_matrix = self._proxy_env.get_attribute_matrix()
-        print('STUB: get_env_attribute_matrix()')
+        if self._proxy_env is None:
+            print('set proxy_env before calling planner')
+            raise AssertionError
 
-        attribute_matrix = np.array([1, 0, 0, 1, 0, 0, 1, 0, 0])
-        attribute_matrix = np.reshape(attribute_matrix, (9, 1))
-        attribute_matrix = attribute_matrix.astype(bool)
+        if self.DEBUG:
+            print('STUB: get_env_attribute_matrix()')
+            attribute_matrix = np.array([1, 0, 0, 1, 0, 0, 1, 0, 0])
+            attribute_matrix = np.reshape(attribute_matrix, (9, 1))
+            attribute_matrix = attribute_matrix.astype(bool)
+        else:
+            attribute_matrix = self._proxy_env.get_attribute_matrix()
 
         return attribute_matrix
 
