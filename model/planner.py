@@ -108,7 +108,10 @@ class Planner(Constants):
         if planned_actions is None:
             # no positive rewards are reachable from current state,
             # trying to find closest negative reward
-            planned_actions = self._plan_for_rewards('neg')
+
+            # do NOT backtrace negative reward
+            #planned_actions = self._plan_for_rewards('neg')
+
             if planned_actions is None:
                 # can't plan anything
                 print('Planner failed to plan, returning random actions.')
