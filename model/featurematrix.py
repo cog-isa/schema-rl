@@ -26,6 +26,7 @@ class FeatureMatrix(Constants):
             if ball.is_entity:
                 for state, eid in env.parse_object_into_pixels(ball):
                     pos = list(state.keys())[0][1]
+                    print('ball', pos)
                     ind = self.transform_pos_to_index(pos)
                     self.matrix[ind][self.ball_attr] = 1
 
@@ -33,6 +34,7 @@ class FeatureMatrix(Constants):
             for state, eid in env.parse_object_into_pixels(env.paddle):
                 # TODO: add parts of paddle
                 pos = list(state.keys())[0][1]
+                print('paddle', pos)
                 for i in range(-11, 12):
                     for j in range(-1, 3):
                         ind = self.transform_pos_to_index((pos[0]+j, pos[1]+i))

@@ -18,6 +18,25 @@ def check_for_update(X, old_state):
     return len(update), np.array(update)
 
 
+def get_action_for_reward(env):
+    pos_ball = 0
+    pos_paddle = 0
+    for ball in env.balls:
+        if ball.is_entity:
+            for state, eid in env.parse_object_into_pixels(ball):
+                pos_ball = list(state.keys())[0][1]
+
+    if env.paddle.is_entity:
+        for state, eid in env.parse_object_into_pixels(env.paddle):
+            pos_paddle = list(state.keys())[0][1]
+
+    if pos_ball[1] < pos_paddle[1]:
+        return 1
+    if pos_ball[1] == pos_paddle[1]:
+        return 0
+    return 2
+
+
 def play(model, reward_model,
          game_type=StandardBreakout,
          step_num=3,
@@ -40,17 +59,16 @@ def play(model, reward_model,
             matrix = FeatureMatrix(env, attrs_num=attrs_num, window_size=window_size, action_space=action_space)
             memory.append(matrix)
             # make a decision
-            decision_model = SchemaNetwork([w==1 for w in model._W],
-                                           [reward_model._W[0] ==1, reward_model._W[1] ==1])
-            decision_model.set_proxy_env(matrix)
+            # decision_model = SchemaNetwork([w==1 for w in model._W],
+            #                               [reward_model._W[0] ==1, reward_model._W[1] ==1])
+            # decision_model.set_proxy_env(matrix)
 
-            actions = decision_model.plan_actions()
-            print(actions)
-            action = np.random.randint(2) + 1
+            # actions = decision_model.plan_actions()
+            # print('actions', actions)
+            action = get_action_for_reward(env)
 
             state, reward, done, _ = env.step(action)
             reward_mem.append(reward)
-            # TODO: transform_matrix takes terribly long
             if j % learning_freq == 1:
                 X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory[:-1]))
                 y = np.vstack((matrix.matrix.T for matrix in memory[1:]))
@@ -59,7 +77,9 @@ def play(model, reward_model,
                 if len(update) != 0:
                     y_r = transform_to_array(reward > 0, reward < 0, ent_num=ent_num)
                     old_state += list(update)
+                    print(y_r)
                     reward_model.fit(update, y_r)
+
                 reward_mem = []
 
                 model.fit(X, y)

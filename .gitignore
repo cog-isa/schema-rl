@@ -3,7 +3,7 @@
 !.gitignore
 
 .ipynb_checkpoints/
-
+.DS_Store
 *.ipynb
 !*.py
 !*.md
