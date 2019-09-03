@@ -2,18 +2,52 @@ import numpy as np
 from .constants import Constants
 
 
-class Schema:
+class Schema(Constants):
     """Grounded schema type."""
 
-    def __init__(self, attribute_preconditions, action_preconditions):
+    def __init__(self, preconditions):
         """
         preconditions: list of Nodes
         """
-        self.attribute_preconditions = attribute_preconditions
-        self.action_preconditions = action_preconditions
-        self.is_reachable = None
+        self.attribute_preconditions = []
+        self.action_preconditions = []
+
+        self.action_sufficiency = np.full(self.ACTION_SPACE_DIM, False, dtype=bool)
+
+        self.was_traced = False
+
         self.required_cumulative_actions = None
         self.harmfulness = None
+
+        self._init_preconditions(preconditions)
+        self._init_action_sufficiency()
+
+    def _init_preconditions(self, preconditions):
+        for precondition in preconditions:
+            if type(precondition) is Attribute:
+                self.attribute_preconditions.append(precondition)
+            elif type(precondition) is Action:
+                # --------------------------------------------------------------
+                # assuming only one action precondition
+                # it's needed for simple action planning during reward backtrace
+                if len(self.action_preconditions) >= 1:
+                    print('schema is preconditioned more than on one action')
+                    raise AssertionError
+                # --------------------------------------------------------------
+                self.action_preconditions.append(precondition)
+            else:
+                raise AssertionError
+
+    def _init_action_sufficiency(self):
+        if len(self.action_preconditions) > 0:
+            action_precondition = self.action_preconditions[0]
+        else:
+            action_precondition = None
+
+        for action_idx in range(self.action_sufficiency.size):
+            if action_precondition is None or \
+                        action_precondition.idx == action_idx:
+                self.action_sufficiency[action_idx] = True
 
     def compute_cumulative_actions(self):
         """
@@ -46,7 +80,7 @@ class Schema:
             [action_node.idx for action_node in self.action_preconditions]
         )
 
-    def _get_margin(self):
+    def get_margin(self):
         """
         margin only by attributes!
         """
@@ -59,7 +93,7 @@ class Schema:
     def compute_harmfulness(self, neg_schemas):
         relative_harms = []
         for neg_schema in neg_schemas:
-            margin = neg_schema._get_margin()
+            margin = neg_schema.get_margin()
             if len(margin) != 0:
                 intersection = list(set(margin) & set(self.attribute_preconditions))
                 harm = len(intersection) / len(margin)
@@ -69,7 +103,7 @@ class Schema:
         self.harmfulness = max(relative_harms)
 
 
-class Node:
+class Node(Constants):
     def __init__(self, t):
         """
         value: bool variable
@@ -80,10 +114,10 @@ class Node:
 
         self.is_feasible = False
 
-        self.is_reachable = None
-        self.activating_schema = None  # reachable by this schema
+        self.was_traced = False
+        self.reachability = np.full(self.ACTION_SPACE_DIM, False, dtype=bool)
+        self.activations = np.full(self.ACTION_SPACE_DIM, None, dtype=object)  # reachable by this schema
 
-        self.value = None
         self.schemas = []
 
     def add_schema(self, preconditions):
@@ -91,24 +125,8 @@ class Node:
         if not self.is_feasible:
             self.is_feasible = True
 
-        attribute_preconditions = []
-        action_preconditions = []
-
-        for precondition in preconditions:
-            if type(precondition) is Attribute:
-                attribute_preconditions.append(precondition)
-            elif type(precondition) is Action:
-                # assuming only one action precondition
-                # it's needed for simple action planning during reward backtrace
-                if len(action_preconditions) >= 1:
-                    print('schema is preconditioned more than on one action')
-                    # raise AssertionError
-                action_preconditions.append(precondition)
-            else:
-                raise AssertionError
-
         self.schemas.append(
-            Schema(attribute_preconditions, action_preconditions)
+            Schema(preconditions)
         )
 
     def sort_schemas_by_harmfulness(self, neg_schemas):
