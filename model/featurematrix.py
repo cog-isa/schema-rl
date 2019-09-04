@@ -60,6 +60,9 @@ class FeatureMatrix(Constants):
     def transform_index_to_pos(self, index):
         return index//self.shape[1], index % self.shape[1]
 
+    def get_attribute_matrix(self):
+        return self.matrix.copy()
+
     def transform_pos_to_idx(self, pos):
         """
         :param pos: tuple of (row_idx, col_idx)
@@ -78,8 +81,24 @@ class FeatureMatrix(Constants):
         j = idx % self.SCREEN_WIDTH
         return (i, j)
 
-    def get_attribute_matrix(self):
-        return self.matrix.copy()
+    def get_neighbours_indices(self, idx):
+        """
+        :param idx: central_entity_idx
+        :return:
+        """
+        row, col = self.transform_idx_to_pos(central_entity_idx)
+        for i in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
+            for j in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
+                if x + i < 0 or x + i >= self.SCREEN_WIDTH or y+j < 0 or y+j >= self.SCREEN_HEIGHT:
+                    res.append(zeros)
+                    meta_fake_entity = self._meta_factory.gen_meta_entity(0, fake=True)
+                    metadata_row.extend(meta_fake_entity)
+                else:
+                    entity_idx = self.transform_pos_to_idx([x + i, y + j])
+                    res.append(matrix[entity_idx].astype(bool))
+
+                    meta_entity = self._meta_factory.gen_meta_entity(entity_idx, fake=False)
+                    metadata_row.extend(meta_entity)
 
     def get_neighbours(self, central_entity_idx, action, matrix=None):
 
