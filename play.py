@@ -13,7 +13,14 @@ def check_for_update(X, old_state):
     old_state = np.array(old_state)
     update = []
     for entity in X:
-        if entity not in old_state:
+        tmp = (entity == old_state)
+        if type(tmp) == bool:
+            if not tmp:
+                update.append(entity)
+        elif type(tmp.all(axis=1)) == bool:
+            if not tmp.all(axis=1):
+                update.append(entity)
+        elif not tmp.all(axis=1).any():
             update.append(entity)
     return len(update), np.array(update)
 
@@ -49,6 +56,8 @@ def play(model, reward_model,
     reward_mem = []
     old_state  = []
 
+    flag = 0
+
     for i in range(step_num):
         env = game_type(return_state_as_image=False)
         done = False
@@ -58,26 +67,34 @@ def play(model, reward_model,
 
             matrix = FeatureMatrix(env, attrs_num=attrs_num, window_size=window_size, action_space=action_space)
             memory.append(matrix)
-            # make a decision
-            # decision_model = SchemaNetwork([w==1 for w in model._W],
-            #                               [reward_model._W[0] ==1, reward_model._W[1] ==1])
-            # decision_model.set_proxy_env(matrix)
 
-            # actions = decision_model.plan_actions()
-            # print('actions', actions)
-            action = get_action_for_reward(env)
+            # make a decision
+            if flag == 0:
+                action = get_action_for_reward(env)
+            else:
+                decision_model = SchemaNetwork([w == 1 for w in model._W],
+                                               [reward_model._W[0] == 1, reward_model._W[1] == 1])
+                decision_model.set_proxy_env(matrix)
+
+                action = decision_model.plan_actions()[0] + 1
 
             state, reward, done, _ = env.step(action)
+            if reward == 1:
+                if flag == 0:
+                    print('PLAYER CHANGED')
+                flag = 1
+
             reward_mem.append(reward)
             if j % learning_freq == 1:
                 X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory[:-1]))
                 y = np.vstack((matrix.matrix.T for matrix in memory[1:]))
 
                 ent_num, update = check_for_update(X, old_state)
+
                 if len(update) != 0:
+                    print('learning reward', reward > 0, reward)
                     y_r = transform_to_array(reward > 0, reward < 0, ent_num=ent_num)
                     old_state += list(update)
-                    print(y_r)
                     reward_model.fit(update, y_r)
 
                 reward_mem = []
