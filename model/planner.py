@@ -17,11 +17,8 @@ class Planner(Constants):
         Keeps track of action path
         is_reachable: can it be certainly activated given the state at t = 0
         """
-
         # lazy combining preconditions by AND -> assuming True
         schema.is_reachable = True
-
-        for action_idx in range(schema.reachability.size):
 
         for precondition in schema.attribute_preconditions:
             if precondition.is_reachable is None:
@@ -36,23 +33,26 @@ class Planner(Constants):
     def _backtrace_node(self, node):
         """
         Determines if node is reachable
+        is_reachable: can it be certainly activated given the state at t = 0
         """
+        # lazy combining schemas by OR -> assuming False
+        node.is_reachable = False
+
         # avoiding negative rewards
         # neg_schemas for reward at the same time step as node's time step
-        # neg_schemas = self._reward_nodes[node.t, Reward.sign2idx['neg']].schemas
-        # node.sort_schemas_by_harmfulness(neg_schemas)
+        neg_schemas = self._reward_nodes[node.t, Reward.sign2idx['neg']].schemas
+        node.sort_schemas_by_harmfulness(neg_schemas)
 
-        for action_idx in range(node.reachability.size):
-            for schema in node.schemas:
-                if not schema.was_traced:
-                    self._backtrace_schema(schema)
+        for schema in node.schemas:
+            if schema.is_reachable is None:
+                self._backtrace_schema(schema)
 
-                if schema.action_sufficiency[action_idx]:
-                    # attribute is reachable by this schema
-                    node.reachability[action_idx] = True
-                    schema.compute_cumulative_actions()
-                    node.activations[action_idx] = schema
-                    break
+            if schema.is_reachable:
+                # attribute is reachable by this schema
+                node.is_reachable = True
+                node.activating_schema = schema
+                node.activating_schema.compute_cumulative_actions()
+                break
 
     def _find_closest_reward(self, reward_sign, search_from):
         """
