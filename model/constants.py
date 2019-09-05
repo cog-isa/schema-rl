@@ -8,6 +8,8 @@ class Constants:
     """
     DEBUG = False
 
+    FAKE_ENTITY_IDX = -1
+
     if DEBUG:
         SCREEN_WIDTH = 3
         SCREEN_HEIGHT = 3

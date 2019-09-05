@@ -22,6 +22,15 @@ class FeatureMatrix(Constants):
         self.planned_action = None
         self._meta_factory = MetaFactory()
 
+        # N x (R-1)
+        self._ne_indices = np.full((self.N, self.NEIGHBORS_NUM-1), self.N+1, dtype=int)
+        self._gen_ne_indices()
+
+        # indices of ne_indices are indexing (N x M) matrix only by rows!
+        self._ne_unravelled_indices = np.unravel_index(self._ne_indices, self.N)
+
+        # ---------------------------------------------------------
+
         for ball in env.balls:
             if ball.is_entity:
                 for state, eid in env.parse_object_into_pixels(ball):
@@ -81,94 +90,50 @@ class FeatureMatrix(Constants):
         j = idx % self.SCREEN_WIDTH
         return (i, j)
 
-    def get_neighbours_indices(self, idx):
+    def _gen_ne_indices(self):
         """
-        :param idx: central_entity_idx
-        :return:
         """
-        row, col = self.transform_idx_to_pos(central_entity_idx)
-        for i in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
-            for j in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
-                if x + i < 0 or x + i >= self.SCREEN_WIDTH or y+j < 0 or y+j >= self.SCREEN_HEIGHT:
-                    res.append(zeros)
-                    meta_fake_entity = self._meta_factory.gen_meta_entity(0, fake=True)
-                    metadata_row.extend(meta_fake_entity)
-                else:
-                    entity_idx = self.transform_pos_to_idx([x + i, y + j])
-                    res.append(matrix[entity_idx].astype(bool))
+        for entity_idx in range(self.N):
+            row, col = self.transform_idx_to_pos(entity_idx)
+            ne_turn = 0
+            for i in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
+                for j in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
+                    if i == 0 and j == 0:
+                        continue
 
-                    meta_entity = self._meta_factory.gen_meta_entity(entity_idx, fake=False)
-                    metadata_row.extend(meta_entity)
+                    ne_row = row + i
+                    ne_col = col + j
+                    if (ne_row < 0 or ne_row >= self.SCREEN_HEIGHT
+                            or ne_col < 0 or ne_col >= self.SCREEN_WIDTH):
+                        ne_idx = self.FAKE_ENTITY_IDX
+                    else:
+                        ne_idx = self.transform_pos_to_idx((ne_row, ne_col))
 
-    def get_neighbours(self, central_entity_idx, action, matrix=None):
+                    self._ne_indices[entity_idx, ne_turn] = ne_idx
+                    ne_turn += 1
 
-        if matrix is None:
-            matrix = self.matrix
+    def _get_ne_matrix(self, src_matrix):
+        """
+        :param src_matrix: (N x M)
+        :return: (N x M(R-1))
+        """
+        ne_matrix = src_matrix[self._ne_unravelled_indices]
+        return ne_matrix
 
-        x, y = self.transform_idx_to_pos(central_entity_idx)
+    def _get_action_matrix(self):
+        action_matrix = np.ones((self.N, self.ACTION_SPACE_DIM))
+        return action_matrix
 
-        res = []
-        metadata_row = []
+    def transform_matrix(self, src_matrix):
+        ne_matrix = self._get_ne_matrix(src_matrix)
+        action_matrix = self._get_action_matrix()
 
-        action_vec = np.full(self.ACTION_SPACE_DIM, True)
-        zeros = np.full(self.M, False)
-
-        for i in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
-            for j in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
-                if x + i < 0 or x + i >= self.SCREEN_WIDTH or y+j < 0 or y+j >= self.SCREEN_HEIGHT:
-                    res.append(zeros)
-                    meta_fake_entity = self._meta_factory.gen_meta_entity(0, fake=True)
-                    metadata_row.extend(meta_fake_entity)
-                else:
-                    entity_idx = self.transform_pos_to_idx([x + i, y + j])
-                    res.append(matrix[entity_idx].astype(bool))
-
-                    meta_entity = self._meta_factory.gen_meta_entity(entity_idx, fake=False)
-                    metadata_row.extend(meta_entity)
-
-        res.append(action_vec)
-
-        meta_actions = self._meta_factory.gen_meta_actions()
-        metadata_row.extend(meta_actions)
-
-        return np.concatenate(res), metadata_row
-
-    def transform_matrix(self, matrix, output_format):
-        assert (output_format in ('attribute', 'reward', 'flat_reward'))
-        assert (matrix is not None)
-
-        transformed_matrix = []
-        metadata_matrix = []
-
-        if output_format in ('attribute', 'reward'):
-            for i in range(0, self.N):
-                transformed_vec, metadata_row = \
-                    self.get_neighbours(i, self.planned_action, matrix=matrix)
-                transformed_matrix.append(transformed_vec)
-                metadata_matrix.append(metadata_row)
-        elif output_format == 'flat_reward':
-            # should return (1 x (NM + A)) matrix
-            transformed_matrix = np.concatenate(
-                (matrix.flatten(), np.ones(self.ACTION_SPACE_DIM))
-            )
-            transformed_matrix = np.reshape(transformed_matrix, (1, -1)).astype(bool)
-
-            metadata_matrix = []
-            for entity_idx in range(self.N):
-                metadata_matrix.extend(
-                    self._meta_factory.gen_meta_entity(entity_idx, fake=False)
-                )
-            metadata_matrix.extend(
-                self._meta_factory.gen_meta_actions()
-            )
-            metadata_matrix = [metadata_matrix]
-        else:
-            raise AssertionError
-
-        transformed_matrix = np.array(transformed_matrix)
-        metadata_matrix = np.array(metadata_matrix)
-
-        return transformed_matrix, metadata_matrix
+        transformed_matrix = np.hstack(
+            src_matrix,
+            ne_matrix,
+            action_matrix
+        )
+        return transformed_matrix
 
     def get_neighbours_with_action(self, ind, action, matrix=None, add_all_actions=False):
 

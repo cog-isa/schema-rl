@@ -73,15 +73,13 @@ class TensorHandler(Constants):
                 reference_matrix[i, j] = reference
         return reference_matrix
 
-    def _transform_matrix(self, matrix, t, output_format):
+    def _transform_matrix(self, src_matrix, t, output_format):
         """
-        for 'attribute: convert (N x M) to (N x (MR + A))
-        for 'reward': convert (N x M) to (1 x (MN + A))
+        convert (N x M) to (N x (MR + A))
         :param t: time step where we got matrix
         """
         transformed_matrix, metadata_matrix = \
-            self._proxy_env.transform_matrix(matrix=matrix,
-                                             output_format=output_format)
+            self._proxy_env.transform_matrix(src_matrix)
         reference_matrix = self._make_reference_matrix(metadata_matrix, t)
         return transformed_matrix, reference_matrix
 
