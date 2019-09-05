@@ -74,10 +74,7 @@ class SchemaNet:
         A_ub = zero_pred - 1
         b_ub = np.zeros(zero_pred.shape[0]) - 1
         # optimisation is looooooooooooooooong
-        start = time.time()
         w = self.scipy_solve_lp(zero_pred, c, A_ub, b_ub, A_eq, b_eq)
-        end = time.time()
-        print("--- %s seconds ---" % (end - start))
 
         preds = ((X == 0) @ w) == 0
         self.solved = np.vstack((self.solved, X[preds * (self.predict_attr(X, i) == 0)]))

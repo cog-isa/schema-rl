@@ -3,10 +3,17 @@ from model.featurematrix import FeatureMatrix
 import numpy as np
 from model.schemanet import SchemaNet
 from model.inference import SchemaNetwork
+import time
 
 
 def transform_to_array(pos=0, neg=0, ent_num=94*117):
     return (np.zeros([ent_num, 4]) + np.array([pos, neg, 0, 0])).T
+
+
+def uniqy(X):
+    if len(X) == 0:
+        return np.array([])
+    return np.unique(X, axis=0)
 
 
 def check_for_update(X, old_state):
@@ -22,6 +29,7 @@ def check_for_update(X, old_state):
                 update.append(entity)
         elif not tmp.all(axis=1).any():
             update.append(entity)
+    update = uniqy(update)
     return len(update), np.array(update)
 
 
@@ -72,11 +80,17 @@ def play(model, reward_model,
             if flag == 0:
                 action = get_action_for_reward(env)
             else:
+                start = time.time()
+
                 decision_model = SchemaNetwork([w == 1 for w in model._W],
                                                [reward_model._W[0] == 1, reward_model._W[1] == 1])
                 decision_model.set_proxy_env(matrix)
 
+                end = time.time()
+                print("--- %s seconds ---" % (end - start))
+
                 action = decision_model.plan_actions()[0] + 1
+
             print('action:', action)
 
             state, reward, done, _ = env.step(action)
@@ -90,7 +104,12 @@ def play(model, reward_model,
                 X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory[:-1]))
                 y = np.vstack((matrix.matrix.T for matrix in memory[1:]))
 
+                start = time.time()
                 ent_num, update = check_for_update(X, old_state)
+
+                end = time.time()
+                print("--- %s seconds ---" % (end - start))
+                print(len(old_state))
 
                 if len(update) != 0:
                     print('learning reward', reward > 0, reward)
