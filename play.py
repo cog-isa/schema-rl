@@ -39,8 +39,8 @@ def get_action_for_reward(env):
 
     if pos_ball[1] < pos_paddle[1]:
         return 1
-    if pos_ball[1] == pos_paddle[1]:
-        return 0
+    # if pos_ball[1] == pos_paddle[1]:
+    #    return 0
     return 2
 
 
@@ -77,6 +77,7 @@ def play(model, reward_model,
                 decision_model.set_proxy_env(matrix)
 
                 action = decision_model.plan_actions()[0] + 1
+            print('action:', action)
 
             state, reward, done, _ = env.step(action)
             if reward == 1:

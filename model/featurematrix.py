@@ -189,11 +189,14 @@ class FeatureMatrix(Constants):
 
         zeros = np.zeros(self.attrs_num)
 
+        res.append(matrix[self.transform_pos_to_index([x, y])])
+
         for i in range(-self.window_size, self.window_size+1):
             for j in range(-self.window_size, self.window_size+1):
-                if x + i < 0 or x + i >= self.shape[0] or y+j < 0 or y+j >= self.shape[1]:
+                if x + i < 0 or x + i >= self.shape[0] or y + j < 0 or y + j >= self.shape[1] and not (
+                        i == 0 and j == 0):
                     res.append(zeros)
-                else:
+                elif not (i == 0 and j == 0):
                     res.append(matrix[self.transform_pos_to_index([x + i, y + j])])
 
         res.append(action_vec)
