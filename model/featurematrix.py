@@ -20,16 +20,6 @@ class FeatureMatrix(Constants):
         self.brick_attr = 3
 
         self.planned_action = None
-        self._meta_factory = MetaFactory()
-
-        # N x (R-1)
-        self._ne_indices = np.full((self.N, self.NEIGHBORS_NUM-1), self.N+1, dtype=int)
-        self._gen_ne_indices()
-
-        # indices of ne_indices are indexing (N x M) matrix only by rows!
-        self._ne_unravelled_indices = np.unravel_index(self._ne_indices, self.N)
-
-        # ---------------------------------------------------------
 
         for ball in env.balls:
             if ball.is_entity:
@@ -71,69 +61,6 @@ class FeatureMatrix(Constants):
 
     def get_attribute_matrix(self):
         return self.matrix.copy()
-
-    def transform_pos_to_idx(self, pos):
-        """
-        :param pos: tuple of (row_idx, col_idx)
-        :return: idx of pixel that runs by rows left2right
-        """
-        i = pos[0]
-        j = pos[1]
-        return i * self.SCREEN_WIDTH + j
-
-    def transform_idx_to_pos(self, idx):
-        """
-        :param idx: idx of pixel that runs by rows left2right
-        :return: tuple of (row_idx, col_idx)
-        """
-        i = idx // self.SCREEN_WIDTH
-        j = idx % self.SCREEN_WIDTH
-        return (i, j)
-
-    def _gen_ne_indices(self):
-        """
-        """
-        for entity_idx in range(self.N):
-            row, col = self.transform_idx_to_pos(entity_idx)
-            ne_turn = 0
-            for i in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
-                for j in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
-                    if i == 0 and j == 0:
-                        continue
-
-                    ne_row = row + i
-                    ne_col = col + j
-                    if (ne_row < 0 or ne_row >= self.SCREEN_HEIGHT
-                            or ne_col < 0 or ne_col >= self.SCREEN_WIDTH):
-                        ne_idx = self.FAKE_ENTITY_IDX
-                    else:
-                        ne_idx = self.transform_pos_to_idx((ne_row, ne_col))
-
-                    self._ne_indices[entity_idx, ne_turn] = ne_idx
-                    ne_turn += 1
-
-    def _get_ne_matrix(self, src_matrix):
-        """
-        :param src_matrix: (N x M)
-        :return: (N x M(R-1))
-        """
-        ne_matrix = src_matrix[self._ne_unravelled_indices]
-        return ne_matrix
-
-    def _get_action_matrix(self):
-        action_matrix = np.ones((self.N, self.ACTION_SPACE_DIM))
-        return action_matrix
-
-    def transform_matrix(self, src_matrix):
-        ne_matrix = self._get_ne_matrix(src_matrix)
-        action_matrix = self._get_action_matrix()
-
-        transformed_matrix = np.hstack(
-            src_matrix,
-            ne_matrix,
-            action_matrix
-        )
-        return transformed_matrix
 
     def get_neighbours_with_action(self, ind, action, matrix=None, add_all_actions=False):
 

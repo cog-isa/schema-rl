@@ -8,8 +8,7 @@ env.reset()
 
 feature_matrix = FeatureMatrix(env)
 
-model = SchemaNetwork(W, R)
-model.set_proxy_env(feature_matrix)
+model = SchemaNetwork(W, R, feature_matrix)
 
 actions = model.plan_actions()
 
