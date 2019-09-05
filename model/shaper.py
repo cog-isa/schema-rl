@@ -60,7 +60,7 @@ class Shaper(Constants):
         :return: (N x M(R-1))
         """
         assert (matrix_type in ('numbers', 'nodes'))
-        filler_type = 'zero' if matrix_type == 'numbers' else 'none'
+        filler_type = False if matrix_type == 'numbers' else None
         augmented_matrix = self._augment_matrix(src_matrix, filler_type)
 
         ne_matrix = augmented_matrix[self._ne_entity_indices, :] \
