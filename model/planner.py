@@ -76,6 +76,7 @@ class Planner(Constants):
         :return: ndarray of len (T)
                  None if cannot plan for this sign of rewards
         """
+        print('trying to plan for {} rewards...'.format(reward_sign))
         planned_actions = None
 
         search_from = 0
@@ -83,13 +84,17 @@ class Planner(Constants):
             reward_node = self._find_closest_reward(reward_sign, search_from)
 
             if reward_node is None:
+                print('cannot find more {} reward nodes'.format(reward_sign))
                 break
+
+            print('found feasible {} reward node, starting to backtrace it...'.format(reward_sign))
 
             search_from = reward_node.t + 1
 
             # backtrace from it
             self._backtrace_node(reward_node)
             if reward_node.is_reachable:
+                print('actions for reaching target {} reward node have been found successfully!'.format(reward_sign))
                 # actions for reaching target reward are planned
                 planned_actions = reward_node.activating_schema.required_cumulative_actions
 
@@ -99,6 +104,8 @@ class Planner(Constants):
                                    for actions_at_t in planned_actions]
                 planned_actions = np.array(planned_actions)
                 break
+
+            print('backtraced {} reward node is unreachable'.format(reward_sign))
 
         return planned_actions
 
