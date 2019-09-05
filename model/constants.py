@@ -19,6 +19,7 @@ class Constants:
         REWARD_SPACE_DIM = 2
 
         NEIGHBORHOOD_RADIUS = 1
+        NEIGHBORS_NUM = 8
     else:
         SCREEN_WIDTH = 94
         SCREEN_HEIGHT = 117
