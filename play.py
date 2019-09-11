@@ -3,6 +3,7 @@ from model.featurematrix import FeatureMatrix
 import numpy as np
 from model.schemanet import SchemaNet
 from model.inference import SchemaNetwork
+from time import time
 
 
 def transform_to_array(pos=0, neg=0, ent_num=94*117):
@@ -59,14 +60,20 @@ def play(model, reward_model,
             matrix = FeatureMatrix(env, attrs_num=attrs_num, window_size=window_size, action_space=action_space)
             memory.append(matrix)
             # make a decision
+            start = time()
             decision_model = SchemaNetwork([w==1 for w in model._W],
                                            [reward_model._W[0] ==1, reward_model._W[1] ==1],
                                            matrix)
-
- 
+            end = time()
+            print('SN object constructed for {}'.format(end - start))
+            
+            start = time()
             actions = decision_model.plan_actions()
+            end = time()
+            print('actions have been planned for {}'.format(end - start))
+
             print(actions)
-            #action = np.random.randint(2) + 1
+            action = np.random.randint(2) + 1
 
             state, reward, done, _ = env.step(action)
             reward_mem.append(reward)
