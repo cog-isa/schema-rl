@@ -19,7 +19,6 @@ class Constants:
         REWARD_SPACE_DIM = 2
 
         NEIGHBORHOOD_RADIUS = 1
-        NEIGHBORS_NUM = 8
     else:
         SCREEN_WIDTH = 94
         SCREEN_HEIGHT = 117
@@ -31,4 +30,7 @@ class Constants:
         REWARD_SPACE_DIM = 2
 
         NEIGHBORHOOD_RADIUS = 2
-        NEIGHBORS_NUM = 24
+
+    NEIGHBORS_NUM = 4 * NEIGHBORHOOD_RADIUS * (NEIGHBORHOOD_RADIUS + 1)
+    FAKE_ENTITY_IDX = N
+    EPSILON = 0
