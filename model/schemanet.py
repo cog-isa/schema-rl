@@ -2,6 +2,7 @@ import numpy as np
 from scipy.optimize import linprog
 from tqdm import tqdm
 import time
+from termcolor import colored
 
 
 class SchemaNet:
@@ -12,6 +13,7 @@ class SchemaNet:
         self._W = [np.zeros([self.neighbour_num * M + A, 1]) + 1] * M
         self.solved = np.array([])
         self._A = A
+        self.window_size = window_size
         self._L = L
         self._R = [np.zeros(self.neighbour_num * M + A) + 1] * 2
         self.reward = []
@@ -54,19 +56,42 @@ class SchemaNet:
         ind = (self.predict_attr(X, i) != y) | (y == 0)
         return X[ind], y[ind]
 
-    def get_next_to_predict(self, X, y, i):
-        ind = (self.predict_attr(X, i) != y) * (y == 1)
-        if ind.sum() == 0:
-            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-            return X[0]
-        return X[ind][0]
+    def reverse_transform_print(self, y):
+        print(y)
+        for i in range(self.window_size * 2 + 1):
+            for j in range(self.window_size * 2 + 1):
+                ind = i * 4 + j * 4
+                if y[ind] == 1:
+                    print(colored('*', 'red'), end='')
+                elif y[ind + 1] == 1:
+                    print(colored('*', 'cyan'), end='')
+                elif y[ind + 2] == 1:
+                    print(colored('*', 'green'), end='')
+                elif y[ind + 3] == 1:
+                    print(colored('*', 'gray'), end='')
+                else:
+                    print(colored('*', 'white'), end='')
+            print()
 
-    def get_schema(self, X, y, i):
+    def get_next_to_predict(self, X, y, i, log=False):
+        ind = (self.predict_attr(X, i) != y) * (y == 1)
+
+        if ind.sum() == 0:
+            print(colored('FATAL ERROR', 'red'))
+            return None
+        result = X[ind][0]
+        if log:
+            self.reverse_transform_print(result)
+        return result
+
+    def get_schema(self, X, y, i, log=True):
 
         zero_pred = X[y == 0]
         ones_pred = X[y == 1]
 
-        self.solved = np.array([self.get_next_to_predict(X, y, i)])
+        new_ent = self.get_next_to_predict(X, y, i, log=log)
+        self.solved = np.array([new_ent])
+        print('learned on ', new_ent)
 
         c = (1 - ones_pred).sum(axis=0)
         A_eq = 1 - self.solved
@@ -96,7 +121,6 @@ class SchemaNet:
         if len(self._W[i].shape) == 1:
             return np.zeros(self._W[i].shape[0])
         pred = self.schema_predict_attr(X, i).T
-        # print('compare', y[i], pred)
         return ((y[i] - pred) == -1)
 
     def remove_wrong_schemas(self, X, y):
@@ -104,10 +128,6 @@ class SchemaNet:
             if len(self._W[i].shape) == 1:
                 break
             wrong_ind = self.actuality_check_attr(X, y, i).sum(axis=1)
-
-            # print('wrong', i,  wrong_ind == 0)
-            # print('check1', self._W[i])
-            # print('check2', self._W[i].T[[True]].T)
 
             if (wrong_ind.sum()) != 0:
                 print('outdated schema was detected for attribute', i)
@@ -123,9 +143,9 @@ class SchemaNet:
 
         self.remove_wrong_schemas(X, Y)
 
-        for i in tqdm(range(self._M)):
+        for i in (range(self._M)):
 
-            for j in tqdm(range(self._L)):
+            for j in (range(self._L)):
 
                 if isinstance((self.predict_attr(X, i) == Y[i]), np.ndarray):
                     if (self.predict_attr(X, i) == Y[i]).all():

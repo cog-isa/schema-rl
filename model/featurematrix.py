@@ -1,8 +1,8 @@
 import numpy as np
 from environment.schema_games.breakout.games import StandardBreakout
 import time
-from .graph_utils import MetaFactory
-from .constants import Constants
+from model.graph_utils import MetaFactory
+from model.constants import Constants
 
 
 class FeatureMatrix(Constants):
@@ -219,13 +219,7 @@ if __name__ == '__main__':
     start = time.time()
     mat = FeatureMatrix(env, attrs_num=4)
     end = time.time()
-    print("--- %s seconds ---" % (end - start))
-    start = time.time()
-    # TODO: make it faster (bin type of data, but relaxed LP optimisation???)
-    mat.planned_action = 1
-    X = mat.transform_matrix()[0]
-    end = time.time()
-    print("--- %s seconds ---" % (end - start))
-    X = np.array(X)
+
+    X = mat.transform_matrix_with_action(0, 1)
     print(X.shape)
     print(X)
