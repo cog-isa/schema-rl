@@ -58,7 +58,7 @@ class TensorHandler(Constants):
 
     def _gen_reference_attribute_nodes(self):
         # ((T+1) x N x (MR + A))
-        shape = (self.T+1, self.N, (self.M * self.NEIGHBORS_NUM + 1 + self.ACTION_SPACE_DIM))
+        shape = (self.T+1, self.N, (self.M * (self.NEIGHBORS_NUM + 1) + self.ACTION_SPACE_DIM))
         self._reference_attribute_nodes = np.full(
             shape, None, dtype=object
         )

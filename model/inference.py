@@ -18,6 +18,7 @@ class SchemaNetwork(Constants):
                 print(w.ndim)
                 print(w)
                 raise AssertionError
+            #print('w shape: {}'.format(w.shape))
             assert (w.shape[0] == self.M * (self.NEIGHBORS_NUM + 1) + self.ACTION_SPACE_DIM)
 
             assert (w.shape[1] != 0)

@@ -41,8 +41,8 @@ def play(model, reward_model,
             memory.append(matrix)
             # make a decision
             decision_model = SchemaNetwork([w==1 for w in model._W],
-                                           [reward_model._W[0] ==1, reward_model._W[1] ==1])
-            decision_model.set_proxy_env(matrix)
+                                           [reward_model._W[0] ==1, reward_model._W[1] ==1],
+                                           matrix)
 
             actions = decision_model.plan_actions()
             print(actions)
