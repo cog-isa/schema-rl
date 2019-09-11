@@ -5,8 +5,6 @@ from .graph_utils import Action, Reward
 
 class Planner(Constants):
     def __init__(self, reward_nodes):
-        self.epsilon = 0.1
-
         # from SchemaNetwork
         # (T x REWARD_SPACE_DIM)
         self._reward_nodes = reward_nodes
@@ -115,24 +113,22 @@ class Planner(Constants):
         if planned_actions is None:
             # no positive rewards are reachable from current state,
             # trying to find closest negative reward
-
             # do NOT backtrace negative reward
             #planned_actions = self._plan_for_rewards('neg')
-
-            if planned_actions is None:
-                # can't plan anything
-                print('Planner failed to plan, returning random actions.')
+            pass
 
         if planned_actions is not None:
             randomness_mask = np.random.choice([True, False],
                                                size=planned_actions.size,
-                                               p=[self.epsilon, 1 - self.epsilon])
+                                               p=[self.EPSILON, 1 - self.EPSILON])
             randomness_size = randomness_mask.sum()
 
             planned_actions[randomness_mask] = np.random.randint(low=0,
                                                                  high=self.ACTION_SPACE_DIM,
                                                                  size=randomness_size)
         else:
+            # can't plan anything
+            print('Planner failed to plan, returning random actions.')
             planned_actions = np.random.randint(low=0,
                                                 high=self.ACTION_SPACE_DIM,
                                                 size=self.T)
