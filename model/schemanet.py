@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.optimize import linprog
 from tqdm import tqdm
+import time
 
 
 class SchemaNet:
@@ -19,10 +20,18 @@ class SchemaNet:
     def log(self):
         print('current net:\n', [self._W[i].shape for i in range(len(self._W))])
 
+    def print(self):
+        print('current net:\n')
+        for i in range(len(self._W)):
+            print('   ' * i, self._W[i].T)
+
     def predict_attr(self, X, i):
         if len(self._W[i].shape) == 1:
             return (X == 0) @ self._W[i] == 0
         return ((X == 0) @ self._W[i] == 0).any(axis=1) != 0
+
+    def schema_predict_attr(self, X, i):
+        return ((X == 0) @ self._W[i] == 0) != 0
 
     def predict_reward(self, X, is_pos=1):
         if len(self._R[is_pos].shape) == 1:
@@ -48,7 +57,7 @@ class SchemaNet:
     def get_next_to_predict(self, X, y, i):
         ind = (self.predict_attr(X, i) != y) * (y == 1)
         if ind.sum() == 0:
-            print('!!!!!!!!!!!!!!!!!!!!!!!!!!1')
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!')
             return X[0]
         return X[ind][0]
 
@@ -65,7 +74,10 @@ class SchemaNet:
         A_ub = zero_pred - 1
         b_ub = np.zeros(zero_pred.shape[0]) - 1
         # optimisation is looooooooooooooooong
+        start = time.time()
         w = self.scipy_solve_lp(zero_pred, c, A_ub, b_ub, A_eq, b_eq)
+        end = time.time()
+        print("--- %s seconds ---" % (end - start))
 
         preds = ((X == 0) @ w) == 0
         self.solved = np.vstack((self.solved, X[preds * (self.predict_attr(X, i) == 0)]))
@@ -83,10 +95,36 @@ class SchemaNet:
 
         return self.scipy_solve_lp(zero_pred, c, A_ub, b_ub, A_eq, b_eq)
 
-    def fit(self, X, Y, log=True):
+    def actuality_check_attr(self, X, y, i):
+        if len(self._W[i].shape) == 1:
+            return np.zeros(self._W[i].shape[0])
+        pred = self.schema_predict_attr(X, i).T
+        # print('compare', y[i], pred)
+        return ((y[i] - pred) == -1)
 
-        X = X[X.sum(axis=1) != 0]
-        Y = (Y.T[X.sum(axis=1) != 0]).T
+    def remove_wrong_schemas(self, X, y):
+        for i in range(self._M):
+            if len(self._W[i].shape) == 1:
+                break
+            wrong_ind = self.actuality_check_attr(X, y, i).sum(axis=1)
+
+            # print('wrong', i,  wrong_ind == 0)
+            # print('check1', self._W[i])
+            # print('check2', self._W[i].T[[True]].T)
+
+            if (wrong_ind.sum()) != 0:
+                print('outdated schema was detected for attribute', i)
+
+            self._W[i] = (self._W[i].T[wrong_ind == 0]).T
+
+    def fit(self, X, Y, log=True):
+        tmp, ind = np.unique(X, return_index=True, axis=0)
+        X = X[ind]
+        Y = (Y.T[ind]).T
+
+        # print(Y.sum(), X.shape)
+
+        self.remove_wrong_schemas(X, Y)
 
         for i in tqdm(range(self._M)):
 
@@ -117,13 +155,17 @@ if __name__ == '__main__':
                   [0, 1, 1, 0, 0, 0],
                   [0, 0, 0, 0, 1, 0],
                   [1, 1, 1, 0, 0, 0],
+                  [0, 0, 0, 1, 1, 0],
                   [0, 0, 0, 1, 1, 0]])
-    y = np.array([[0, 0, 0, 0, 0],
-                  [0, 0, 0, 0, 0],
-                  [0, 0, 0, 0, 0],
-                  [0, 0, 0, 0, 0],
-                  [0, 0, 0, 0, 0],
-                  [1, 0, 0, 0, 1]])
+    y = np.array([[0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0],
+                  [1, 0, 0, 0, 1, 1]])
     schemanet = SchemaNet(M=6, A=0, window_size=0)
+    print('pred', schemanet.schema_predict_attr(X, 1), schemanet.actuality_check_attr(X, y, 1))
     schemanet.fit(X, y)
+    schemanet.print()
+    print(schemanet.predict_attr(X, 5))
     #print(torch.cuda.is_available())
