@@ -41,7 +41,7 @@ class SchemaNet:
         return ((X == 0) @ self._R[is_pos] == 0).any(axis=1) != 0
 
     def predict(self, X):
-        return [self.predict_attr(X, i) for i in range(self._M)]
+        return np.array([self.predict_attr(X, i) for i in range(self._M)])
 
     def add(self, schemas, i):
         self._W[i] = np.vstack((self._W[i].T, schemas.T)).T
@@ -57,10 +57,9 @@ class SchemaNet:
         return X[ind], y[ind]
 
     def reverse_transform_print(self, y):
-        print(y)
         for i in range(self.window_size * 2 + 1):
             for j in range(self.window_size * 2 + 1):
-                ind = i * 4 + j * 4
+                ind = i * (self.window_size * 2 + 1) * 4 + j * 4
                 if y[ind] == 1:
                     print(colored('*', 'red'), end='')
                 elif y[ind + 1] == 1:
@@ -68,10 +67,16 @@ class SchemaNet:
                 elif y[ind + 2] == 1:
                     print(colored('*', 'green'), end='')
                 elif y[ind + 3] == 1:
-                    print(colored('*', 'gray'), end='')
+                    print(colored('*', 'grey'), end='')
                 else:
                     print(colored('*', 'white'), end='')
             print()
+
+    def visualize_schemas(self):
+        for W in self._W:
+            for schema in W.T:
+                self.reverse_transform_print(schema)
+                print('-' * 50)
 
     def get_next_to_predict(self, X, y, i, log=False):
         ind = (self.predict_attr(X, i) != y) * (y == 1)
@@ -80,8 +85,6 @@ class SchemaNet:
             print(colored('FATAL ERROR', 'red'))
             return None
         result = X[ind][0]
-        if log:
-            self.reverse_transform_print(result)
         return result
 
     def get_schema(self, X, y, i, log=True):
@@ -91,14 +94,12 @@ class SchemaNet:
 
         new_ent = self.get_next_to_predict(X, y, i, log=log)
         self.solved = np.array([new_ent])
-        print('learned on ', new_ent)
 
         c = (1 - ones_pred).sum(axis=0)
         A_eq = 1 - self.solved
         b_eq = np.zeros(self.solved.shape[0])
         A_ub = zero_pred - 1
         b_ub = np.zeros(zero_pred.shape[0]) - 1
-        # optimisation is looooooooooooooooong
         w = self.scipy_solve_lp(zero_pred, c, A_ub, b_ub, A_eq, b_eq)
 
         preds = ((X == 0) @ w) == 0
@@ -138,8 +139,6 @@ class SchemaNet:
         tmp, ind = np.unique(X, return_index=True, axis=0)
         X = X[ind]
         Y = (Y.T[ind]).T
-
-        # print(Y.sum(), X.shape)
 
         self.remove_wrong_schemas(X, Y)
 
