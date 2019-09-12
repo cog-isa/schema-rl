@@ -84,8 +84,8 @@ def play(model, reward_model,
                 start = time.time()
 
                 decision_model = SchemaNetwork([w == 1 for w in model._W],
-                                               [reward_model._W[0] == 1, reward_model._W[1] == 1])
-                decision_model.set_proxy_env(matrix)
+                                               [reward_model._W[0] == 1, reward_model._W[1] == 1],
+                                               matrix)
 
                 end = time.time()
                 print("--- %s seconds ---" % (end - start))

@@ -1,14 +1,15 @@
 import numpy as np
 from .constants import Constants
+from .shaper import Shaper
 from .graph_utils import MetaObject, Attribute, FakeAttribute, Action
 
 
 class TensorHandler(Constants):
-    def __init__(self, W, R, attribute_nodes, action_nodes, reward_nodes):
+    def __init__(self, W, R, attribute_nodes, action_nodes, reward_nodes, proxy_env):
         self._W = W
         self._R = R
 
-        self._proxy_env = None
+        self._proxy_env = proxy_env
         self._attribute_tensor = None
         self._reward_tensor = None
 
@@ -17,12 +18,16 @@ class TensorHandler(Constants):
         self._action_nodes = action_nodes
         self._reward_nodes = reward_nodes
 
-        # create tensors for storing state
+        # helping tensor for instantiating schemas
+        self._reference_attribute_nodes = None  # tensor ((T+1) x N x (MR + A))
+
+        # shaping matrices and node tensors
+        self._shaper = Shaper()
+
+        # create tensors
         self._gen_attribute_tensor()
         self._gen_reward_tensor()
-        
-    def set_proxy_env(self, env):
-        self._proxy_env = env
+        self._gen_reference_attribute_nodes()
 
     def _get_env_attribute_matrix(self):
         """
@@ -51,39 +56,26 @@ class TensorHandler(Constants):
         shape = (self.T + 1, self.REWARD_SPACE_DIM)
         self._reward_tensor = np.empty(shape, dtype=bool)
 
-    def _make_reference_matrix(self, metadata_matrix, t):
-        """
-        :param metadata_matrix: (N x (MR + A)) or (1 x (NM + A)) matrix of MetaObject's
-        :param t: layer of tensor to which references are established
-        :return: (N x (MR + A)) or (1 x (NM + A)) matrix of references to nodes
-        """
-        n_rows, m_cols = metadata_matrix.shape
-        reference_matrix = np.empty((n_rows, m_cols), dtype=object)
-        for i in range(n_rows):
-            for j in range(m_cols):
-                meta_object = metadata_matrix[i, j]
-                if meta_object.obj_type is Attribute:
-                    reference = self._attribute_nodes[t, meta_object.entity_idx, meta_object.attribute_idx]
-                elif meta_object.obj_type is FakeAttribute:
-                    reference = None
-                elif meta_object.obj_type is Action:
-                    reference = self._action_nodes[t, meta_object.action_idx]
-                else:
-                    raise AssertionError
-                reference_matrix[i, j] = reference
-        return reference_matrix
+    def _gen_reference_attribute_nodes(self):
+        # ((T+1) x N x (MR + A))
+        shape = (self.T+1, self.N, (self.M * (self.NEIGHBORS_NUM + 1) + self.ACTION_SPACE_DIM))
+        self._reference_attribute_nodes = np.full(
+            shape, None, dtype=object
+        )
+        for t in range(shape[0]):
+            src_matrix = self._attribute_nodes[t, :, :]
+            self._reference_attribute_nodes[t, :, :] = self._shaper.transform_node_matrix(
+                src_matrix, self._action_nodes, t
+            )
 
-    def _transform_matrix(self, matrix, t, output_format):
+    def _get_reference_matrix(self, t):
         """
-        for 'attribute: convert (N x M) to (N x (MR + A))
-        for 'reward': convert (N x M) to (1 x (MN + A))
-        :param t: time step where we got matrix
+        :param t: layer of tensor to which references are established,
+                  time step where we got matrix
+        :return: (N x (MR + A)) matrix of references to nodes
         """
-        transformed_matrix, metadata_matrix = \
-            self._proxy_env.transform_matrix(matrix=matrix,
-                                             output_format=output_format)
-        reference_matrix = self._make_reference_matrix(metadata_matrix, t)
-        return transformed_matrix, reference_matrix
+        reference_matrix = self._reference_attribute_nodes[t, :, :]
+        return reference_matrix
 
     def _init_first_attribute_layer(self, matrix):
         """
@@ -135,7 +127,8 @@ class TensorHandler(Constants):
         predict from t to (t + 1)
         """
         src_matrix = self._attribute_tensor[t, :, :]  # get (N x M) matrix
-        transformed_matrix, reference_matrix = self._transform_matrix(src_matrix, t, output_format='attribute')
+        transformed_matrix = self._shaper.transform_matrix(src_matrix)
+        reference_matrix = self._get_reference_matrix(t)
 
         for attr_idx, W in enumerate(self._W):
             predicted_matrix = ~(~transformed_matrix @ W)
@@ -148,7 +141,8 @@ class TensorHandler(Constants):
         predict from t to (t + 1)
         """
         src_matrix = self._attribute_tensor[t, :, :]  # get (N x M) matrix
-        transformed_matrix, reference_matrix = self._transform_matrix(src_matrix, t, output_format='reward')
+        transformed_matrix = self._shaper.transform_matrix(src_matrix)
+        reference_matrix = self._get_reference_matrix(t)
 
         for reward_idx, R in enumerate(self._R):
             predicted_matrix = ~(~transformed_matrix @ R)

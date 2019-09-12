@@ -6,7 +6,7 @@ from .planner import Planner
 
 
 class SchemaNetwork(Constants):
-    def __init__(self, W, R):
+    def __init__(self, W, R, proxy_env):
         """
         :param W: list of M matrices, each of [(MR + A) x L] shape
         :param R: list of 2 matrices, each of [(MN + A) x L] shape, 1st - pos, 2nd - neg
@@ -18,6 +18,7 @@ class SchemaNetwork(Constants):
                 print(w.ndim)
                 print(w)
                 raise AssertionError
+            #print('w shape: {}'.format(w.shape))
             assert (w.shape[0] == self.M * (self.NEIGHBORS_NUM + 1) + self.ACTION_SPACE_DIM)
 
             assert (w.shape[1] != 0)
@@ -27,7 +28,7 @@ class SchemaNetwork(Constants):
         self._W = W
         self._R = R
 
-        self._attribute_nodes = None  # tensor (T x N x M)
+        self._attribute_nodes = None  # tensor (T+1 x N x M)
         self._action_nodes = None  # tensor (T x ACTION_SPACE_DIM)
         self._reward_nodes = None  # tensor (T x REWARD_SPACE_DIM)
 
@@ -36,11 +37,10 @@ class SchemaNetwork(Constants):
         self._gen_reward_nodes()
 
         self._tensor_handler = TensorHandler(self._W, self._R, self._attribute_nodes,
-                                             self._action_nodes, self._reward_nodes)
-        self._planner = Planner(self._reward_nodes)
+                                             self._action_nodes, self._reward_nodes,
+                                             proxy_env)
 
-    def set_proxy_env(self, env):
-        self._tensor_handler.set_proxy_env(env)
+        self._planner = Planner(self._reward_nodes)
 
     def _gen_attribute_node_matrix(self, t):
         n_rows = self.N

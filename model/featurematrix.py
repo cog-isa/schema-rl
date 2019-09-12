@@ -20,7 +20,6 @@ class FeatureMatrix(Constants):
         self.brick_attr = 3
 
         self.planned_action = None
-        self._meta_factory = MetaFactory()
 
         for ball in env.balls:
             if ball.is_entity:
@@ -66,113 +65,6 @@ class FeatureMatrix(Constants):
 
     def get_attribute_matrix(self):
         return self.matrix.copy()
-
-    def transform_pos_to_idx(self, pos):
-        """
-        :param pos: tuple of (row_idx, col_idx)
-        :return: idx of pixel that runs by rows left2right
-        """
-        i = pos[0]
-        j = pos[1]
-        return i * self.SCREEN_WIDTH + j
-
-    def transform_idx_to_pos(self, idx):
-        """
-        :param idx: idx of pixel that runs by rows left2right
-        :return: tuple of (row_idx, col_idx)
-        """
-        i = idx // self.SCREEN_WIDTH
-        j = idx % self.SCREEN_WIDTH
-        return (i, j)
-
-    def get_neighbours_indices(self, idx):
-        """
-        :param idx: central_entity_idx
-        :return:
-        """
-        row, col = self.transform_idx_to_pos(central_entity_idx)
-        for i in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
-            for j in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
-                if x + i < 0 or x + i >= self.SCREEN_WIDTH or y+j < 0 or y+j >= self.SCREEN_HEIGHT:
-                    res.append(zeros)
-                    meta_fake_entity = self._meta_factory.gen_meta_entity(0, fake=True)
-                    metadata_row.extend(meta_fake_entity)
-                else:
-                    entity_idx = self.transform_pos_to_idx([x + i, y + j])
-                    res.append(matrix[entity_idx].astype(bool))
-
-                    meta_entity = self._meta_factory.gen_meta_entity(entity_idx, fake=False)
-                    metadata_row.extend(meta_entity)
-
-    def get_neighbours(self, central_entity_idx, action, matrix=None):
-
-        if matrix is None:
-            matrix = self.matrix
-
-        x, y = self.transform_idx_to_pos(central_entity_idx)
-
-        res = []
-        metadata_row = []
-
-        action_vec = np.full(self.ACTION_SPACE_DIM, True)
-        zeros = np.full(self.M, False)
-
-        for i in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
-            for j in range(-self.NEIGHBORHOOD_RADIUS, self.NEIGHBORHOOD_RADIUS + 1):
-                if x + i < 0 or x + i >= self.SCREEN_WIDTH or y+j < 0 or y+j >= self.SCREEN_HEIGHT:
-                    res.append(zeros)
-                    meta_fake_entity = self._meta_factory.gen_meta_entity(0, fake=True)
-                    metadata_row.extend(meta_fake_entity)
-                else:
-                    entity_idx = self.transform_pos_to_idx([x + i, y + j])
-                    res.append(matrix[entity_idx].astype(bool))
-
-                    meta_entity = self._meta_factory.gen_meta_entity(entity_idx, fake=False)
-                    metadata_row.extend(meta_entity)
-
-        res.append(action_vec)
-
-        meta_actions = self._meta_factory.gen_meta_actions()
-        metadata_row.extend(meta_actions)
-
-        return np.concatenate(res), metadata_row
-
-    def transform_matrix(self, matrix, output_format):
-        assert (output_format in ('attribute', 'reward', 'flat_reward'))
-        assert (matrix is not None)
-
-        transformed_matrix = []
-        metadata_matrix = []
-
-        if output_format in ('attribute', 'reward'):
-            for i in range(0, self.N):
-                transformed_vec, metadata_row = \
-                    self.get_neighbours(i, self.planned_action, matrix=matrix)
-                transformed_matrix.append(transformed_vec)
-                metadata_matrix.append(metadata_row)
-        elif output_format == 'flat_reward':
-            # should return (1 x (NM + A)) matrix
-            transformed_matrix = np.concatenate(
-                (matrix.flatten(), np.ones(self.ACTION_SPACE_DIM))
-            )
-            transformed_matrix = np.reshape(transformed_matrix, (1, -1)).astype(bool)
-
-            metadata_matrix = []
-            for entity_idx in range(self.N):
-                metadata_matrix.extend(
-                    self._meta_factory.gen_meta_entity(entity_idx, fake=False)
-                )
-            metadata_matrix.extend(
-                self._meta_factory.gen_meta_actions()
-            )
-            metadata_matrix = [metadata_matrix]
-        else:
-            raise AssertionError
-
-        transformed_matrix = np.array(transformed_matrix)
-        metadata_matrix = np.array(metadata_matrix)
-
-        return transformed_matrix, metadata_matrix
 
     def get_neighbours_with_action(self, ind, action, matrix=None, add_all_actions=False):
 
