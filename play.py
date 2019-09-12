@@ -145,7 +145,7 @@ def play(model, reward_model,
                         feature_matrix.matrix = y
 
                     img = vis.img_average(stats)
-                    vis.save_img(img, img_name='img' + str(j) + '.png', log=False)
+                    vis.save_img(img, img_name='images/img' + str(j) + '.png', log=False)
 
 
 
