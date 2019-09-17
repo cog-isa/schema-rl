@@ -58,7 +58,7 @@ def play(model, reward_model,
          attrs_num=4,
          action_space=2,
          attr_num=94*117,
-         learning_freq=2,
+         learning_freq=3,
          log=False):
     memory = []
     reward_mem = []
@@ -103,19 +103,16 @@ def play(model, reward_model,
             reward_mem.append(reward)
 
             # learn new schemas
-            if j % learning_freq == 1:
+            if j % learning_freq == 2:
 
                 # transform data for learning
                 X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory[:-1]))
-                y = np.vstack((matrix.matrix.T for matrix in memory[1:]))
+                X = np.concatenate(((X.T[:-action_space]).T[attr_num:], X[:-attr_num]), axis=1)
+                print(X.shape, attr_num)
+                y = np.vstack((matrix.matrix.T for matrix in memory[2:]))
 
                 # get new unique windows to learn reward
-                if log:
-                    start = time.time()
                 ent_num, update = check_for_update(X, old_state)
-                if log:
-                    end = time.time()
-                    print("--- %s seconds ---" % (end - start))
 
                 # learn reward
                 if len(update) != 0:
@@ -131,23 +128,19 @@ def play(model, reward_model,
                 model.fit(X, y)
 
                 if log:
-                    # img = vis.transform_to_img(memory[-1].matrix)
-
                     # predict for T steps:
                     T = 10
                     action = 1
                     feature_matrix = memory[0]
                     stats = [memory[0].matrix]
-                    for i in range(T):
+                    '''for i in range(T):
                         X = feature_matrix.transform_matrix_with_action(action=action)
                         y = model.predict(X).T
                         stats.append(y)
-                        feature_matrix.matrix = y
+                        feature_matrix.matrix = y'''
 
                     img = vis.img_average(stats)
                     vis.save_img(img, img_name='images/img' + str(j) + '.png', log=False)
-
-
 
                 memory = []
             j += 1

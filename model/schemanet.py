@@ -6,13 +6,14 @@ from termcolor import colored
 
 
 class SchemaNet:
-    def __init__(self, N=0, M=53, A=2, L=100, window_size=2):
+    def __init__(self, N=0, M=53, A=2, L=100, window_size=2, T=2):
         self._M = M
-        self.neighbour_num = (window_size * 2 + 1) ** 2
+        self.neighbour_num = ((window_size * 2 + 1) ** 2) * T
         print('neighbour_num', self.neighbour_num)
         self._W = [np.zeros([self.neighbour_num * M + A, 1]) + 1] * M
         self.solved = np.array([])
         self._A = A
+        self._T = T
         self.window_size = window_size
         self._L = L
         self._R = [np.zeros(self.neighbour_num * M + A) + 1] * 2
