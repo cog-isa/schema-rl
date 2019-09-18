@@ -13,6 +13,7 @@ class FeatureMatrix(Constants):
         self.attrs_num = attrs_num
         self.window_size = window_size
         self.action_space = action_space
+        self.tensor = np.array([])
 
         self.ball_attr = 0
         self.paddle_attr = 1

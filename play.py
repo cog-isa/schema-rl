@@ -17,6 +17,17 @@ def uniqy(X):
     return np.unique(X, axis=0)
 
 
+# transform data for learning:
+def x_add_prev_time(memory, action, action_space=2, attr_num=94 * 117, ):
+    X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory[:-1]))
+    X = np.concatenate(((X.T[:-action_space]).T[attr_num:], X[:-attr_num]), axis=1)
+    return X
+
+
+def y_add_prev_time(memory):
+    return np.vstack((matrix.matrix.T for matrix in memory[2:]))
+
+
 def check_for_update(X, old_state):
     old_state = np.array(old_state)
     update = []
@@ -59,7 +70,8 @@ def play(model, reward_model,
          action_space=2,
          attr_num=94*117,
          learning_freq=3,
-         log=False):
+         log=False,
+         num_priv_steps=2):
     memory = []
     reward_mem = []
     old_state  = []
@@ -85,7 +97,7 @@ def play(model, reward_model,
 
                 decision_model = SchemaNetwork([w == 1 for w in model._W],
                                                [reward_model._W[0] == 1, reward_model._W[1] == 1],
-                                               matrix)
+                                               memory[num_priv_steps:])
 
                 end = time.time()
                 print("--- %s seconds ---" % (end - start))
@@ -106,10 +118,8 @@ def play(model, reward_model,
             if j % learning_freq == 2:
 
                 # transform data for learning
-                X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory[:-1]))
-                X = np.concatenate(((X.T[:-action_space]).T[attr_num:], X[:-attr_num]), axis=1)
-                print(X.shape, attr_num)
-                y = np.vstack((matrix.matrix.T for matrix in memory[2:]))
+                X = x_add_prev_time(memory, action)
+                y = y_add_prev_time(memory)
 
                 # get new unique windows to learn reward
                 ent_num, update = check_for_update(X, old_state)
@@ -129,15 +139,19 @@ def play(model, reward_model,
 
                 if log:
                     # predict for T steps:
-                    T = 10
+                    T = 5
                     action = 1
-                    feature_matrix = memory[0]
-                    stats = [memory[0].matrix]
-                    '''for i in range(T):
-                        X = feature_matrix.transform_matrix_with_action(action=action)
+                    feature_matrix = memory[-1]
+                    stats = []  # [memory[0].matrix]
+                    tmp_mem = memory[-(num_priv_steps + 1):]
+                    print('!!!!!!!!!!!!', j)
+                    for i in range(T):
+                        X = x_add_prev_time(tmp_mem, action)
                         y = model.predict(X).T
                         stats.append(y)
-                        feature_matrix.matrix = y'''
+                        feature_matrix.matrix = y
+                        tmp_mem = [tmp_mem[-2], tmp_mem[-1], feature_matrix]
+                        #'''
 
                     img = vis.img_average(stats)
                     vis.save_img(img, img_name='images/img' + str(j) + '.png', log=False)
