@@ -4,6 +4,7 @@ import numpy as np
 from model.schemanet import SchemaNet
 from model.inference import SchemaNetwork
 import time
+import model.visualisation as vis
 
 
 def transform_to_array(pos=0, neg=0, ent_num=94*117):
@@ -47,8 +48,6 @@ def get_action_for_reward(env):
 
     if pos_ball[1] < pos_paddle[1]:
         return 1
-    # if pos_ball[1] == pos_paddle[1]:
-    #    return 0
     return 2
 
 
@@ -59,7 +58,8 @@ def play(model, reward_model,
          attrs_num=4,
          action_space=2,
          attr_num=94*117,
-         learning_freq=2):
+         learning_freq=3,
+         log=False):
     memory = []
     reward_mem = []
     old_state  = []
@@ -68,6 +68,7 @@ def play(model, reward_model,
 
     for i in range(step_num):
         env = game_type(return_state_as_image=False)
+
         done = False
         env.reset()
         j = 0
@@ -100,38 +101,61 @@ def play(model, reward_model,
                 flag = 1
 
             reward_mem.append(reward)
-            if j % learning_freq == 1:
-                X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory[:-1]))
-                y = np.vstack((matrix.matrix.T for matrix in memory[1:]))
 
-                start = time.time()
+            # learn new schemas
+            if j % learning_freq == 2:
+
+                # transform data for learning
+                X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory[:-1]))
+                X = np.concatenate(((X.T[:-action_space]).T[attr_num:], X[:-attr_num]), axis=1)
+                print(X.shape, attr_num)
+                y = np.vstack((matrix.matrix.T for matrix in memory[2:]))
+
+                # get new unique windows to learn reward
                 ent_num, update = check_for_update(X, old_state)
 
-                end = time.time()
-                print("--- %s seconds ---" % (end - start))
-                print(len(old_state))
-
+                # learn reward
                 if len(update) != 0:
-                    print('learning reward', reward > 0, reward)
+                    if log:
+                        print('learning reward', reward > 0, reward)
                     y_r = transform_to_array(reward > 0, reward < 0, ent_num=ent_num)
                     old_state += list(update)
                     reward_model.fit(update, y_r)
 
                 reward_mem = []
 
+                # learn env state:
                 model.fit(X, y)
+
+                if log:
+                    # predict for T steps:
+                    T = 10
+                    action = 1
+                    feature_matrix = memory[0]
+                    stats = [memory[0].matrix]
+                    '''for i in range(T):
+                        X = feature_matrix.transform_matrix_with_action(action=action)
+                        y = model.predict(X).T
+                        stats.append(y)
+                        feature_matrix.matrix = y'''
+
+                    img = vis.img_average(stats)
+                    vis.save_img(img, img_name='images/img' + str(j) + '.png', log=False)
+
                 memory = []
             j += 1
 
-            print('     ', reward, end='; ')
-        print('step:', i)
+            if log:
+                print('     ', reward, end='; ')
+        if log:
+            print('step:', i)
 
 
 if __name__ == '__main__':
     window_size = 2
     model = SchemaNet(M=4, A=2, window_size=window_size)
     reward_model = SchemaNet(M=4, A=2, window_size=window_size)
-    play(model, reward_model, step_num=2, window_size=window_size)
+    play(model, reward_model, step_num=2, window_size=window_size, log=True)
     for i in range(len(model._W)):
         np.savetxt('matrix'+str(i)+'.txt', model._W[i])
     for i in range(len(reward_model._W)):
