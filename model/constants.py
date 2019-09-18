@@ -6,7 +6,7 @@ class Constants:
     L: number of schemas
     T: size of look-ahead window
     """
-    DEBUG = False
+    DEBUG = True
 
     if DEBUG:
         SCREEN_WIDTH = 3
@@ -14,7 +14,7 @@ class Constants:
 
         N = 9  # SCREEN_WIDTH * SCREEN_HEIGHT
         M = 1
-        T = 150
+        T = 3
         ACTION_SPACE_DIM = 2
         REWARD_SPACE_DIM = 2
 
@@ -31,6 +31,10 @@ class Constants:
 
         NEIGHBORHOOD_RADIUS = 2
 
+    L = 50
     NEIGHBORS_NUM = 4 * NEIGHBORHOOD_RADIUS * (NEIGHBORHOOD_RADIUS + 1)
     FAKE_ENTITY_IDX = N
     EPSILON = 0
+    FRAME_STACK_SIZE = 2
+
+    N_COLS_TRANSFORMED = FRAME_STACK_SIZE * (M * (NEIGHBORS_NUM + 1)) + ACTION_SPACE_DIM

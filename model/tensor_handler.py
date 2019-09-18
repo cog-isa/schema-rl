@@ -29,44 +29,78 @@ class TensorHandler(Constants):
         self._gen_reward_tensor()
         self._gen_reference_attribute_nodes()
 
-    def _get_env_attribute_matrix(self):
+    def _get_env_attribute_tensor(self):
         """
-        Get observed state at t = 0
-        :returns (N x M) matrix
+        Get observed state
+        :returns (FRAME_STACK_SIZE x N x M) tensor
         """
         if self._proxy_env is None:
-            print('set proxy_env before calling planner')
+            print('NO_PROXY_ENV')
+            raise AssertionError
+
+        if len(self._proxy_env) != self.FRAME_STACK_SIZE:
+            print('BAD_PROXY_ENV')
             raise AssertionError
 
         if self.DEBUG:
             print('STUB: get_env_attribute_matrix()')
-            attribute_matrix = np.array([1, 0, 0, 1, 0, 0, 1, 0, 0])
-            attribute_matrix = np.reshape(attribute_matrix, (9, 1))
-            attribute_matrix = attribute_matrix.astype(bool)
+            attribute_tensor = np.array([1, 0, 0, 1, 0, 0, 1, 0, 0,
+                                         1, 0, 0, 1, 0, 0, 1, 0, 0])
+            attribute_tensor = np.reshape(attribute_tensor, (18, 1))
+            attribute_tensor = attribute_tensor.astype(bool)
         else:
-            attribute_matrix = self._proxy_env.get_attribute_matrix()
+            matrix_shape = (self.N, self.M)
+            attribute_tensor = np.empty((self.FRAME_STACK_SIZE,) + matrix_shape, dtype=bool)
+            for i in range(self.FRAME_STACK_SIZE):
+                matrix = self._proxy_env[i].get_attribute_matrix()
+                if matrix.shape != matrix_shape:
+                    print('BAD_MATRIX_SHAPE')
+                    raise AssertionError
+                attribute_tensor[i, :, :] = matrix
 
-        return attribute_matrix
+        return attribute_tensor
 
     def _gen_attribute_tensor(self):
-        shape = (self.T + 1, self.N, self.M)
+        shape = (self.FRAME_STACK_SIZE + self.T, self.N, self.M)
         self._attribute_tensor = np.empty(shape, dtype=bool)
 
     def _gen_reward_tensor(self):
-        shape = (self.T + 1, self.REWARD_SPACE_DIM)
+        shape = (self.FRAME_STACK_SIZE + self.T, self.REWARD_SPACE_DIM)
         self._reward_tensor = np.empty(shape, dtype=bool)
 
     def _gen_reference_attribute_nodes(self):
-        # ((T+1) x N x (MR + A))
-        shape = (self.T+1, self.N, (self.M * (self.NEIGHBORS_NUM + 1) + self.ACTION_SPACE_DIM))
+        # ((FRAME_STACK_SIZE + T) x N x (MR*ss + A))
+        shape = (self.FRAME_STACK_SIZE + self.T,
+                 self.N,
+                 self.N_COLS_TRANSFORMED)
         self._reference_attribute_nodes = np.full(
             shape, None, dtype=object
         )
-        for t in range(shape[0]):
-            src_matrix = self._attribute_nodes[t, :, :]
+        offset = self.FRAME_STACK_SIZE - 1
+        for t in range(offset, offset + self.T):
+            src_slice = self._get_tensor_slice(t, 'nodes')
             self._reference_attribute_nodes[t, :, :] = self._shaper.transform_node_matrix(
-                src_matrix, self._action_nodes, t
+                src_slice, self._action_nodes, t
             )
+
+    def _get_tensor_slice(self, t, tensor_type):
+        """
+        t: time at which last layer is located
+        size of slice is FRAME_STACK_SIZE in total
+        """
+        assert tensor_type in ('attributes', 'nodes')
+        begin = t - self.FRAME_STACK_SIZE + 1
+
+        # prevent possible shape mismatch downwards the stack
+        assert begin >= 0, 'TENSOR_SLICE_BAD_ARGS'
+
+        end = t + 1
+        index = np.index_exp[max(0, begin): end]
+        if tensor_type == 'attributes':
+            slice_ = self._attribute_tensor[index]
+        else:
+            slice_ = self._attribute_nodes[index]
+        return slice_
 
     def _get_reference_matrix(self, t):
         """
@@ -77,12 +111,11 @@ class TensorHandler(Constants):
         reference_matrix = self._reference_attribute_nodes[t, :, :]
         return reference_matrix
 
-    def _init_first_attribute_layer(self, matrix):
+    def _init_attributes(self, tensor):
         """
-        :param matrix: (N x M) ndarray of attributes at time t = 0
+        :param tensor: (FRAME_STACK_SIZE x N x M) ndarray of attributes
         """
-        time = 0
-        self._attribute_tensor[time, :, :] = matrix.copy()
+        self._attribute_tensor[:self.FRAME_STACK_SIZE, :, :] = tensor
 
     def _instantiate_attribute_grounded_schemas(self, attribute_idx, t, reference_matrix, W, predicted_matrix):
         """
@@ -126,8 +159,8 @@ class TensorHandler(Constants):
         t: time at which last known attributes are located
         predict from t to (t + 1)
         """
-        src_matrix = self._attribute_tensor[t, :, :]  # get (N x M) matrix
-        transformed_matrix = self._shaper.transform_matrix(src_matrix)
+        src_slice = self._get_tensor_slice(t, 'attributes')  # (FRAME_STACK_SIZE x N x M)
+        transformed_matrix = self._shaper.transform_matrix(src_slice)
         reference_matrix = self._get_reference_matrix(t)
 
         for attr_idx, W in enumerate(self._W):
@@ -140,8 +173,8 @@ class TensorHandler(Constants):
         t: time at which last known attributes are located
         predict from t to (t + 1)
         """
-        src_matrix = self._attribute_tensor[t, :, :]  # get (N x M) matrix
-        transformed_matrix = self._shaper.transform_matrix(src_matrix)
+        src_slice = self._get_tensor_slice(t, 'attributes')  # (FRAME_STACK_SIZE x N x M)
+        transformed_matrix = self._shaper.transform_matrix(src_slice)
         reference_matrix = self._get_reference_matrix(t)
 
         for reward_idx, R in enumerate(self._R):
@@ -154,10 +187,11 @@ class TensorHandler(Constants):
         Fill attribute_nodes and reward_nodes with schema information
         """
         # init first matrix from env
-        attribute_matrix = self._get_env_attribute_matrix()
-        self._init_first_attribute_layer(attribute_matrix)
+        attribute_tensor = self._get_env_attribute_tensor()
+        self._init_attributes(attribute_tensor)
 
         # propagate forward
-        for t in range(self.T):
+        offset = self.FRAME_STACK_SIZE - 1
+        for t in range(offset, offset + self.T):
             self._predict_next_attribute_layer(t)
             self._predict_next_reward_layer(t)

@@ -54,6 +54,16 @@ class Shaper(Constants):
                     self._ne_entity_indices[entity_idx, ne_turn] = ne_idx
                     ne_turn += 1
 
+    def _augment_matrix(self, matrix, filler):
+        assert (filler is False or filler is None)
+        last_row = np.full(
+            matrix.shape[1], filler
+        )
+        augmented_matrix = np.vstack(
+            (matrix, last_row)
+        )
+        return augmented_matrix
+
     def _get_ne_matrix(self, src_matrix, matrix_type):
         """
         :param src_matrix: (N x M)
@@ -67,30 +77,24 @@ class Shaper(Constants):
             .reshape(self.N, self.M * self.NEIGHBORS_NUM)
         return ne_matrix
 
-    def _augment_matrix(self, matrix, filler):
-        assert (filler is False or filler is None)
-        last_row = np.full(
-            matrix.shape[1], filler
-        )
-        augmented_matrix = np.vstack(
-            (matrix, last_row)
-        )
-        return augmented_matrix
-
     def _get_action_matrix(self):
         action_matrix = np.full((self.N, self.ACTION_SPACE_DIM), True, dtype=bool)
         return action_matrix
 
-    def transform_matrix(self, src_matrix):
+    def transform_matrix(self, src_slice):
         """
-        convert (N x M) to (N x (MR + A))
+        convert (FRAME_STACK_SIZE x N x M) to (N x ((MR * ss) + A))
         """
-        ne_matrix = self._get_ne_matrix(src_matrix, matrix_type='numbers')
-        action_matrix = self._get_action_matrix()
+        output = []
+        for src_matrix in src_slice:
+            ne_matrix = self._get_ne_matrix(src_matrix, matrix_type='numbers')
+            output.append(src_matrix)
+            output.append(ne_matrix)
 
-        transformed_matrix = np.hstack(
-            (src_matrix, ne_matrix, action_matrix)
-        )
+        action_matrix = self._get_action_matrix()
+        output.append(action_matrix)
+
+        transformed_matrix = np.hstack(output)
         return transformed_matrix
 
     def _get_node_action_matrix(self, action_nodes, t):
@@ -100,16 +104,20 @@ class Shaper(Constants):
         node_action_matrix[:, :] = action_nodes[t, :]
         return node_action_matrix
 
-    def transform_node_matrix(self, src_matrix, action_nodes, t):
+    def transform_node_matrix(self, src_slice, action_nodes, t):
         """
-        convert (N x M) to (N x (MR + A))
+        convert (FRAME_STACK_SIZE x N x M) to (N x ((MR * ss) + A))
         """
-        ne_matrix = self._get_ne_matrix(src_matrix, matrix_type='nodes')
-        action_matrix = self._get_node_action_matrix(action_nodes, t)
+        output = []
+        for src_matrix in src_slice:
+            ne_matrix = self._get_ne_matrix(src_matrix, matrix_type='nodes')
+            output.append(src_matrix)
+            output.append(ne_matrix)
 
-        transformed_matrix = np.hstack(
-            (src_matrix, ne_matrix, action_matrix)
-        )
+        action_matrix = self._get_node_action_matrix(action_nodes, t)
+        output.append(action_matrix)
+
+        transformed_matrix = np.hstack(output)
         return transformed_matrix
 
 

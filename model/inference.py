@@ -11,26 +11,14 @@ class SchemaNetwork(Constants):
         :param W: list of M matrices, each of [(MR + A) x L] shape
         :param R: list of 2 matrices, each of [(MN + A) x L] shape, 1st - pos, 2nd - neg
         """
-        # assert matrices are boolean
-        for w in W:
-            assert (w.dtype == bool)
-            if w.ndim != 2:
-                print(w.ndim)
-                print(w)
-                raise AssertionError
-            #print('w shape: {}'.format(w.shape))
-            assert (w.shape[0] == self.M * (self.NEIGHBORS_NUM + 1) + self.ACTION_SPACE_DIM)
-
-            assert (w.shape[1] != 0)
-        for r in R:
-            assert (r.dtype == bool)
+        self._assert_input(W, R)
 
         self._W = W
         self._R = R
 
-        self._attribute_nodes = None  # tensor (T+1 x N x M)
-        self._action_nodes = None  # tensor (T x ACTION_SPACE_DIM)
-        self._reward_nodes = None  # tensor (T x REWARD_SPACE_DIM)
+        self._attribute_nodes = None  # tensor ((FRAME_STACK_SIZE + T) x N x M)
+        self._action_nodes = None  # tensor ((FRAME_STACK_SIZE + T) x ACTION_SPACE_DIM)
+        self._reward_nodes = None  # tensor ((FRAME_STACK_SIZE + T) x REWARD_SPACE_DIM)
 
         self._gen_attribute_nodes()
         self._gen_action_nodes()
@@ -42,10 +30,18 @@ class SchemaNetwork(Constants):
 
         self._planner = Planner(self._reward_nodes)
 
+    def _assert_input(self, W, R):
+        input_matrix_shape = (self.N_COLS_TRANSFORMED, self.L)
+        for matrix in (W + R):
+            assert matrix.dtype == bool, 'BAD_MATRIX_DTYPE'
+            assert matrix.ndim == 2, 'BAD_MATRIX_NDIM'
+            assert (matrix.shape[0] == input_matrix_shape[0]
+                    and matrix.shape[1] <= input_matrix_shape[1]), 'BAD_MATRIX_SHAPE'
+
     def _gen_attribute_node_matrix(self, t):
         n_rows = self.N
         n_cols = self.M
-        is_active = True if t == 0 else False
+        is_active = True if t < self.FRAME_STACK_SIZE else False
         matrix = [
             [Attribute(entity_idx, attribute_idx, t, is_active) for attribute_idx in range(n_cols)]
             for entity_idx in range(n_rows)
@@ -53,28 +49,24 @@ class SchemaNetwork(Constants):
         return matrix
 
     def _gen_attribute_nodes(self):
-        tensor = [self._gen_attribute_node_matrix(t) for t in range(self.T + 1)]
+        tensor = [self._gen_attribute_node_matrix(t) for t in range(self.FRAME_STACK_SIZE + self.T)]
         self._attribute_nodes = np.array(tensor)
 
     def _gen_action_nodes(self):
         action_nodes = [
             [Action(idx, t=t) for idx in range(self.ACTION_SPACE_DIM)]
-            for t in range(self.T + 1)
+            for t in range(self.FRAME_STACK_SIZE + self.T)
         ]
         self._action_nodes = np.array(action_nodes)
 
     def _gen_reward_nodes(self):
         reward_nodes = [
             [Reward(idx, t=t) for idx in range(self.REWARD_SPACE_DIM)]
-            for t in range(self.T + 1)
+            for t in range(self.FRAME_STACK_SIZE + self.T)
         ]
         self._reward_nodes = np.array(reward_nodes)
 
     def plan_actions(self):
-        """
-        proxy_env must be set before calling this
-        """
-
         # instantiate schemas, determine nodes feasibility
         self._tensor_handler.forward_pass()
 
