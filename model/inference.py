@@ -31,12 +31,12 @@ class SchemaNetwork(Constants):
         self._planner = Planner(self._reward_nodes)
 
     def _assert_input(self, W, R):
-        input_matrix_shape = (self.N_COLS_TRANSFORMED, self.L)
+        required_matrix_shape = (self.N_COLS_TRANSFORMED, self.L)
         for matrix in (W + R):
             assert matrix.dtype == bool, 'BAD_MATRIX_DTYPE'
             assert matrix.ndim == 2, 'BAD_MATRIX_NDIM'
-            assert (matrix.shape[0] == input_matrix_shape[0]
-                    and matrix.shape[1] <= input_matrix_shape[1]), 'BAD_MATRIX_SHAPE'
+            assert (matrix.shape[0] == required_matrix_shape[0]
+                    and matrix.shape[1] <= required_matrix_shape[1]), 'BAD_MATRIX_SHAPE'
 
     def _gen_attribute_node_matrix(self, t):
         n_rows = self.N

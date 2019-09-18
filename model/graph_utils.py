@@ -2,7 +2,7 @@ import numpy as np
 from .constants import Constants
 
 
-class Schema:
+class Schema(Constants):
     """Grounded schema type."""
 
     def __init__(self, attribute_preconditions, action_preconditions):
@@ -36,7 +36,7 @@ class Schema:
                 assert (len(to_merge) == len(merged_history))
                 merged_history = [a + b for a, b in zip(merged_history, to_merge)]
             else:
-                assert (attribute_node.t == 0)
+                assert (attribute_node.t < self.FRAME_STACK_SIZE)
 
         if merged_history is not None:
             self.required_cumulative_actions.extend(

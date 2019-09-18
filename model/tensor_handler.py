@@ -41,7 +41,7 @@ class TensorHandler(Constants):
             print('STUB: get_env_attribute_matrix()')
             attribute_tensor = np.array([1, 0, 0, 1, 0, 0, 1, 0, 0,
                                          1, 0, 0, 1, 0, 0, 1, 0, 0])
-            attribute_tensor = np.reshape(attribute_tensor, (18, 1))
+            attribute_tensor = np.reshape(attribute_tensor, (2, 9, 1))
             attribute_tensor = attribute_tensor.astype(bool)
         else:
             matrix_shape = (self.N, self.M)

@@ -8,7 +8,7 @@ env.reset()
 
 feature_matrix = FeatureMatrix(env)
 
-model = SchemaNetwork(W, R, [feature_matrix])
+model = SchemaNetwork(W, R, [feature_matrix, feature_matrix])
 
 actions = model.plan_actions()
 
