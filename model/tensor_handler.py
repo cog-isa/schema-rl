@@ -34,13 +34,8 @@ class TensorHandler(Constants):
         Get observed state
         :returns (FRAME_STACK_SIZE x N x M) tensor
         """
-        if self._proxy_env is None:
-            print('NO_PROXY_ENV')
-            raise AssertionError
-
-        if len(self._proxy_env) != self.FRAME_STACK_SIZE:
-            print('BAD_PROXY_ENV')
-            raise AssertionError
+        assert self._proxy_env is not None, 'NO_PROXY_ENV'
+        assert len(self._proxy_env) == self.FRAME_STACK_SIZE, 'BAD_PROXY_ENV'
 
         if self.DEBUG:
             print('STUB: get_env_attribute_matrix()')
@@ -53,9 +48,7 @@ class TensorHandler(Constants):
             attribute_tensor = np.empty((self.FRAME_STACK_SIZE,) + matrix_shape, dtype=bool)
             for i in range(self.FRAME_STACK_SIZE):
                 matrix = self._proxy_env[i].get_attribute_matrix()
-                if matrix.shape != matrix_shape:
-                    print('BAD_MATRIX_SHAPE')
-                    raise AssertionError
+                assert matrix.shape == matrix_shape, 'BAD_MATRIX_SHAPE'
                 attribute_tensor[i, :, :] = matrix
 
         return attribute_tensor
