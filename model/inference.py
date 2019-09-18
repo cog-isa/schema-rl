@@ -67,6 +67,14 @@ class SchemaNetwork(Constants):
         self._reward_nodes = np.array(reward_nodes)
 
     def plan_actions(self):
+        # stub for proxy_env list of objects
+        if len(self._tensor_handler._proxy_env) < self.FRAME_STACK_SIZE:
+            print('Small proxy_env len, can\'t plan, returning random actions.')
+            planned_actions = np.random.randint(low=0,
+                                                high=self.ACTION_SPACE_DIM,
+                                                size=self.T)
+            return planned_actions
+
         # instantiate schemas, determine nodes feasibility
         self._tensor_handler.forward_pass()
 

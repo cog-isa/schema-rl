@@ -181,6 +181,7 @@ class TensorHandler(Constants):
         """
         # init first matrix from env
         attribute_tensor = self._get_env_attribute_tensor()
+
         self._init_attributes(attribute_tensor)
 
         # propagate forward

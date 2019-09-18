@@ -76,7 +76,7 @@ def play(model, reward_model,
     reward_mem = []
     old_state  = []
 
-    flag = 0
+    flag = 1
 
     for i in range(step_num):
         env = game_type(return_state_as_image=False)
