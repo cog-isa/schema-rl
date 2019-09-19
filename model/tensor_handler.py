@@ -10,6 +10,8 @@ class TensorHandler(Constants):
         self._R = R
 
         self._proxy_env = proxy_env
+
+        # ((FRAME_STACK_SIZE + T) x self.N x self.M)
         self._attribute_tensor = None
         self._reward_tensor = None
 
@@ -189,3 +191,5 @@ class TensorHandler(Constants):
         for t in range(offset, offset + self.T):
             self._predict_next_attribute_layer(t)
             self._predict_next_reward_layer(t)
+
+        return self._attribute_tensor

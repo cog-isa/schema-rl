@@ -3,6 +3,7 @@ from .constants import Constants
 from .graph_utils import Schema, Node, Attribute, Action, Reward
 from .tensor_handler import TensorHandler
 from .planner import Planner
+from .visualizer import Visualizer
 
 
 class SchemaNetwork(Constants):
@@ -27,8 +28,8 @@ class SchemaNetwork(Constants):
         self._tensor_handler = TensorHandler(self._W, self._R, self._attribute_nodes,
                                              self._action_nodes, self._reward_nodes,
                                              proxy_env)
-
         self._planner = Planner(self._reward_nodes)
+        self._visualizer = Visualizer()
 
     def _assert_input(self, W, R):
         required_matrix_shape = (self.N_COLS_TRANSFORMED, self.L)
@@ -76,7 +77,11 @@ class SchemaNetwork(Constants):
             return planned_actions
 
         # instantiate schemas, determine nodes feasibility
-        self._tensor_handler.forward_pass()
+        attribute_tensor = self._tensor_handler.forward_pass()
+
+        # generate images of inner state here
+        self._visualizer.set_attribute_tensor(attribute_tensor)
+        self._visualizer.check_correctness()
 
         # planning actions
         actions = self._planner.plan_actions()
