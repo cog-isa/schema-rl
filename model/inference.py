@@ -17,6 +17,8 @@ class SchemaNetwork(Constants):
         self._W = W
         self._R = R
 
+        self._print_input_stats()
+
         self._attribute_nodes = None  # tensor ((FRAME_STACK_SIZE + T) x N x M)
         self._action_nodes = None  # tensor ((FRAME_STACK_SIZE + T) x ACTION_SPACE_DIM)
         self._reward_nodes = None  # tensor ((FRAME_STACK_SIZE + T) x REWARD_SPACE_DIM)
@@ -38,6 +40,16 @@ class SchemaNetwork(Constants):
             assert matrix.ndim == 2, 'BAD_MATRIX_NDIM'
             assert (matrix.shape[0] == required_matrix_shape[0]
                     and matrix.shape[1] <= required_matrix_shape[1]), 'BAD_MATRIX_SHAPE'
+
+    def _print_input_stats(self):
+        print('Constructing SchemaNetwork object...')
+        print('Numbers of schemas in W are: ', end='')
+        for idx, w in enumerate(self._W):
+            print('{}'.format(w.shape[1]), end='')
+            if idx != len(self._W) - 1:
+                print(' / ', end='')
+        print()
+
 
     def _gen_attribute_node_matrix(self, t):
         n_rows = self.N
@@ -81,7 +93,8 @@ class SchemaNetwork(Constants):
 
         # generate images of inner state here
         self._visualizer.set_attribute_tensor(attribute_tensor)
-        self._visualizer.check_correctness()
+        #self._visualizer.check_correctness()
+        self._visualizer.gen_images()
 
         # planning actions
         actions = self._planner.plan_actions()
