@@ -32,6 +32,7 @@ class SchemaNetwork(Constants):
                                              proxy_env)
         self._planner = Planner(self._reward_nodes)
         self._visualizer = Visualizer()
+        self._iter = None
 
     def _assert_input(self, W, R):
         required_matrix_shape = (self.N_COLS_TRANSFORMED, self.L)
@@ -50,6 +51,8 @@ class SchemaNetwork(Constants):
                 print(' / ', end='')
         print()
 
+    def set_curr_iter(self, iter):
+        self._iter = iter
 
     def _gen_attribute_node_matrix(self, t):
         n_rows = self.N
@@ -92,8 +95,8 @@ class SchemaNetwork(Constants):
         attribute_tensor = self._tensor_handler.forward_pass()
 
         # generate images of inner state here
-        self._visualizer.set_attribute_tensor(attribute_tensor)
-        #self._visualizer.check_correctness()
+        self._visualizer.set_attribute_tensor(attribute_tensor, self._iter)
+        # self._visualizer.check_correctness()
         self._visualizer.gen_images()
 
         # planning actions

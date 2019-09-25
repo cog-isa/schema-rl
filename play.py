@@ -98,6 +98,7 @@ def play(model, reward_model,
                 decision_model = SchemaNetwork([w == 1 for w in model._W],
                                                [reward_model._W[0] == 1, reward_model._W[1] == 1],
                                                memory[-num_priv_steps:])
+                decision_model.set_curr_iter(j)
 
                 end = time.time()
                 print("--- %s seconds ---" % (end - start))
