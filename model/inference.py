@@ -96,8 +96,7 @@ class SchemaNetwork(Constants):
 
         # generate images of inner state here
         self._visualizer.set_attribute_tensor(attribute_tensor, self._iter)
-        # self._visualizer.check_correctness()
-        self._visualizer.gen_images()
+        self._visualizer.gen_images(check_correctness=True)
 
         # planning actions
         actions = self._planner.plan_actions()

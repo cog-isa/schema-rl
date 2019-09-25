@@ -8,6 +8,12 @@ class Constants:
     """
     DEBUG = False
 
+    # indices of corresponding attributes in entities' vectors
+    BALL_IDX = 0
+    PADDLE_IDX = 1
+    WALL_IDX = 2
+    BRICK_IDX = 3
+
     if DEBUG:
         SCREEN_WIDTH = 3
         SCREEN_HEIGHT = 3
@@ -25,7 +31,7 @@ class Constants:
 
         N = SCREEN_WIDTH * SCREEN_HEIGHT
         M = 4
-        T = 3
+        T = 150
         ACTION_SPACE_DIM = 2
         REWARD_SPACE_DIM = 2
 
