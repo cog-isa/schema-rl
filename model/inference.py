@@ -31,7 +31,7 @@ class SchemaNetwork(Constants):
                                              self._action_nodes, self._reward_nodes,
                                              proxy_env)
         self._planner = Planner(self._reward_nodes)
-        self._visualizer = Visualizer()
+        self._visualizer = Visualizer(self._W)
         self._iter = None
 
     def _assert_input(self, W, R):
@@ -96,7 +96,7 @@ class SchemaNetwork(Constants):
 
         # generate images of inner state here
         self._visualizer.set_attribute_tensor(attribute_tensor, self._iter)
-        self._visualizer.gen_images(check_correctness=True)
+        self._visualizer.visualize_inner_state(check_correctness=True)
 
         # planning actions
         actions = self._planner.plan_actions()

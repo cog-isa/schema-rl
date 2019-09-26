@@ -6,7 +6,8 @@ class Constants:
     L: number of schemas
     T: size of look-ahead window
     """
-    DEBUG = False
+    DEBUG = True
+    VISUALIZE_SCHEMAS = True
 
     # indices of corresponding attributes in entities' vectors
     BALL_IDX = 0
