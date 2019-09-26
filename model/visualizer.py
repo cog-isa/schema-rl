@@ -118,11 +118,15 @@ class Visualizer(Constants):
 
     def visualize_schemas(self, W):
         file = open('./schema_images/metadata__iter_{}'.format(self._iter), 'wt')
+        action_file = open('./schema_images/actions__iter_{}'.format(self._iter), 'wt')
         for attribute_idx, w in enumerate(W):
-            file.write('attribute_idx: {}\n'.format(attribute_idx))
+            s = 'attribute_idx: {}\n'.format(attribute_idx)
+            file.write(s)
+            action_file.write(s)
             for vec_idx, vec in enumerate(w.T):
-                file.write(4 * ' ' + 'vec_idx: {}\n'.format(vec_idx))
-                file.write(8 * ' ' + str(vec) + '\n')
+                s = 4 * ' ' + 'vec_idx: {}\n'.format(vec_idx)
+                file.write(s)
+                action_file.write(s)
 
                 pixmap, actions = self._gen_schema_pixmap(vec)
                 n_rows, n_cols, _ = pixmap.shape
@@ -133,4 +137,9 @@ class Visualizer(Constants):
                 image.save('./schema_images/iter_{}__attr_{}__vec_{}.png'.format(
                     self._iter, attribute_idx, vec_idx
                 ))
+
+                file.write(8 * ' ' + str(vec.astype(int)) + '\n')
+                action_file.write(8 * ' ' + str(actions.astype(int)) + '\n')
+
         file.close()
+        action_file.close()

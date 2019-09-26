@@ -27,7 +27,7 @@ class Constants:
         ACTION_SPACE_DIM = 2
         REWARD_SPACE_DIM = 2
 
-        NEIGHBORHOOD_RADIUS = 1
+        NEIGHBORHOOD_RADIUS = 2
     else:
         SCREEN_WIDTH = 3
         SCREEN_HEIGHT = 3

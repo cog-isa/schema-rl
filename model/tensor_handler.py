@@ -40,7 +40,7 @@ class TensorHandler(Constants):
         assert len(self._proxy_env) == self.FRAME_STACK_SIZE, 'BAD_PROXY_ENV'
 
         if self.DEBUG:
-            print('STUB: get_env_attribute_matrix()')
+            print('STUB: get_env_attribute_tensor()')
             attribute_tensor = np.array([1, 0, 0, 1, 0, 0, 1, 0, 0,
                                          1, 0, 0, 1, 0, 0, 1, 0, 0])
             attribute_tensor = np.reshape(attribute_tensor, (2, 9, 1))

@@ -167,7 +167,7 @@ def play(model, reward_model,
 
 
 if __name__ == '__main__':
-    window_size = 1
+    window_size = 2
     model = SchemaNet(M=4, A=2, window_size=window_size)
     reward_model = SchemaNet(M=4, A=2, window_size=window_size)
     play(model, reward_model, step_num=2, window_size=window_size, log=True)
