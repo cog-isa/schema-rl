@@ -21,16 +21,15 @@ class Visualizer(Constants):
         self._attribute_tensor = None
         self._iter = None
 
+        # colors
         self._color_map = {
             self.BALL_IDX: (0, 255, 0),  # pure green for easier detection
-            self.PADDLE_IDX: CLASSIC_PADDLE_COLOR,
-            self.WALL_IDX: CLASSIC_WALL_COLOR,
-            self.BRICK_IDX: CLASSIC_BRICK_COLORS[0],
-            self.BACKGROUND_IDX: CLASSIC_BACKGROUND_COLOR
+            self.PADDLE_IDX: CLASSIC_PADDLE_COLOR,  # red-like
+            self.WALL_IDX: CLASSIC_WALL_COLOR,  # gray-like
+            self.BRICK_IDX: CLASSIC_BRICK_COLORS[0],  # dark-blue-like
+            self.BACKGROUND_IDX: CLASSIC_BACKGROUND_COLOR  # pure black
         }
-
-        if self.VISUALIZE_SCHEMAS:
-            self.visualize_schemas(self._W)
+        self.SEPARATOR_COLOR = (255, 255, 255)  # pure white
 
     def set_attribute_tensor(self, attribute_tensor, iter):
         self._attribute_tensor = attribute_tensor
@@ -43,8 +42,11 @@ class Visualizer(Constants):
         """
         n_entities, _ = entities.shape
         row_indices, col_indices = np.where(entities)
-        assert row_indices.size == np.unique(row_indices).size, \
-            'CONFLICT: several bits per pixel'
+        print(entities.shape)
+        if row_indices.size != np.unique(row_indices).size:
+            print('CONFLICT: several bits per pixel')
+            # TODO
+            # raise E in case of real entities
         colors = np.array([self._color_map[col_idx] for col_idx in col_indices])
 
         flat_pixels = np.full((n_entities, self.N_CHANNELS), self.BACKGROUND_IDX, dtype=np.uint8)
@@ -106,17 +108,22 @@ class Visualizer(Constants):
             pixmap = flat_pixels.reshape((dim, dim, self.N_CHANNELS))
             pixmaps.append(pixmap)
 
-        # taking separator width = 2
-        concat_pixmap = np.hstack((
-            pixmaps[0],
-            np.full((dim, 2, self.N_CHANNELS), CLASSIC_BACKGROUND_COLOR, dtype=np.uint8),
-            pixmaps[1]
-        ))
+        # taking separator's width = 1, color = 'white'
+        separator = np.empty((dim, 1, self.N_CHANNELS), dtype=np.uint8)
+        separator[:, :] = self.SEPARATOR_COLOR
+        concat_pixmap = np.hstack(
+            (pixmaps[0], separator, pixmaps[1])
+        )
         return concat_pixmap, actions
 
     def visualize_schemas(self, W):
+        file = open('./schema_images/metadata__iter_{}'.format(self._iter), 'wt')
         for attribute_idx, w in enumerate(W):
+            file.write('attribute_idx: {}\n'.format(attribute_idx))
             for vec_idx, vec in enumerate(w.T):
+                file.write(4 * ' ' + 'vec_idx: {}\n'.format(vec_idx))
+                file.write(8 * ' ' + str(vec) + '\n')
+
                 pixmap, actions = self._gen_schema_pixmap(vec)
                 n_rows, n_cols, _ = pixmap.shape
 
@@ -126,39 +133,4 @@ class Visualizer(Constants):
                 image.save('./schema_images/iter_{}__attr_{}__vec_{}.png'.format(
                     self._iter, attribute_idx, vec_idx
                 ))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        file.close()

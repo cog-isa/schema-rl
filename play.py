@@ -65,7 +65,7 @@ def get_action_for_reward(env):
 def play(model, reward_model,
          game_type=StandardBreakout,
          step_num=3,
-         window_size=20,
+         window_size=2,
          attrs_num=4,
          action_space=2,
          attr_num=94*117,
@@ -167,7 +167,7 @@ def play(model, reward_model,
 
 
 if __name__ == '__main__':
-    window_size = 2
+    window_size = 1
     model = SchemaNet(M=4, A=2, window_size=window_size)
     reward_model = SchemaNet(M=4, A=2, window_size=window_size)
     play(model, reward_model, step_num=2, window_size=window_size, log=True)

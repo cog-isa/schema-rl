@@ -6,8 +6,10 @@ class Constants:
     L: number of schemas
     T: size of look-ahead window
     """
-    DEBUG = True
+    DEBUG = False
+
     VISUALIZE_SCHEMAS = True
+    VISUALIZE_INNER_STATE = True
 
     # indices of corresponding attributes in entities' vectors
     BALL_IDX = 0
@@ -15,7 +17,18 @@ class Constants:
     WALL_IDX = 2
     BRICK_IDX = 3
 
-    if DEBUG:
+    if not DEBUG:
+        SCREEN_WIDTH = 94
+        SCREEN_HEIGHT = 117
+
+        N = SCREEN_WIDTH * SCREEN_HEIGHT
+        M = 4
+        T = 3
+        ACTION_SPACE_DIM = 2
+        REWARD_SPACE_DIM = 2
+
+        NEIGHBORHOOD_RADIUS = 1
+    else:
         SCREEN_WIDTH = 3
         SCREEN_HEIGHT = 3
 
@@ -26,19 +39,8 @@ class Constants:
         REWARD_SPACE_DIM = 2
 
         NEIGHBORHOOD_RADIUS = 1
-    else:
-        SCREEN_WIDTH = 94
-        SCREEN_HEIGHT = 117
 
-        N = SCREEN_WIDTH * SCREEN_HEIGHT
-        M = 4
-        T = 150
-        ACTION_SPACE_DIM = 2
-        REWARD_SPACE_DIM = 2
-
-        NEIGHBORHOOD_RADIUS = 2
-
-    L = 50
+    L = 1000
     NEIGHBORS_NUM = 4 * NEIGHBORHOOD_RADIUS * (NEIGHBORHOOD_RADIUS + 1)
     FAKE_ENTITY_IDX = N
     EPSILON = 0

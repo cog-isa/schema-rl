@@ -12,12 +12,11 @@ class SchemaNetwork(Constants):
         :param W: list of M matrices, each of [(MR + A) x L] shape
         :param R: list of 2 matrices, each of [(MN + A) x L] shape, 1st - pos, 2nd - neg
         """
+        self._print_input_stats(W)
         self._assert_input(W, R)
 
         self._W = W
         self._R = R
-
-        self._print_input_stats()
 
         self._attribute_nodes = None  # tensor ((FRAME_STACK_SIZE + T) x N x M)
         self._action_nodes = None  # tensor ((FRAME_STACK_SIZE + T) x ACTION_SPACE_DIM)
@@ -42,12 +41,12 @@ class SchemaNetwork(Constants):
             assert (matrix.shape[0] == required_matrix_shape[0]
                     and matrix.shape[1] <= required_matrix_shape[1]), 'BAD_MATRIX_SHAPE'
 
-    def _print_input_stats(self):
+    def _print_input_stats(self, W):
         print('Constructing SchemaNetwork object...')
         print('Numbers of schemas in W are: ', end='')
-        for idx, w in enumerate(self._W):
+        for idx, w in enumerate(W):
             print('{}'.format(w.shape[1]), end='')
-            if idx != len(self._W) - 1:
+            if idx != len(W) - 1:
                 print(' / ', end='')
         print()
 
@@ -84,6 +83,8 @@ class SchemaNetwork(Constants):
 
     def plan_actions(self):
         # stub for proxy_env list of objects
+        # TODO
+        # add function to check if we have enough frames to make forward pass
         if len(self._tensor_handler._proxy_env) < self.FRAME_STACK_SIZE:
             print('Small proxy_env len, can\'t plan, returning random actions.')
             planned_actions = np.random.randint(low=0,
@@ -94,9 +95,12 @@ class SchemaNetwork(Constants):
         # instantiate schemas, determine nodes feasibility
         attribute_tensor = self._tensor_handler.forward_pass()
 
-        # generate images of inner state here
+        # visualizing
         self._visualizer.set_attribute_tensor(attribute_tensor, self._iter)
-        self._visualizer.visualize_inner_state(check_correctness=True)
+        if self.VISUALIZE_SCHEMAS:
+            self._visualizer.visualize_schemas(self._W)
+        if self.VISUALIZE_INNER_STATE:
+            self._visualizer.visualize_inner_state(check_correctness=True)
 
         # planning actions
         actions = self._planner.plan_actions()
