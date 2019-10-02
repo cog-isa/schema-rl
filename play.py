@@ -18,13 +18,20 @@ def uniqy(X):
 
 
 # transform data for learning:
-def x_add_prev_time(memory, action, action_space=2, attr_num=94 * 117, ):
+def x_add_prev_time(memory, action, action_space=2, attr_num=94 * 117, log=False):
+
     X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory[:-1]))
+    if log:
+        X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory))
+    print('shape', X.shape)
     X = np.concatenate(((X.T[:-action_space]).T[attr_num:], X[:-attr_num]), axis=1)
+    print('shape', X.shape)
     return X
 
 
-def y_add_prev_time(memory):
+def y_add_prev_time(memory, log=True):
+    if log:
+        print('y_add_prev_time', len(memory[2:]), memory[-1].matrix.T.shape)
     return np.vstack((matrix.matrix.T for matrix in memory[2:]))
 
 
@@ -77,6 +84,7 @@ def play(model, reward_model,
     old_state  = []
 
     flag = 1
+    y = np.array([0, 0, 0, 0, 0])
 
     for i in range(step_num):
         env = game_type(return_state_as_image=False)
@@ -119,6 +127,8 @@ def play(model, reward_model,
 
                 # transform data for learning
                 X = x_add_prev_time(memory, action)
+
+                y_prev = y.T[0]
                 y = y_add_prev_time(memory)
 
                 # get new unique windows to learn reward
@@ -139,18 +149,23 @@ def play(model, reward_model,
 
                 if log:
                     # predict for T steps:
-                    T = 5
+                    T = 8
                     action = 1
-                    feature_matrix = memory[-1]
-                    stats = []  # [memory[0].matrix]
-                    tmp_mem = memory[-(num_priv_steps + 1):]
-                    print('!!!!!!!!!!!!', j)
+                    feature_matrix = FeatureMatrix(env, attrs_num=attrs_num, window_size=window_size,
+                                                   action_space=action_space)
+                    stats = []
+                    tmp_mem = memory[-(num_priv_steps):]
+
+                    model.visualize_schemas()
                     for i in range(T):
-                        X = x_add_prev_time(tmp_mem, action)
+                        print("@@@", i)
+                        X = x_add_prev_time(tmp_mem, action, log=True)
                         y = model.predict(X).T
+
                         stats.append(y)
                         feature_matrix.matrix = y
-                        tmp_mem = [tmp_mem[-2], tmp_mem[-1], feature_matrix]
+                        tmp_mem[-2].matrix = tmp_mem[-1].matrix[:]
+                        tmp_mem[-1].matrix = y[:]
                         #'''
 
                     img = vis.img_average(stats)
