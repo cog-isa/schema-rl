@@ -75,8 +75,11 @@ class SchemaNet:
 
     def visualize_schemas(self):
         for W in self._W:
+            print('#' * 50)
             for schema in W.T:
-                self.reverse_transform_print(schema)
+                self.reverse_transform_print(schema[:100])
+                print(' ' * 50)
+                self.reverse_transform_print(schema[100:])
                 print('-' * 50)
 
     def get_next_to_predict(self, X, y, i, log=False):
@@ -150,6 +153,9 @@ class SchemaNet:
                 if isinstance((self.predict_attr(X, i) == Y[i]), np.ndarray):
                     if (self.predict_attr(X, i) == Y[i]).all():
                         if log:
+                            if i == 0:
+                                print('ball check', (self.predict_attr(X, i) == 1).any(), (Y[i] == 1).any())
+
                             print('all attrs are predicted for attr', i)
                         break
                 else:
