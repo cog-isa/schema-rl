@@ -42,8 +42,15 @@ class Visualizer(Constants):
         n_entities, _ = entities.shape
         row_indices, col_indices = np.where(entities)
 
-        if row_indices.size != np.unique(row_indices).size:
-            print('CONFLICT: several bits per pixel')
+        unique, counts = np.unique(row_indices, return_counts=True)
+        diff = row_indices.size - unique.size
+        if diff:
+            print('BAD_ENTITY (several bits per pixel): {} conflicts'.format(diff))
+            duplicate_indices = unique[counts > 1]
+            for idx in duplicate_indices:
+                bad_entity = entities[idx]
+                print(bad_entity)
+
             # TODO
             # raise E in case of real entities
         colors = np.array([self._color_map[col_idx] for col_idx in col_indices])
