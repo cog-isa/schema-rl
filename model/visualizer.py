@@ -45,8 +45,9 @@ class Visualizer(Constants):
         unique, counts = np.unique(row_indices, return_counts=True)
         diff = row_indices.size - unique.size
         if diff:
-            print('BAD_ENTITY (several bits per pixel): {} conflicts'.format(diff))
             duplicate_indices = unique[counts > 1]
+
+            print('BAD_ENTITY (several bits per pixel): {} conflicts'.format(duplicate_indices.size))
             for idx in duplicate_indices:
                 bad_entity = entities[idx]
                 print(bad_entity)
