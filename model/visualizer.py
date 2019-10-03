@@ -86,11 +86,11 @@ class Visualizer(Constants):
         _, col_indices = np.where(entities)
         n_predicted_balls = np.count_nonzero(col_indices == self.BALL_IDX)
         if n_predicted_balls == 0:
-            print('The ball has **NOT** been predicted.')
+            print('BAD_BALL: zero balls exist.')
         elif n_predicted_balls > 1:
-            print('The ball has been predicted **MULTIPLE** times.')
+            print('BAD_BALL: multiple balls exist.')
         else:
-            print('The ball has been predicted successfully')
+            print('OKAY: Only one ball exists.')
 
     def _gen_schema_pixmap(self, vec):
         """
