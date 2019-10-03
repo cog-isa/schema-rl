@@ -47,6 +47,9 @@ class Visualizer(Constants):
         if diff:
             duplicate_indices = unique[counts > 1]
             print('BAD_ENTITY (several bits per pixel): {} conflicts'.format(duplicate_indices.size))
+            for idx in duplicate_indices:
+                print('idx: {}, entity: {}'.format(idx, entities[idx]))
+            print()
             raise AssertionError
 
         colors = np.array([self._color_map[col_idx] for col_idx in col_indices])
