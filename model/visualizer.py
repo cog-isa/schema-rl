@@ -1,8 +1,7 @@
+import os
 import numpy as np
 from PIL import Image
-
 from .constants import Constants
-
 from environment.schema_games.breakout.constants import \
     CLASSIC_BACKGROUND_COLOR, CLASSIC_BALL_COLOR, CLASSIC_BRICK_COLORS, \
     CLASSIC_PADDLE_COLOR, CLASSIC_WALL_COLOR
@@ -42,7 +41,7 @@ class Visualizer(Constants):
         """
         n_entities, _ = entities.shape
         row_indices, col_indices = np.where(entities)
-        print(entities.shape)
+
         if row_indices.size != np.unique(row_indices).size:
             print('CONFLICT: several bits per pixel')
             # TODO
@@ -55,21 +54,27 @@ class Visualizer(Constants):
 
         return flat_pixels
 
-    def _gen_state_pixmap(self, t):
-        flat_pixels = self._convert_entities_to_pixels(self._attribute_tensor[t])
+    def _gen_pixmap(self, state):
+        flat_pixels = self._convert_entities_to_pixels(state)
         pixmap = flat_pixels.reshape((self.SCREEN_HEIGHT, self.SCREEN_WIDTH, self.N_CHANNELS))
         return pixmap
+
+    def visualize_state(self, state, image_path):
+        pixmap = self._gen_pixmap(state)
+        image = Image.fromarray(pixmap)
+        image = image.resize((self.SCREEN_WIDTH * self.STATE_SCALE,
+                              self.SCREEN_HEIGHT * self.STATE_SCALE))
+        image.save(image_path)
 
     def visualize_inner_state(self, check_correctness=False):
         for t in range(self._attribute_tensor.shape[0]):
             if check_correctness:
                 self._check_correctness(self._attribute_tensor[t])
 
-            pixmap = self._gen_state_pixmap(t)
-            image = Image.fromarray(pixmap)
-            image = image.resize((self.SCREEN_WIDTH * self.STATE_SCALE,
-                                  self.SCREEN_HEIGHT * self.STATE_SCALE))
-            image.save('./inner_images/iter:{}_t:{}.png'.format(self._iter, t))
+            dir_name = './inner_images'
+            file_name = 'iter_{}__t_{}.png'.format(self._iter, t)
+            image_path = os.path.join(dir_name, file_name)
+            self.visualize_state(self._attribute_tensor[t], image_path)
 
     def _check_correctness(self, entities):
         _, col_indices = np.where(entities)
