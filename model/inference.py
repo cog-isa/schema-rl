@@ -12,8 +12,8 @@ class SchemaNetwork(Constants):
         :param W: list of M matrices, each of [(MR + A) x L] shape
         :param R: list of 2 matrices, each of [(MN + A) x L] shape, 1st - pos, 2nd - neg
         """
+        self._process_input(W, R)
         self._print_input_stats(W)
-        self._assert_input(W, R)
 
         self._W = W
         self._R = R
@@ -33,13 +33,18 @@ class SchemaNetwork(Constants):
         self._visualizer = Visualizer(self._W)
         self._iter = None
 
-    def _assert_input(self, W, R):
-        required_matrix_shape = (self.N_COLS_TRANSFORMED, self.L)
+    def _process_input(self, W, R):
+        # drop first schema - it's bad
+        for i in range(len(W)):
+            W[i] = W[i][:, 1:].copy()
+
+        required_matrix_shape = (self.SCHEMA_VEC_SIZE, self.L)
         for matrix in (W + R):
             assert matrix.dtype == bool, 'BAD_MATRIX_DTYPE'
             assert matrix.ndim == 2, 'BAD_MATRIX_NDIM'
             assert (matrix.shape[0] == required_matrix_shape[0]
                     and matrix.shape[1] <= required_matrix_shape[1]), 'BAD_MATRIX_SHAPE'
+            assert matrix.size, 'EMPTY_MATRIX'
 
     def _print_input_stats(self, W):
         print('Constructing SchemaNetwork object...')

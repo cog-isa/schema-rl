@@ -46,14 +46,9 @@ class Visualizer(Constants):
         diff = row_indices.size - unique.size
         if diff:
             duplicate_indices = unique[counts > 1]
-
             print('BAD_ENTITY (several bits per pixel): {} conflicts'.format(duplicate_indices.size))
-            for idx in duplicate_indices:
-                bad_entity = entities[idx]
-                print(bad_entity)
+            raise AssertionError
 
-            # TODO
-            # raise E in case of real entities
         colors = np.array([self._color_map[col_idx] for col_idx in col_indices])
 
         flat_pixels = np.full((n_entities, self.N_CHANNELS), self.BACKGROUND_IDX, dtype=np.uint8)

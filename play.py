@@ -103,15 +103,18 @@ def play(model, reward_model,
             else:
                 start = time.time()
 
-                decision_model = SchemaNetwork([w == 1 for w in model._W],
-                                               [reward_model._W[0] == 1, reward_model._W[1] == 1],
-                                               memory[-num_priv_steps:])
-                decision_model.set_curr_iter(j)
+                W = [w == 1 for w in model._W]
+                R = [reward_model._W[0] == 1, reward_model._W[1] == 1]
+
+                if all(w.shape[1] > 1 for w in W):
+                    decision_model = SchemaNetwork(W, R, memory[-num_priv_steps:])
+                    decision_model.set_curr_iter(j)
+                    action = decision_model.plan_actions()[0] + 1
+                else:
+                    action = get_action_for_reward(env)
 
                 end = time.time()
                 print("--- %s seconds ---" % (end - start))
-
-                action = decision_model.plan_actions()[0] + 1
 
             print('action:', action)
 

@@ -67,7 +67,7 @@ class TensorHandler(Constants):
         # ((FRAME_STACK_SIZE + T) x N x (MR*ss + A))
         shape = (self.FRAME_STACK_SIZE + self.T,
                  self.N,
-                 self.N_COLS_TRANSFORMED)
+                 self.SCHEMA_VEC_SIZE)
         self._reference_attribute_nodes = np.full(
             shape, None, dtype=object
         )
