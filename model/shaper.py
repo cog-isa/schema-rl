@@ -1,3 +1,12 @@
+"""
+ENCODING ORDER
+
+i-th row of X is [ frame_vec(t - 1) | frame_vec(t) | action_vec]
+
+frame_vec(t_i) = [ central_entity_vec | (R - 1) neighbors' vectors: row by row, in order of increasing index]
+
+"""
+
 import numpy as np
 from .constants import Constants
 
