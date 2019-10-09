@@ -23,9 +23,9 @@ def x_add_prev_time(memory, action, action_space=2, attr_num=94 * 117, log=False
     X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory[:-1]))
     if log:
         X = np.vstack((matrix.transform_matrix_with_action(action=action) for matrix in memory))
-    print('shape', X.shape)
-    X = np.concatenate(((X.T[:-action_space]).T[attr_num:], X[:-attr_num]), axis=1)
-    print('shape', X.shape)
+    X_no_actions = (X.T[:-action_space]).T
+    actions = (X.T[-action_space:]).T
+    X = np.concatenate((X_no_actions[:-attr_num], X_no_actions[attr_num:], actions[attr_num:]), axis=1)
     return X
 
 
@@ -160,9 +160,8 @@ def play(model, reward_model,
                     stats = []
                     tmp_mem = memory[-(num_priv_steps):]
 
-                    model.visualize_schemas()
+                    # model.visualize_schemas()
                     for i in range(T):
-                        print("@@@", i)
                         X = x_add_prev_time(tmp_mem, action, log=True)
                         y = model.predict(X).T
 

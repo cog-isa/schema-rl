@@ -50,7 +50,7 @@ class Visualizer(Constants):
             for idx in duplicate_indices:
                 print('idx: {}, entity: {}'.format(idx, entities[idx]))
             print()
-            raise AssertionError
+            # raise AssertionError
 
         colors = np.array([self._color_map[col_idx] for col_idx in col_indices])
 

@@ -58,6 +58,7 @@ class SchemaNet:
         return X[ind], y[ind]
 
     def reverse_transform_print(self, y):
+
         for i in range(self.window_size * 2 + 1):
             for j in range(self.window_size * 2 + 1):
                 ind = i * (self.window_size * 2 + 1) * 4 + j * 4
@@ -142,6 +143,9 @@ class SchemaNet:
     def fit(self, X, Y, log=True):
         tmp, ind = np.unique(X, return_index=True, axis=0)
         X = X[ind]
+
+        print('index shape', ind.shape)
+
         Y = (Y.T[ind]).T
 
         self.remove_wrong_schemas(X, Y)
