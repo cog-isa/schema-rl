@@ -36,7 +36,8 @@ class SchemaNetwork(Constants):
     def _process_input(self, W, R):
         # drop first schema - it's bad
         for i in range(len(W)):
-            W[i] = W[i][:, 1:].copy()
+            if W[i][:, 0].all():
+                W[i] = W[i][:, 1:].copy()
 
         required_matrix_shape = (self.SCHEMA_VEC_SIZE, self.L)
         for matrix in (W + R):
