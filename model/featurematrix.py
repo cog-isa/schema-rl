@@ -57,7 +57,6 @@ class FeatureMatrix(Constants):
 
     def _get_neighbours_with_action(self, ind, action, matrix=None, add_all_actions=False):
 
-
         if matrix is None:
             matrix = self.matrix
 

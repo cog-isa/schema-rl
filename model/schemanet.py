@@ -8,9 +8,9 @@ from model.constants import Constants
 class SchemaNet(Constants):
     def __init__(self):
         self.neighbour_num = ((self.NEIGHBORHOOD_RADIUS * 2 + 1) ** 2) * self.FRAME_STACK_SIZE
-        self._W = [np.zeros([self.neighbour_num * self.M + self.ACTION_SPACE_DIM, 1]) + 1] * self.M
+        self._W = [np.zeros([self.neighbour_num * self.M + self.ACTION_SPACE_DIM, 1])[:] + 1 for i in range(self.M)]
         self.solved = np.array([])
-        self._R = [np.zeros(self.neighbour_num * self.M + self.ACTION_SPACE_DIM) + 1] * 2
+        # self._R = [np.zeros(self.neighbour_num * self.M + self.ACTION_SPACE_DIM) + 1] * 2
 
     def log(self):
         print('current net:\n', [self._W[i].shape for i in range(len(self._W))])
@@ -22,16 +22,11 @@ class SchemaNet(Constants):
 
     def _predict_attr(self, X, i):
         if len(self._W[i].shape) == 1:
-            return (X == 0) @ self._W[i] == 0
-        return ((X == 0) @ self._W[i] == 0).any(axis=1) != 0
+            return ((X == 0) @ self._W[i]) == 0
+        return (((X == 0) @ self._W[i]) == 0).any(axis=1) != 0
 
     def _schema_predict_attr(self, X, i):
         return ((X == 0) @ self._W[i] == 0) != 0
-
-    '''def _predict_reward(self, X, is_pos=1):
-        if len(self._R[is_pos].shape) == 1:
-            return (X == 0) @ self._R[is_pos] == 0
-        return ((X == 0) @ self._R[is_pos] == 0).any(axis=1) != 0'''
 
     def predict(self, X):
         return np.array([self._predict_attr(X, i) for i in range(self.M)])
@@ -48,33 +43,6 @@ class SchemaNet(Constants):
     def _get_not_predicted(self, X, y, i):
         ind = (self._predict_attr(X, i) != y) | (y == 0)
         return X[ind], y[ind]
-
-    '''def reverse_transform_print(self, y):
-
-        for i in range(self.NEIGHBORHOOD_RADIUS * 2 + 1):
-            for j in range(self.NEIGHBORHOOD_RADIUS * 2 + 1):
-                ind = i * (self.NEIGHBORHOOD_RADIUS * 2 + 1) * 4 + j * 4
-                if y[ind] == 1:
-                    print(colored('*', 'red'), end='')
-                elif y[ind + 1] == 1:
-                    print(colored('*', 'cyan'), end='')
-                elif y[ind + 2] == 1:
-                    print(colored('*', 'green'), end='')
-                elif y[ind + 3] == 1:
-                    print(colored('*', 'grey'), end='')
-                else:
-                    print(colored('*', 'white'), end='')
-            print()
-
-    def visualize_schemas(self):
-        for W in self._W:
-            print('#' * 50)
-            for schema in W.T:
-                self.reverse_transform_print(schema[:100])
-                print(' ' * 50)
-                self.reverse_transform_print(schema[100:])
-                print('-' * 50)
-    '''
 
     def _get_next_to_predict(self, X, y, i, log=False):
         ind = (self._predict_attr(X, i) != y) * (y == 1)
@@ -147,6 +115,7 @@ class SchemaNet(Constants):
 
             for j in (range(self.L)):
 
+                # change!!!!!!!
                 if isinstance((self._predict_attr(X, i) == Y[i]), np.ndarray):
                     if (self._predict_attr(X, i) == Y[i]).all():
                         if log:
