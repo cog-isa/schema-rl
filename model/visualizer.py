@@ -31,6 +31,10 @@ class Visualizer(Constants):
         self.SEPARATOR_COLOR = (255, 255, 255)  # pure white
         self.BAD_ENTITY_COLOR = (255, 0, 0)  # pure red
 
+        self.BACKGROUND_COLOR = CLASSIC_BACKGROUND_COLOR
+        self.INACTIVE_ACTION_SLOT_COLOR = (255, 255, 255)
+        self.ACTIVE_ACTION_SLOT_COLOR = (0, 255, 0)
+
     def set_attribute_tensor(self, attribute_tensor, iter):
         self._attribute_tensor = attribute_tensor
         self._iter = iter
@@ -64,6 +68,10 @@ class Visualizer(Constants):
         return flat_pixels
 
     def _gen_pixmap(self, state):
+        """
+        :param state: ndarray (n_entities x M)
+        :return: pixmap: ndarray (SCREEN_HEIGHT, SCREEN_WIDTH, N_CHANNELS)
+        """
         flat_pixels = self._convert_entities_to_pixels(state)
         pixmap = flat_pixels.reshape((self.SCREEN_HEIGHT, self.SCREEN_WIDTH, self.N_CHANNELS))
         return pixmap
@@ -106,7 +114,7 @@ class Visualizer(Constants):
         frame_vectors = np.split(vec[:size], self.FRAME_STACK_SIZE)
 
         pixmaps = []
-        dim = 2 * self.NEIGHBORHOOD_RADIUS + 1
+        filter_size = 2 * self.NEIGHBORHOOD_RADIUS + 1
         for frame_vec in frame_vectors:
             central_entity = frame_vec[:self.M]
             ne_entities = frame_vec[self.M:]
@@ -119,15 +127,21 @@ class Visualizer(Constants):
             )
 
             flat_pixels = self._convert_entities_to_pixels(entities)
-            pixmap = flat_pixels.reshape((dim, dim, self.N_CHANNELS))
+            pixmap = flat_pixels.reshape((filter_size, filter_size, self.N_CHANNELS))
             pixmaps.append(pixmap)
 
         # taking separator's width = 1, color = 'white'
-        separator = np.empty((dim, 1, self.N_CHANNELS), dtype=np.uint8)
+        separator = np.empty((filter_size, 1, self.N_CHANNELS), dtype=np.uint8)
         separator[:, :] = self.SEPARATOR_COLOR
         concat_pixmap = np.hstack(
             (pixmaps[0], separator, pixmaps[1])
         )
+
+        # adding actions indicator
+        action_slots_indices = [filter_size + offset for offset in (-2, 0, 2)]
+        actions_indicator = np.empty((2 * filter_size + 1, 3, self.N_CHANNELS), dtype=np.uint8)
+        actions_indicator[1, action_slots_indices] = self.INACTIVE_ACTION_SLOT_COLOR
+
         return concat_pixmap, actions
 
     def visualize_schemas(self, W):
