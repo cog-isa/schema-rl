@@ -5,6 +5,7 @@ from model.schemanet import SchemaNet
 from model.inference import SchemaNetwork
 import time
 from model.constants import Constants
+import random
 
 
 class Player(Constants):
@@ -74,50 +75,27 @@ class Player(Constants):
     def play(self, game_type=StandardBreakout,
              step_num=3,
              learning_freq=3,
-             log=False):
+             log=False, cheat=False):
         old_state = []
 
-        flag = 1
+        flag = 0
         y = np.array([0, 0, 0, 0, 0])
+
 
         for i in range(step_num):
             env = game_type(return_state_as_image=False)
-            done = False
+            # done = False
             env.reset()
+            if cheat:
+                self.model.add_cheat_schema()
 
             j = 0
+            action = 0
+            state, reward, done, _ = env.step(action)
+
             while not done:
 
                 self._memory.append(FeatureMatrix(env))
-
-                # make a decision
-                if flag == 0:
-                    action = self._get_action_for_reward(env)
-                else:
-                    start = time.time()
-
-                    W = [w == 1 for w in self.model._W]
-                    R = [self.reward_model._W[0] == 1, self.reward_model._W[1] == 1]
-
-                    if all(w.shape[1] > 1 for w in W):
-                        decision_model = SchemaNetwork(W, R, self._memory[-self.FRAME_STACK_SIZE:])
-                        decision_model.set_curr_iter(j)
-                        action = decision_model.plan_actions()[0] + 1
-                    else:
-                        action = self._get_action_for_reward(env)
-
-                    end = time.time()
-                    print("--- %s seconds ---" % (end - start))
-
-                print('action:', action)
-
-                state, reward, done, _ = env.step(action)
-                if reward == 1:
-                    if flag == 0:
-                        print('PLAYER CHANGED')
-                    flag = 1
-
-                self.rewards.append(reward)
 
                 # learn new schemas
                 if j % learning_freq == 2:
@@ -138,10 +116,40 @@ class Player(Constants):
                         self.reward_model.fit(update, y_r)
 
                     # learn env state:
+
                     self.model.fit(X, y)
 
+                    # make a decision
+                    r = random.randint(1, 3)
+                    if flag == 0 and r == 1:
+                        action = self._get_action_for_reward(env)
+                    else:
+                        print('$$$$$$', flag)
+                        start = time.time()
+
+                        W = [w == 1 for w in self.model._W]
+                        R = [self.reward_model._W[0] == 1, self.reward_model._W[1] == 1]
+
+                        if all(w.shape[1] > 1 for w in W):
+                            decision_model = SchemaNetwork(W, R, self._memory[-self.FRAME_STACK_SIZE:])
+                            decision_model.set_curr_iter(j)
+                            action = decision_model.plan_actions()[0] + 1
+                        else:
+                            action = self._get_action_for_reward(env)
+
+                        end = time.time()
+                        print("--- %s seconds ---" % (end - start))
                     self._free_mem()
+
                 j += 1
+                print('action:', action)
+                state, reward, done, _ = env.step(action)
+                if reward == 1:
+                    if flag == 0:
+                        print('PLAYER CHANGED')
+                    flag = 1
+
+                self.rewards.append(reward)
 
             if log:
                 print('step:', i)

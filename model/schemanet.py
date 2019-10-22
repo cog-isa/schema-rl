@@ -34,7 +34,7 @@ class SchemaNet(Constants):
     def add(self, schemas, i):
         self._W[i] = np.vstack((self._W[i].T, schemas.T)).T
 
-    def scipy_solve_lp(self, zero_pred, c, A_ub, b_ub, A_eq, b_eq, options={'maxiter': 2, "disp": False}):
+    def scipy_solve_lp(self, zero_pred, c, A_ub, b_ub, A_eq, b_eq, options={'maxiter': 200, "disp": False}):
         if len(zero_pred) == 0:
             return linprog(c=c, A_eq=A_eq, b_eq=b_eq, options=options).x.round(2)
         else:
@@ -70,6 +70,9 @@ class SchemaNet(Constants):
 
         preds = ((X == 0) @ w) == 0
         self.solved = np.vstack((self.solved, X[preds * (self._predict_attr(X, i) == 0)]))
+        if self.solved is None:
+            print('CONFLICT DATA')
+            return None
         return w
 
     def _simplify_schema(self, X, y):
@@ -101,11 +104,39 @@ class SchemaNet(Constants):
 
             self._W[i] = (self._W[i].T[wrong_ind == 0]).T
 
+    def add_cheat_schema(self, size=202):
+
+        w = np.zeros(size)
+        w[4 * 21 + self.PADDLE_IDX] = 1
+        w[4 * 11 + self.BALL_IDX] = 1
+        w[100 + 4 * 21 + self.PADDLE_IDX] = 1
+        w[100 + 4 * 16 + self.BALL_IDX] = 1
+
+        self.add(w, self.BALL_IDX)
+
+        w = np.zeros(size)
+        w[4 * 23 + self.PADDLE_IDX] = 1
+        w[4 * 14 + self.BALL_IDX] = 1
+        w[100 + 4 * 23 + self.PADDLE_IDX] = 1
+        w[100 + 4 * 18 + self.BALL_IDX] = 1
+
+        self.add(w, self.BALL_IDX)
+
+        w = np.zeros(size)
+        w[4 * 10 + self.WALL_IDX] = 1
+        w[4 * 3 + self.BALL_IDX] = 1
+        w[100 + 4 * 10 + self.WALL_IDX] = 1
+        w[100 + 4 * 9 + self.BALL_IDX] = 1
+
+        self.add(w, self.BALL_IDX)
+
+        return
+
     def fit(self, X, Y, log=True):
         tmp, ind = np.unique(X, return_index=True, axis=0)
-        X = X[ind]
+        print('index shape', ind.shape, X.shape, Y.shape)
 
-        print('index shape', ind.shape)
+        X = X[ind]
 
         Y = (Y.T[ind]).T
 
@@ -132,7 +163,9 @@ class SchemaNet(Constants):
 
                 x, y = self._get_not_predicted(X, Y[i], i)
 
-                self._get_schema(x, y, i)
+                w = self._get_schema(x, y, i)
+                if w is None:
+                    return
                 w = (self._simplify_schema(x, y) > 0.1).astype(np.bool, copy=False)
                 self.add(w, i)
                 if log:

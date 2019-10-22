@@ -101,6 +101,7 @@ class SchemaNetwork(Constants):
         attribute_tensor = self._tensor_handler.forward_pass()
 
         # visualizing
+        print('00k')
         self._visualizer.set_attribute_tensor(attribute_tensor, self._iter)
         if self.VISUALIZE_SCHEMAS:
             self._visualizer.visualize_schemas(self._W)

@@ -165,6 +165,7 @@ class Reward(Node):
         super().__init__(t)
 
 
+# DEPRECATED
 class MetaObject:
     _allowed_types = (Attribute, FakeAttribute, Action, Reward)
 
