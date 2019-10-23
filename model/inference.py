@@ -102,11 +102,11 @@ class SchemaNetwork(Constants):
         attribute_tensor = self._tensor_handler.forward_pass()
 
         # visualizing
-        self._visualizer.set_attribute_tensor(attribute_tensor, self._iter)
+        self._visualizer.set_params(attribute_tensor, self._iter)
         if self.VISUALIZE_SCHEMAS:
             self._visualizer.visualize_schemas(self._W)
         if self.VISUALIZE_INNER_STATE:
-            self._visualizer.visualize_inner_state(check_correctness=True)
+            self._visualizer.visualize_predicted_entities(check_correctness=True)
 
         # planning actions
         actions = self._planner.plan_actions()

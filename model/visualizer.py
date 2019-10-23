@@ -128,6 +128,7 @@ class Visualizer(Constants):
 
     def _gen_schema_activation_pattern(self, vec):
         entities_stack, active_actions = self._parse_schema_vector(vec)
+
         pixmaps = []
         for entities in entities_stack:
             flat_pixels = self._convert_entities_to_pixels(entities)
@@ -135,14 +136,18 @@ class Visualizer(Constants):
             pixmaps.append(pixmap)
 
         # taking separator's width = 1, color = 'white'
-        separator = np.empty((self.FILTER_SIZE, 1, self.N_CHANNELS), dtype=np.uint8)
-        separator[:, :] = self.SEPARATOR_COLOR
+        v_separator = np.empty((self.FILTER_SIZE, 1, self.N_CHANNELS), dtype=np.uint8)
+        v_separator[:, :] = self.SEPARATOR_COLOR
         concat_pixmap = np.hstack(
-            (pixmaps[0], separator, pixmaps[1])
+            (pixmaps[0], v_separator, pixmaps[1])
         )
+
+        h_separator = np.empty((1, 2 * self.FILTER_SIZE + 1, self.N_CHANNELS), dtype=np.uint8)
+        h_separator[:, :] = self.SEPARATOR_COLOR
+
         # adding actions indicator
         assert self.ACTION_SPACE_DIM == 3
-        action_slots_indices = [self.FILTER_SIZE + offset for offset in (-2, 0, 2)]
+        action_slots_indices = np.array([self.FILTER_SIZE + offset for offset in (-2, 0, 2)])
         active_slots_indices = action_slots_indices[active_actions]
 
         actions_indicator = np.empty((3, 2 * self.FILTER_SIZE + 1, self.N_CHANNELS), dtype=np.uint8)
@@ -150,7 +155,7 @@ class Visualizer(Constants):
         actions_indicator[1, action_slots_indices] = self.INACTIVE_ACTION_SLOT_COLOR
         actions_indicator[1, active_slots_indices] = self.ACTIVE_ACTION_SLOT_COLOR
 
-        concat_pixmap = np.vstack((concat_pixmap, actions_indicator))
+        concat_pixmap = np.vstack((concat_pixmap, h_separator, actions_indicator))
         return concat_pixmap
 
     def visualize_schemas(self, W):
