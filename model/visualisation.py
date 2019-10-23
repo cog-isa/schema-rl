@@ -20,6 +20,9 @@ def get_colour(entity):
         return empty
 
 
+def make_brighter(X):
+    return (X + ((X < 100) * (X > 1)) * 100).astype(dtype='uint8')
+
 def transform_to_img(X, shape=(117, 94, 3), attr_num=4, log=False):
     img = np.zeros(shape, dtype='uint8')
     for i in range(shape[0] * shape[1]):
