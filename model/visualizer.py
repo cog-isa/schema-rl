@@ -35,9 +35,19 @@ class Visualizer(Constants):
         self.INACTIVE_ACTION_SLOT_COLOR = (255, 255, 255)
         self.ACTIVE_ACTION_SLOT_COLOR = (0, 255, 0)
 
-    def set_attribute_tensor(self, attribute_tensor, iter):
+    def set_params(self, attribute_tensor, iter):
         self._attribute_tensor = attribute_tensor
         self._iter = iter
+
+    def _check_entities_for_correctness(self, entities):
+        _, col_indices = np.where(entities)
+        n_predicted_balls = np.count_nonzero(col_indices == self.BALL_IDX)
+        if n_predicted_balls == 0:
+            print('BAD_BALL: zero balls exist.')
+        elif n_predicted_balls > 1:
+            print('BAD_BALL: multiple balls exist.')
+        else:
+            print('OKAY: Only one ball exists.')
 
     def _convert_entities_to_pixels(self, entities):
         """
@@ -67,54 +77,40 @@ class Visualizer(Constants):
 
         return flat_pixels
 
-    def _gen_pixmap(self, state):
+    def visualize_entities(self, entities, image_path):
         """
-        :param state: ndarray (n_entities x M)
-        :return: pixmap: ndarray (SCREEN_HEIGHT, SCREEN_WIDTH, N_CHANNELS)
+        :param entities: ndarray (n_entities x M)
         """
-        flat_pixels = self._convert_entities_to_pixels(state)
+        flat_pixels = self._convert_entities_to_pixels(entities)
         pixmap = flat_pixels.reshape((self.SCREEN_HEIGHT, self.SCREEN_WIDTH, self.N_CHANNELS))
-        return pixmap
-
-    def visualize_state(self, state, image_path):
-        pixmap = self._gen_pixmap(state)
         image = Image.fromarray(pixmap)
         image = image.resize((self.SCREEN_WIDTH * self.STATE_SCALE,
                               self.SCREEN_HEIGHT * self.STATE_SCALE))
         image.save(image_path)
 
-    def visualize_inner_state(self, check_correctness=False):
+    def visualize_predicted_entities(self, check_correctness=False):
         for t in range(self._attribute_tensor.shape[0]):
             if check_correctness:
-                self._check_correctness(self._attribute_tensor[t])
+                self._check_entities_for_correctness(self._attribute_tensor[t])
 
             dir_name = './inner_images'
             file_name = 'iter_{}__t_{}.png'.format(self._iter, t)
             image_path = os.path.join(dir_name, file_name)
-            self.visualize_state(self._attribute_tensor[t], image_path)
+            self.visualize_entities(self._attribute_tensor[t], image_path)
 
-    def _check_correctness(self, entities):
-        _, col_indices = np.where(entities)
-        n_predicted_balls = np.count_nonzero(col_indices == self.BALL_IDX)
-        if n_predicted_balls == 0:
-            print('BAD_BALL: zero balls exist.')
-        elif n_predicted_balls > 1:
-            print('BAD_BALL: multiple balls exist.')
-        else:
-            print('OKAY: Only one ball exists.')
+# ------------- SCHEMA VISUALIZING ------------- #
 
-    def _gen_schema_pixmap(self, vec):
+    def _parse_schema_vector(self, vec):
         """
         :param vec: schema vector ((Fss * MR) + A)
-        :return: tuple (pixmap: ndarray, actions: ndarray)
+        :return: tuple (entities: ndarray, actions: ndarray)
         """
         actions = vec[-self.ACTION_SPACE_DIM:]
         size = vec.size - actions.size
 
         frame_vectors = np.split(vec[:size], self.FRAME_STACK_SIZE)
 
-        pixmaps = []
-        filter_size = 2 * self.NEIGHBORHOOD_RADIUS + 1
+        entities_stack = []
         for frame_vec in frame_vectors:
             central_entity = frame_vec[:self.M]
             ne_entities = frame_vec[self.M:]
@@ -125,38 +121,48 @@ class Visualizer(Constants):
             ).reshape(
                 (self.NEIGHBORS_NUM + 1, self.M)
             )
+            entities_stack.append(entities)
 
+        active_actions = actions.nonzero()[0]
+        return entities_stack, active_actions
+
+    def _gen_schema_activation_pattern(self, vec):
+        entities_stack, active_actions = self._parse_schema_vector(vec)
+        pixmaps = []
+        for entities in entities_stack:
             flat_pixels = self._convert_entities_to_pixels(entities)
-            pixmap = flat_pixels.reshape((filter_size, filter_size, self.N_CHANNELS))
+            pixmap = flat_pixels.reshape((self.FILTER_SIZE, self.FILTER_SIZE, self.N_CHANNELS))
             pixmaps.append(pixmap)
 
         # taking separator's width = 1, color = 'white'
-        separator = np.empty((filter_size, 1, self.N_CHANNELS), dtype=np.uint8)
+        separator = np.empty((self.FILTER_SIZE, 1, self.N_CHANNELS), dtype=np.uint8)
         separator[:, :] = self.SEPARATOR_COLOR
         concat_pixmap = np.hstack(
             (pixmaps[0], separator, pixmaps[1])
         )
-
         # adding actions indicator
-        action_slots_indices = [filter_size + offset for offset in (-2, 0, 2)]
-        actions_indicator = np.empty((2 * filter_size + 1, 3, self.N_CHANNELS), dtype=np.uint8)
-        actions_indicator[1, action_slots_indices] = self.INACTIVE_ACTION_SLOT_COLOR
+        assert self.ACTION_SPACE_DIM == 3
+        action_slots_indices = [self.FILTER_SIZE + offset for offset in (-2, 0, 2)]
+        active_slots_indices = action_slots_indices[active_actions]
 
-        return concat_pixmap, actions
+        actions_indicator = np.empty((3, 2 * self.FILTER_SIZE + 1, self.N_CHANNELS), dtype=np.uint8)
+        actions_indicator[:, :] = self.BACKGROUND_COLOR
+        actions_indicator[1, action_slots_indices] = self.INACTIVE_ACTION_SLOT_COLOR
+        actions_indicator[1, active_slots_indices] = self.ACTIVE_ACTION_SLOT_COLOR
+
+        concat_pixmap = np.vstack((concat_pixmap, actions_indicator))
+        return concat_pixmap
 
     def visualize_schemas(self, W):
         file = open('./schema_images/metadata__iter_{}'.format(self._iter), 'wt')
-        action_file = open('./schema_images/actions__iter_{}'.format(self._iter), 'wt')
         for attribute_idx, w in enumerate(W):
             s = 'attribute_idx: {}\n'.format(attribute_idx)
             file.write(s)
-            action_file.write(s)
             for vec_idx, vec in enumerate(w.T):
                 s = 4 * ' ' + 'vec_idx: {}\n'.format(vec_idx)
                 file.write(s)
-                action_file.write(s)
 
-                pixmap, actions = self._gen_schema_pixmap(vec)
+                pixmap = self._gen_schema_activation_pattern(vec)
                 n_rows, n_cols, _ = pixmap.shape
 
                 image = Image.fromarray(pixmap)
@@ -167,7 +173,4 @@ class Visualizer(Constants):
                 ))
 
                 file.write(8 * ' ' + str(vec.astype(int)) + '\n')
-                action_file.write(8 * ' ' + str(actions.astype(int)) + '\n')
-
         file.close()
-        action_file.close()
