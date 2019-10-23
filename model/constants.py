@@ -6,7 +6,7 @@ class Constants:
     L: number of schemas
     T: size of look-ahead window
     """
-    DEBUG = False
+    DEBUG = True
 
     VISUALIZE_SCHEMAS = True
     VISUALIZE_INNER_STATE = True
@@ -35,7 +35,7 @@ class Constants:
         N = 9  # SCREEN_WIDTH * SCREEN_HEIGHT
         M = 1
         T = 50
-        ACTION_SPACE_DIM = 2
+        ACTION_SPACE_DIM = 3
         REWARD_SPACE_DIM = 2
 
         NEIGHBORHOOD_RADIUS = 1
