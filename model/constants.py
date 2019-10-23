@@ -6,7 +6,7 @@ class Constants:
     L: number of schemas
     T: size of look-ahead window
     """
-    DEBUG = False
+    DEBUG = True
 
     VISUALIZE_SCHEMAS = True
     VISUALIZE_INNER_STATE = True

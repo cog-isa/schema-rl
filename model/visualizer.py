@@ -1,4 +1,5 @@
 import os
+from collections import namedtuple
 import numpy as np
 from PIL import Image
 from .constants import Constants
@@ -20,20 +21,27 @@ class Visualizer(Constants):
         self._attribute_tensor = None
         self._iter = None
 
+
         # colors
+        self.colors = {
+            'RED': (255, 0, 0),
+            'GREEN': (0, 255, 0),
+            'BLUE': (0, 0, 255),
+            'WHITE': (255, 255, 255),
+        }
+
         self._color_map = {
-            self.BALL_IDX: (0, 255, 0),  # pure green for easier detection
+            self.BALL_IDX: self.colors['GREEN'],
             self.PADDLE_IDX: CLASSIC_PADDLE_COLOR,  # red-like
             self.WALL_IDX: CLASSIC_WALL_COLOR,  # gray-like
             self.BRICK_IDX: CLASSIC_BRICK_COLORS[0],  # dark-blue-like
             self.BACKGROUND_IDX: CLASSIC_BACKGROUND_COLOR  # pure black
         }
-        self.SEPARATOR_COLOR = (255, 255, 255)  # pure white
-        self.BAD_ENTITY_COLOR = (255, 0, 0)  # pure red
-
         self.BACKGROUND_COLOR = CLASSIC_BACKGROUND_COLOR
-        self.INACTIVE_ACTION_SLOT_COLOR = (255, 255, 255)
-        self.ACTIVE_ACTION_SLOT_COLOR = (0, 255, 0)
+        self.SEPARATOR_COLOR = self.colors['WHITE']
+        self.BAD_ENTITY_COLOR = self.colors['RED']
+        self.INACTIVE_ACTION_SLOT_COLOR = self.colors['WHITE']
+        self.ACTIVE_ACTION_SLOT_COLOR = self.colors['RED']
 
     def set_params(self, attribute_tensor, iter):
         self._attribute_tensor = attribute_tensor
