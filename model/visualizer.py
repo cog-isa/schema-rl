@@ -146,14 +146,14 @@ class Visualizer(Constants):
         h_separator[:, :] = self.SEPARATOR_COLOR
 
         # adding actions indicator
-        assert self.ACTION_SPACE_DIM == 3
-        action_slots_indices = np.array([self.FILTER_SIZE + offset for offset in (-2, 0, 2)])
-        active_slots_indices = action_slots_indices[active_actions]
+        offsets = (-2, 0, 2) if self.ACTION_SPACE_DIM == 3 else (-1, 1)
+        action_slots_indices = np.array([self.FILTER_SIZE + offset for offset in offsets])
+        activated_slots_indices = action_slots_indices[active_actions]
 
         actions_indicator = np.empty((3, 2 * self.FILTER_SIZE + 1, self.N_CHANNELS), dtype=np.uint8)
         actions_indicator[:, :] = self.BACKGROUND_COLOR
         actions_indicator[1, action_slots_indices] = self.INACTIVE_ACTION_SLOT_COLOR
-        actions_indicator[1, active_slots_indices] = self.ACTIVE_ACTION_SLOT_COLOR
+        actions_indicator[1, activated_slots_indices] = self.ACTIVE_ACTION_SLOT_COLOR
 
         concat_pixmap = np.vstack((concat_pixmap, h_separator, actions_indicator))
         return concat_pixmap

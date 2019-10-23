@@ -5,11 +5,11 @@ from .graph_utils import MetaObject, Attribute, FakeAttribute, Action
 
 
 class TensorHandler(Constants):
-    def __init__(self, W, R, attribute_nodes, action_nodes, reward_nodes, proxy_env):
+    def __init__(self, W, R, attribute_nodes, action_nodes, reward_nodes, entities_stack):
         self._W = W
         self._R = R
 
-        self._proxy_env = proxy_env
+        self._entities_stack = entities_stack
 
         # ((FRAME_STACK_SIZE + T) x self.N x self.M)
         self._attribute_tensor = None
@@ -36,8 +36,8 @@ class TensorHandler(Constants):
         Get observed state
         :returns (FRAME_STACK_SIZE x N x M) tensor
         """
-        assert self._proxy_env is not None, 'NO_PROXY_ENV'
-        assert len(self._proxy_env) == self.FRAME_STACK_SIZE, 'BAD_PROXY_ENV'
+        assert self._entities_stack is not None, 'NO_ENTITIES_STACK'
+        assert len(self._entities_stack) == self.FRAME_STACK_SIZE, 'BAD_ENTITIES_STACK'
 
         if self.DEBUG:
             print('STUB: get_env_attribute_tensor()')
@@ -49,7 +49,7 @@ class TensorHandler(Constants):
             matrix_shape = (self.N, self.M)
             attribute_tensor = np.empty((self.FRAME_STACK_SIZE,) + matrix_shape, dtype=bool)
             for i in range(self.FRAME_STACK_SIZE):
-                matrix = self._proxy_env[i].get_attribute_matrix()
+                matrix = self._entities_stack[i]
                 assert matrix.shape == matrix_shape, 'BAD_MATRIX_SHAPE'
                 attribute_tensor[i, :, :] = matrix
 

@@ -7,7 +7,7 @@ from .visualizer import Visualizer
 
 
 class SchemaNetwork(Constants):
-    def __init__(self, W, R, proxy_env):
+    def __init__(self, W, R, entities_stack):
         """
         :param W: list of M matrices, each of [(MR + A) x L] shape
         :param R: list of 2 matrices, each of [(MN + A) x L] shape, 1st - pos, 2nd - neg
@@ -28,7 +28,7 @@ class SchemaNetwork(Constants):
 
         self._tensor_handler = TensorHandler(self._W, self._R, self._attribute_nodes,
                                              self._action_nodes, self._reward_nodes,
-                                             proxy_env)
+                                             entities_stack)
         self._planner = Planner(self._reward_nodes)
         self._visualizer = Visualizer(self._W)
         self._iter = None
@@ -91,8 +91,8 @@ class SchemaNetwork(Constants):
         # stub for proxy_env list of objects
         # TODO
         # add function to check if we have enough frames to make forward pass
-        if len(self._tensor_handler._proxy_env) < self.FRAME_STACK_SIZE:
-            print('Small proxy_env len, can\'t plan, returning random actions.')
+        if len(self._tensor_handler._entities_stack) < self.FRAME_STACK_SIZE:
+            print('Small ENTITIES_STACK. Abort.')
             planned_actions = np.random.randint(low=0,
                                                 high=self.ACTION_SPACE_DIM,
                                                 size=self.T)

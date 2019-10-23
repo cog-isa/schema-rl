@@ -1,3 +1,4 @@
+import os
 from collections import deque
 import numpy as np
 from environment.schema_games.breakout.games import StandardBreakout
@@ -11,13 +12,18 @@ class Runner(Constants):
         self.n_steps = n_steps
 
     def load_schema_matrices(self):
+        dir_name = './dump'
         W = []
         R = []
         for idx in range(self.M):
-            w = np.load('w_{}'.format(idx))
+            file_name = 'w_{}'.format(idx)
+            path = os.path.join(dir_name, file_name)
+            w = np.load(path, allow_pickle=True)
             W.append(w)
         for idx in range(2):
-            r = np.load('r_{}'.format(idx))
+            file_name = 'r_{}'.format(idx)
+            path = os.path.join(dir_name, file_name)
+            r = np.load(path, allow_pickle=True)
             R.append(r)
         return W, R
 
@@ -31,16 +37,13 @@ class Runner(Constants):
             frame_stack = deque(maxlen=self.FRAME_STACK_SIZE)
 
             for step_idx in range(self.n_steps):
-                obs = FeatureMatrix(env,
-                                    shape=(self.SCREEN_HEIGHT, self.SCREEN_WIDTH),
-                                    attrs_num=self.M,
-                                    window_size=self.NEIGHBORHOOD_RADIUS,
-                                    action_space=self.ACTION_SPACE_DIM).matrix
+                obs = FeatureMatrix(env).matrix
                 frame_stack.append(obs)
 
                 model = SchemaNetwork(W, R, frame_stack)
                 model.set_curr_iter(episode_idx * self.n_steps + step_idx)
-                action = model.plan_actions()
+                actions = model.plan_actions()
+                action = actions[0]
 
                 obs, reward, done, _ = env.step(action)
                 if done:
