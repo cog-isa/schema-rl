@@ -29,6 +29,11 @@ class Visualizer(Constants):
             self.BACKGROUND_IDX: CLASSIC_BACKGROUND_COLOR  # pure black
         }
         self.SEPARATOR_COLOR = (255, 255, 255)  # pure white
+        self.BAD_ENTITY_COLOR = (255, 0, 0)  # pure red
+
+        self.BACKGROUND_COLOR = CLASSIC_BACKGROUND_COLOR
+        self.INACTIVE_ACTION_SLOT_COLOR = (255, 255, 255)
+        self.ACTIVE_ACTION_SLOT_COLOR = (0, 255, 0)
 
     def set_attribute_tensor(self, attribute_tensor, iter):
         self._attribute_tensor = attribute_tensor
@@ -42,25 +47,34 @@ class Visualizer(Constants):
         n_entities, _ = entities.shape
         row_indices, col_indices = np.where(entities)
 
-        unique, counts = np.unique(row_indices, return_counts=True)
-        diff = row_indices.size - unique.size
-        if diff:
-            duplicate_indices = unique[counts > 1]
+        unique, unique_index, unique_counts = np.unique(row_indices, return_index=True, return_counts=True)
+        duplicate_indices = unique[unique_counts > 1]
+
+        colors = np.array([self._color_map[col_idx] if row_idx not in duplicate_indices
+                           else self.BAD_ENTITY_COLOR
+                           for row_idx, col_idx in zip(unique, col_indices[unique_index])])
+
+        if duplicate_indices.size:
             print('BAD_ENTITY (several bits per pixel): {} conflicts'.format(duplicate_indices.size))
             for idx in duplicate_indices:
                 print('idx: {}, entity: {}'.format(idx, entities[idx]))
             print()
             # raise AssertionError
 
-        colors = np.array([self._color_map[col_idx] for col_idx in col_indices])
+        #colors = np.array([self._color_map[col_idx] for col_idx in col_indices])
+        
 
         flat_pixels = np.full((n_entities, self.N_CHANNELS), self.BACKGROUND_IDX, dtype=np.uint8)
         if colors.size:
-            flat_pixels[row_indices, :] = colors
+            flat_pixels[unique, :] = colors
 
         return flat_pixels
 
     def _gen_pixmap(self, state):
+        """
+        :param state: ndarray (n_entities x M)
+        :return: pixmap: ndarray (SCREEN_HEIGHT, SCREEN_WIDTH, N_CHANNELS)
+        """
         flat_pixels = self._convert_entities_to_pixels(state)
         pixmap = flat_pixels.reshape((self.SCREEN_HEIGHT, self.SCREEN_WIDTH, self.N_CHANNELS))
         return pixmap
@@ -103,7 +117,7 @@ class Visualizer(Constants):
         frame_vectors = np.split(vec[:size], self.FRAME_STACK_SIZE)
 
         pixmaps = []
-        dim = 2 * self.NEIGHBORHOOD_RADIUS + 1
+        filter_size = 2 * self.NEIGHBORHOOD_RADIUS + 1
         for frame_vec in frame_vectors:
             central_entity = frame_vec[:self.M]
             ne_entities = frame_vec[self.M:]
@@ -116,15 +130,21 @@ class Visualizer(Constants):
             )
 
             flat_pixels = self._convert_entities_to_pixels(entities)
-            pixmap = flat_pixels.reshape((dim, dim, self.N_CHANNELS))
+            pixmap = flat_pixels.reshape((filter_size, filter_size, self.N_CHANNELS))
             pixmaps.append(pixmap)
 
         # taking separator's width = 1, color = 'white'
-        separator = np.empty((dim, 1, self.N_CHANNELS), dtype=np.uint8)
+        separator = np.empty((filter_size, 1, self.N_CHANNELS), dtype=np.uint8)
         separator[:, :] = self.SEPARATOR_COLOR
         concat_pixmap = np.hstack(
             (pixmaps[0], separator, pixmaps[1])
         )
+
+        # adding actions indicator
+        action_slots_indices = [filter_size + offset for offset in (-2, 0, 2)]
+        actions_indicator = np.empty((2 * filter_size + 1, 3, self.N_CHANNELS), dtype=np.uint8)
+        actions_indicator[1, action_slots_indices] = self.INACTIVE_ACTION_SLOT_COLOR
+
         return concat_pixmap, actions
 
     def visualize_schemas(self, W):
