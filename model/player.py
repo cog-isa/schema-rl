@@ -149,6 +149,11 @@ class Player(Constants):
                         print('PLAYER CHANGED')
                     flag = 1
 
+                    #
+                if reward == -1:
+                    j = 0
+                    self._free_mem()
+
                 self.rewards.append(reward)
 
             if log:
