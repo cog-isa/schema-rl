@@ -1,14 +1,20 @@
 import os
-from collections import namedtuple
 import numpy as np
 from PIL import Image
 from .constants import Constants
-from environment.schema_games.breakout.constants import \
-    CLASSIC_BACKGROUND_COLOR, CLASSIC_BALL_COLOR, CLASSIC_BRICK_COLORS, \
-    CLASSIC_PADDLE_COLOR, CLASSIC_WALL_COLOR
 
 
 class Visualizer(Constants):
+    class Colors:
+        from environment.schema_games.breakout.constants import \
+            CLASSIC_BACKGROUND_COLOR, CLASSIC_BALL_COLOR, CLASSIC_BRICK_COLORS, \
+            CLASSIC_PADDLE_COLOR, CLASSIC_WALL_COLOR
+
+        RED = (255, 0, 0)
+        GREEN = (0, 255, 0)
+        BLUE = (0, 0, 255)
+        WHITE = (255, 255, 255),
+
     def __init__(self, W):
         self.STATE_SCALE = 4
         self.SCHEMA_SCALE = 128
@@ -24,10 +30,7 @@ class Visualizer(Constants):
 
         # colors
         self.colors = {
-            'RED': (255, 0, 0),
-            'GREEN': (0, 255, 0),
-            'BLUE': (0, 0, 255),
-            'WHITE': (255, 255, 255),
+
         }
 
         self._color_map = {
