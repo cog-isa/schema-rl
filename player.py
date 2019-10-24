@@ -131,7 +131,8 @@ class Player(Constants):
                         R = [self.reward_model._W[0] == 1, self.reward_model._W[1] == 1]
 
                         if all(w.shape[1] > 1 for w in W):
-                            decision_model = SchemaNetwork(W, R, self._memory[-self.FRAME_STACK_SIZE:])
+                            frame_stack = [obj.matrix for obj in self._memory[-self.FRAME_STACK_SIZE:]]
+                            decision_model = SchemaNetwork(W, R, frame_stack)
                             decision_model.set_curr_iter(j)
                             action = decision_model.plan_actions()[0] + 1
                         else:
