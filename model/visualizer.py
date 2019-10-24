@@ -4,22 +4,33 @@ from PIL import Image
 from .constants import Constants
 
 
+# colors
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+WHITE = (255, 255, 255)
+
+BACKGROUND_COLOR = (0, 0, 0)
+WALL_COLOR = (142, 142, 142)
+BRICK_COLOR = (66, 72, 200)
+PADDLE_COLOR = (200, 72, 73)
+BAD_ENTITY_COLOR = RED
+
+SEPARATOR_COLOR = WHITE
+INACTIVE_ACTION_SLOT_COLOR = WHITE
+ACTIVE_ACTION_SLOT_COLOR = RED
+
+
 class Visualizer(Constants):
-    class Colors:
-        from environment.schema_games.breakout.constants import \
-            CLASSIC_BACKGROUND_COLOR, CLASSIC_BALL_COLOR, CLASSIC_BRICK_COLORS, \
-            CLASSIC_PADDLE_COLOR, CLASSIC_WALL_COLOR
-
-        RED = (255, 0, 0)
-        GREEN = (0, 255, 0)
-        BLUE = (0, 0, 255)
-        WHITE = (255, 255, 255),
-
     def __init__(self, W):
+        self.VISUALIZATION_DIR_NAME = './visualization'
+        self.ATTRIBUTE_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'attribute_schemas')
+        self.REWARD_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'reward_schemas')
+        self.ENTITIES_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'entities')
+
+        self.N_CHANNELS = 3
         self.STATE_SCALE = 4
         self.SCHEMA_SCALE = 128
-        self.N_CHANNELS = 3
-
         self.BACKGROUND_IDX = self.M
 
         self._W = W
@@ -27,24 +38,13 @@ class Visualizer(Constants):
         self._attribute_tensor = None
         self._iter = None
 
-
-        # colors
-        self.colors = {
-
-        }
-
         self._color_map = {
-            self.BALL_IDX: self.colors['GREEN'],
-            self.PADDLE_IDX: CLASSIC_PADDLE_COLOR,  # red-like
-            self.WALL_IDX: CLASSIC_WALL_COLOR,  # gray-like
-            self.BRICK_IDX: CLASSIC_BRICK_COLORS[0],  # dark-blue-like
-            self.BACKGROUND_IDX: CLASSIC_BACKGROUND_COLOR  # pure black
+            self.BALL_IDX: GREEN,
+            self.PADDLE_IDX: PADDLE_COLOR,  # red-like
+            self.WALL_IDX: WALL_COLOR,  # gray-like
+            self.BRICK_IDX: BRICK_COLOR,  # dark-blue-like
+            self.BACKGROUND_IDX: BACKGROUND_COLOR  # pure black
         }
-        self.BACKGROUND_COLOR = CLASSIC_BACKGROUND_COLOR
-        self.SEPARATOR_COLOR = self.colors['WHITE']
-        self.BAD_ENTITY_COLOR = self.colors['RED']
-        self.INACTIVE_ACTION_SLOT_COLOR = self.colors['WHITE']
-        self.ACTIVE_ACTION_SLOT_COLOR = self.colors['RED']
 
     def set_params(self, attribute_tensor, iter):
         self._attribute_tensor = attribute_tensor
@@ -72,7 +72,7 @@ class Visualizer(Constants):
         duplicate_indices = unique[unique_counts > 1]
 
         colors = np.array([self._color_map[col_idx] if row_idx not in duplicate_indices
-                           else self.BAD_ENTITY_COLOR
+                           else BAD_ENTITY_COLOR
                            for row_idx, col_idx in zip(unique, col_indices[unique_index])])
 
         if duplicate_indices.size:
@@ -104,9 +104,8 @@ class Visualizer(Constants):
             if check_correctness:
                 self._check_entities_for_correctness(self._attribute_tensor[t])
 
-            dir_name = './inner_images'
             file_name = 'iter_{}__t_{}.png'.format(self._iter, t)
-            image_path = os.path.join(dir_name, file_name)
+            image_path = os.path.join(self.ENTITIES_DIR_NAME, file_name)
             self.visualize_entities(self._attribute_tensor[t], image_path)
 
 # ------------- SCHEMA VISUALIZING ------------- #
@@ -148,13 +147,13 @@ class Visualizer(Constants):
 
         # taking separator's width = 1, color = 'white'
         v_separator = np.empty((self.FILTER_SIZE, 1, self.N_CHANNELS), dtype=np.uint8)
-        v_separator[:, :] = self.SEPARATOR_COLOR
+        v_separator[:, :] = SEPARATOR_COLOR
         concat_pixmap = np.hstack(
             (pixmaps[0], v_separator, pixmaps[1])
         )
 
         h_separator = np.empty((1, 2 * self.FILTER_SIZE + 1, self.N_CHANNELS), dtype=np.uint8)
-        h_separator[:, :] = self.SEPARATOR_COLOR
+        h_separator[:, :] = SEPARATOR_COLOR
 
         # adding actions indicator
         offsets = (-2, 0, 2) if self.ACTION_SPACE_DIM == 3 else (-1, 1)
@@ -162,21 +161,21 @@ class Visualizer(Constants):
         activated_slots_indices = action_slots_indices[active_actions]
 
         actions_indicator = np.empty((3, 2 * self.FILTER_SIZE + 1, self.N_CHANNELS), dtype=np.uint8)
-        actions_indicator[:, :] = self.BACKGROUND_COLOR
-        actions_indicator[1, action_slots_indices] = self.INACTIVE_ACTION_SLOT_COLOR
-        actions_indicator[1, activated_slots_indices] = self.ACTIVE_ACTION_SLOT_COLOR
+        actions_indicator[:, :] = BACKGROUND_COLOR
+        actions_indicator[1, action_slots_indices] = INACTIVE_ACTION_SLOT_COLOR
+        actions_indicator[1, activated_slots_indices] = ACTIVE_ACTION_SLOT_COLOR
 
         concat_pixmap = np.vstack((concat_pixmap, h_separator, actions_indicator))
         return concat_pixmap
 
     def visualize_schemas(self, W):
-        file = open('./schema_images/metadata__iter_{}'.format(self._iter), 'wt')
+        #file = open('./visualization/attribute_schemas/metadata__iter_{}'.format(self._iter), 'wt')
         for attribute_idx, w in enumerate(W):
             s = 'attribute_idx: {}\n'.format(attribute_idx)
-            file.write(s)
+            #file.write(s)
             for vec_idx, vec in enumerate(w.T):
                 s = 4 * ' ' + 'vec_idx: {}\n'.format(vec_idx)
-                file.write(s)
+                #file.write(s)
 
                 pixmap = self._gen_schema_activation_pattern(vec)
                 n_rows, n_cols, _ = pixmap.shape
@@ -184,9 +183,11 @@ class Visualizer(Constants):
                 image = Image.fromarray(pixmap)
                 image = image.resize((n_cols * self.SCHEMA_SCALE,
                                       n_rows * self.SCHEMA_SCALE))
-                image.save('./schema_images/iter_{}__attr_{}__vec_{}.png'.format(
-                    self._iter, attribute_idx, vec_idx
-                ))
+                file_name = 'iter_{}__attr_{}__vec_{}.png'.format(self._iter,
+                                                                  attribute_idx,
+                                                                  vec_idx)
+                path = os.path.join(self.ATTRIBUTE_SCHEMAS_DIR_NAME, file_name)
+                image.save(path)
 
-                file.write(8 * ' ' + str(vec.astype(int)) + '\n')
-        file.close()
+                #file.write(8 * ' ' + str(vec.astype(int)) + '\n')
+        #file.close()

@@ -1,1 +1,1 @@
-rm images/* inner_images/* schema_images/*
+rm visualization/attribute_schemas/* visualization/reward_schemas/* visualization/entities/*
