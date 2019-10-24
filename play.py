@@ -1,6 +1,6 @@
 from model.schemanet import SchemaNet
 
-from model.player import Player
+from player import Player
 if __name__ == '__main__':
     model = SchemaNet()
     reward_model = SchemaNet()
