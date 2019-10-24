@@ -22,7 +22,7 @@ ACTIVE_ACTION_SLOT_COLOR = RED
 
 
 class Visualizer(Constants):
-    def __init__(self, W):
+    def __init__(self):
         self.VISUALIZATION_DIR_NAME = './visualization'
         self.ATTRIBUTE_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'attribute_schemas')
         self.REWARD_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'reward_schemas')
@@ -33,7 +33,6 @@ class Visualizer(Constants):
         self.SCHEMA_SCALE = 128
         self.BACKGROUND_IDX = self.M
 
-        self._W = W
         # ((FRAME_STACK_SIZE + T) x self.N x self.M)
         self._attribute_tensor = None
         self._iter = None
@@ -136,9 +135,7 @@ class Visualizer(Constants):
         active_actions = actions.nonzero()[0]
         return entities_stack, active_actions
 
-    def _gen_schema_activation_pattern(self, vec):
-        entities_stack, active_actions = self._parse_schema_vector(vec)
-
+    def _gen_schema_activation_pattern(self, entities_stack, active_actions):
         pixmaps = []
         for entities in entities_stack:
             flat_pixels = self._convert_entities_to_pixels(entities)
@@ -168,26 +165,32 @@ class Visualizer(Constants):
         concat_pixmap = np.vstack((concat_pixmap, h_separator, actions_indicator))
         return concat_pixmap
 
-    def visualize_schemas(self, W):
-        #file = open('./visualization/attribute_schemas/metadata__iter_{}'.format(self._iter), 'wt')
+    def _save_schema_image(self, vec, image_path):
+        entities_stack, active_actions = self._parse_schema_vector(vec)
+        pixmap = self._gen_schema_activation_pattern(entities_stack, active_actions)
+        n_rows, n_cols, _ = pixmap.shape
+
+        image = Image.fromarray(pixmap)
+        image = image.resize((n_cols * self.SCHEMA_SCALE,
+                              n_rows * self.SCHEMA_SCALE))
+        image.save(image_path)
+
+    def visualize_schemas(self, W, R):
+        # attribute schemas
         for attribute_idx, w in enumerate(W):
-            s = 'attribute_idx: {}\n'.format(attribute_idx)
-            #file.write(s)
             for vec_idx, vec in enumerate(w.T):
-                s = 4 * ' ' + 'vec_idx: {}\n'.format(vec_idx)
-                #file.write(s)
-
-                pixmap = self._gen_schema_activation_pattern(vec)
-                n_rows, n_cols, _ = pixmap.shape
-
-                image = Image.fromarray(pixmap)
-                image = image.resize((n_cols * self.SCHEMA_SCALE,
-                                      n_rows * self.SCHEMA_SCALE))
-                file_name = 'iter_{}__attr_{}__vec_{}.png'.format(self._iter,
-                                                                  attribute_idx,
-                                                                  vec_idx)
+                file_name = 'iter_{}__{}__vec_{}.png'.format(self._iter,
+                                                             self.ENTITY_NAMES[attribute_idx],
+                                                             vec_idx)
                 path = os.path.join(self.ATTRIBUTE_SCHEMAS_DIR_NAME, file_name)
-                image.save(path)
+                self._save_schema_image(vec, path)
 
-                #file.write(8 * ' ' + str(vec.astype(int)) + '\n')
-        #file.close()
+        # reward schemas
+        for reward_type, r in enumerate(R):
+            for vec_idx, vec in enumerate(r.T):
+                file_name = 'iter_{}__{}__vec_{}.png'.format(self._iter,
+                                                             self.REWARD_NAMES[reward_type],
+                                                             vec_idx)
+                path = os.path.join(self.REWARD_SCHEMAS_DIR_NAME, file_name)
+                self._save_schema_image(vec, path)
+

@@ -30,7 +30,7 @@ class SchemaNetwork(Constants):
                                              self._action_nodes, self._reward_nodes,
                                              entities_stack)
         self._planner = Planner(self._reward_nodes)
-        self._visualizer = Visualizer(self._W)
+        self._visualizer = Visualizer()
         self._iter = None
 
     def _process_input(self, W, R):
@@ -104,7 +104,7 @@ class SchemaNetwork(Constants):
         # visualizing
         self._visualizer.set_params(attribute_tensor, self._iter)
         if self.VISUALIZE_SCHEMAS:
-            self._visualizer.visualize_schemas(self._W)
+            self._visualizer.visualize_schemas(self._W, self._R)
         if self.VISUALIZE_INNER_STATE:
             self._visualizer.visualize_predicted_entities(check_correctness=True)
 

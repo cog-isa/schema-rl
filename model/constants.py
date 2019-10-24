@@ -11,12 +11,6 @@ class Constants:
     VISUALIZE_SCHEMAS = True
     VISUALIZE_INNER_STATE = True
 
-    # indices of corresponding attributes in entities' vectors
-    BALL_IDX = 0
-    PADDLE_IDX = 1
-    WALL_IDX = 2
-    BRICK_IDX = 3
-
     if not DEBUG:
         SCREEN_WIDTH = 94
         SCREEN_HEIGHT = 117
@@ -49,3 +43,21 @@ class Constants:
     FRAME_STACK_SIZE = 2
 
     SCHEMA_VEC_SIZE = FRAME_STACK_SIZE * (M * (NEIGHBORS_NUM + 1)) + ACTION_SPACE_DIM
+
+    # indices of corresponding attributes in entities' vectors
+    BALL_IDX = 0
+    PADDLE_IDX = 1
+    WALL_IDX = 2
+    BRICK_IDX = 3
+
+    ENTITY_NAMES = {
+        BALL_IDX: 'BALL',
+        PADDLE_IDX: 'PADDLE',
+        WALL_IDX: 'WALL',
+        BRICK_IDX: 'BRICK',
+    }
+
+    REWARD_NAMES = {
+        0: 'POSITIVE',
+        1: 'NEGATIVE',
+    }
