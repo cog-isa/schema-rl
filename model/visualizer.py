@@ -193,4 +193,3 @@ class Visualizer(Constants):
                                                              vec_idx)
                 path = os.path.join(self.REWARD_SCHEMAS_DIR_NAME, file_name)
                 self._save_schema_image(vec, path)
-

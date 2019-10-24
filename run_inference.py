@@ -5,26 +5,34 @@ from environment.schema_games.breakout.games import StandardBreakout
 from model.featurematrix import FeatureMatrix
 from model.inference import SchemaNetwork
 from model.constants import Constants
+from testing.testing import HardcodedSchemaVectors
+
 
 class Runner(Constants):
     def __init__(self, n_episodes, n_steps):
         self.n_episodes = n_episodes
         self.n_steps = n_steps
 
-    def load_schema_matrices(self):
-        dir_name = './dump'
-        W = []
-        R = []
-        for idx in range(self.M):
-            file_name = 'w_{}'.format(idx)
-            path = os.path.join(dir_name, file_name)
-            w = np.load(path, allow_pickle=True)
-            W.append(w)
-        for idx in range(2):
-            file_name = 'r_{}'.format(idx)
-            path = os.path.join(dir_name, file_name)
-            r = np.load(path, allow_pickle=True)
-            R.append(r)
+    def load_schema_matrices(self, generate=True):
+        if generate:
+            W = HardcodedSchemaVectors.gen_attribute_schema_matrices()
+            for w in W:
+                print(w.shape)
+            R = W.copy()  # temporarily
+        else:
+            dir_name = './dump'
+            W = []
+            R = []
+            for idx in range(self.M):
+                file_name = 'w_{}'.format(idx)
+                path = os.path.join(dir_name, file_name)
+                w = np.load(path, allow_pickle=True)
+                W.append(w)
+            for idx in range(2):
+                file_name = 'r_{}'.format(idx)
+                path = os.path.join(dir_name, file_name)
+                r = np.load(path, allow_pickle=True)
+                R.append(r)
         return W, R
 
     def loop(self):
