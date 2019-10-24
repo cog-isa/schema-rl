@@ -5,4 +5,4 @@ if __name__ == '__main__':
     model = SchemaNet()
     reward_model = SchemaNet()
     standard_player = Player(model, reward_model)
-    standard_player.play(step_num=200, log=True, cheat=True)
+    standard_player.play(step_num=200, log=True, cheat=False)

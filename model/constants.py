@@ -18,7 +18,7 @@ class Constants:
         N = SCREEN_WIDTH * SCREEN_HEIGHT
         M = 4
         T = 3
-        ACTION_SPACE_DIM = 2
+        ACTION_SPACE_DIM = 3
         REWARD_SPACE_DIM = 2
 
         NEIGHBORHOOD_RADIUS = 2
