@@ -22,8 +22,8 @@ class HardcodedSchemaVectors(Constants):
         (Precondition('prev', 0, 0, PADDLE_IDX),
          Precondition('curr', 0, 0, PADDLE_IDX)),
         # paddle growing
-        (Precondition('curr', 0, -1, PADDLE_IDX)),  # to right
-        (Precondition('curr', 0, 1, PADDLE_IDX)),  # to left
+        (Precondition('curr', 0, -1, PADDLE_IDX),),  # to right
+        (Precondition('curr', 0, 1, PADDLE_IDX),),  # to left
     ]
     ball = [
         # linear movement
@@ -99,6 +99,8 @@ class HardcodedSchemaVectors(Constants):
             for schema in entity_type:
                 vec = np.full(cls.SCHEMA_VEC_SIZE, False, dtype=bool)
                 for precondition in schema:
+                    if type(precondition) == str:
+                        print(precondition)
                     idx = cls.convert_filter_offset_to_schema_vec_idx(precondition.time_step,
                                                                       precondition.di,
                                                                       precondition.dj,
