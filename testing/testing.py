@@ -1,28 +1,73 @@
 import numpy as np
 from model.constants import Constants
+from collections import namedtuple
 
 
 class HardcodedSchemaVectors(Constants):
+    BALL_IDX = Constants.BALL_IDX
+    PADDLE_IDX = Constants.PADDLE_IDX
+    WALL_IDX = Constants.WALL_IDX
+    BRICK_IDX = Constants.BRICK_IDX
+
+    Precondition = namedtuple('Precondition', ['time_step', 'di', 'dj', 'entity_type_idx'])
     wall = [
-        ((0, 0), (0, 0)),
+        (Precondition('prev', 0, 0, WALL_IDX),
+         Precondition('curr', 0, 0, WALL_IDX)),
     ]
-
     brick = [
-        ((0, 0), (0, 0)),
+        (Precondition('prev', 0, 0, BRICK_IDX),
+         Precondition('curr', 0, 0, BRICK_IDX)),
     ]
-
     paddle = [
-        ((0, 0), (0, 0)),
+        (Precondition('prev', 0, 0, PADDLE_IDX),
+         Precondition('curr', 0, 0, PADDLE_IDX)),
     ]
-
     ball = [
-        ((-2, -2), (-1, -1)),
+        # linear movement
+        (Precondition('prev', -2, -2, BALL_IDX),
+         Precondition('curr', -1, -1, BALL_IDX)),
+        (Precondition('prev', -2, 2, BALL_IDX),
+         Precondition('curr', -1, 1, BALL_IDX)),
+        (Precondition('prev', 2, 2, BALL_IDX),
+         Precondition('curr', 1, 1, BALL_IDX)),
+        (Precondition('prev', 2, -2, BALL_IDX),
+         Precondition('curr', 1, -1, BALL_IDX)),
+        (Precondition('prev', -2, 0, BALL_IDX),
+         Precondition('curr', -1, 0, BALL_IDX)),
+        (Precondition('prev', 2, 0, BALL_IDX),
+         Precondition('curr', 1, 0, BALL_IDX)),
+        # bounce from paddle
+        (Precondition('prev', 0, -2, BALL_IDX),  # left to right
+         Precondition('curr', 1, -1, BALL_IDX),
+         Precondition('prev', 2, -1, PADDLE_IDX),
+         Precondition('curr', 2, -1, PADDLE_IDX)),
+        (Precondition('prev', 0, 2, BALL_IDX),  # right to left
+         Precondition('curr', 1, 1, BALL_IDX),
+         Precondition('prev', 2, 1, PADDLE_IDX),
+         Precondition('curr', 2, 1, PADDLE_IDX)),
+        # bounce from wall
+        (Precondition('prev', 2, 0, BALL_IDX),  # left wall, bounce bottom-up
+         Precondition('curr', 1, -1, BALL_IDX),
+         Precondition('prev', 1, -2, WALL_IDX),
+         Precondition('curr', 1, -2, WALL_IDX)),
+        (Precondition('prev', -2, 0, BALL_IDX),  # left wall, bounce top-down
+         Precondition('curr', -1, -1, BALL_IDX),
+         Precondition('prev', -1, -2, WALL_IDX),
+         Precondition('curr', -1, -2, WALL_IDX)),
+        (Precondition('prev', 2, 0, BALL_IDX),  # right wall, bounce bottom-up
+         Precondition('curr', 1, 1, BALL_IDX),
+         Precondition('prev', 1, 2, WALL_IDX),
+         Precondition('curr', 1, 2, WALL_IDX)),
+        (Precondition('prev', -2, 0, BALL_IDX),  # right wall, bounce top-down
+         Precondition('curr', -1, 1, BALL_IDX),
+         Precondition('prev', -1, 2, WALL_IDX),
+         Precondition('curr', -1, 2, WALL_IDX)),
     ]
 
-    object_types = (ball, paddle, wall, brick)
+    entity_types = (ball, paddle, wall, brick)
 
     @classmethod
-    def convert_filter_offset_to_schema_vec_idx(cls, di, dj, time_step, entity_type_idx):
+    def convert_filter_offset_to_schema_vec_idx(cls, time_step, di, dj, entity_type_idx):
         assert time_step in ('prev', 'curr')
 
         i = cls.NEIGHBORHOOD_RADIUS + di
@@ -37,24 +82,24 @@ class HardcodedSchemaVectors(Constants):
         else:
             vec_entity_idx = filter_idx
 
-        vec_idx = vec_entity_idx * cls.M + entity_type_idx
-
         if time_step == 'curr':
-            vec_idx += cls.NEIGHBORS_NUM + 1
+            vec_entity_idx += cls.NEIGHBORS_NUM + 1
 
+        vec_idx = vec_entity_idx * cls.M + entity_type_idx
         return vec_idx
 
     @classmethod
     def gen_attribute_schema_matrices(cls):
         W = []
-        for entity_type_idx, object_type in enumerate(cls.object_types):
+        for entity_type in cls.entity_types:
             W_i = []
-            for record in object_type:
+            for schema in entity_type:
                 vec = np.full(cls.SCHEMA_VEC_SIZE, False, dtype=bool)
-                for time_record, time_param in zip(record, ('prev', 'curr')):
-                    di = time_record[0]
-                    dj = time_record[1]
-                    idx = cls.convert_filter_offset_to_schema_vec_idx(di, dj, time_param, entity_type_idx)
+                for precondition in schema:
+                    idx = cls.convert_filter_offset_to_schema_vec_idx(precondition.time_step,
+                                                                      precondition.di,
+                                                                      precondition.dj,
+                                                                      precondition.entity_type_idx)
                     vec[idx] = True
                 W_i.append(vec)
             W.append(W_i)

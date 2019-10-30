@@ -144,7 +144,7 @@ class FakeAttribute:
 
 
 class Action:
-    not_planned_idx = -1
+    not_planned_idx = 0
 
     def __init__(self, idx, t):
         """

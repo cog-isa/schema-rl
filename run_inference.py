@@ -18,7 +18,7 @@ class Runner(Constants):
             W = HardcodedSchemaVectors.gen_attribute_schema_matrices()
             for w in W:
                 print(w.shape)
-            R = W.copy()  # temporarily
+            R = W[:2].copy()  # temporarily
         else:
             dir_name = './dump'
             W = []
