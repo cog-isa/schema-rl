@@ -34,6 +34,7 @@ class SchemaNetwork(Constants):
         self._iter = None
 
     def _process_input(self, W, R):
+        assert len(W) == self.M - 1, 'BAD_W_NUM'
         # drop first schema - it's bad
         for i in range(len(W)):
             if W[i][:, 0].all():

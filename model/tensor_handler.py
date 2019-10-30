@@ -57,7 +57,7 @@ class TensorHandler(Constants):
 
     def _gen_attribute_tensor(self):
         shape = (self.FRAME_STACK_SIZE + self.T, self.N, self.M)
-        self._attribute_tensor = np.empty(shape, dtype=bool)
+        self._attribute_tensor = np.full(shape, False, dtype=bool)
 
     def _gen_reward_tensor(self):
         shape = (self.FRAME_STACK_SIZE + self.T, self.REWARD_SPACE_DIM)
@@ -162,6 +162,10 @@ class TensorHandler(Constants):
             predicted_matrix = ~(~transformed_matrix @ W)
             self._instantiate_attribute_grounded_schemas(attr_idx, t+1, reference_matrix, W, predicted_matrix)
             self._attribute_tensor[t + 1, :, attr_idx] = predicted_matrix.any(axis=1)
+
+        # raise void bit
+        void_entity_mask = ~self._attribute_tensor[t + 1, :, :].any(axis=1)
+        self._attribute_tensor[t + 1, void_entity_mask, self.VOID_IDX] = True
 
     def _predict_next_reward_layer(self, t):
         """

@@ -48,10 +48,13 @@ class Runner(Constants):
                 obs = FeatureMatrix(env).matrix
                 frame_stack.append(obs)
 
-                model = SchemaNetwork(W, R, frame_stack)
-                model.set_curr_iter(episode_idx * self.n_steps + step_idx)
-                actions = model.plan_actions()
-                action = actions[0]
+                if len(frame_stack) >= self.FRAME_STACK_SIZE:
+                    model = SchemaNetwork(W, R, frame_stack)
+                    model.set_curr_iter(episode_idx * self.n_steps + step_idx)
+                    actions = model.plan_actions()
+                    action = actions[0]
+                else:
+                    action = 0
 
                 obs, reward, done, _ = env.step(action)
                 if done:

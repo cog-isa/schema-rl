@@ -8,15 +8,21 @@ from .constants import Constants
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
+BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+PURPLE = (128, 0, 128)
 
-BACKGROUND_COLOR = (0, 0, 0)
+BACKGROUND_COLOR = WHITE
+
+BALL_COLOR = GREEN
 WALL_COLOR = (142, 142, 142)
 BRICK_COLOR = (66, 72, 200)
 PADDLE_COLOR = (200, 72, 73)
-BAD_ENTITY_COLOR = WHITE
+VOID_COLOR = BLACK
 
-SEPARATOR_COLOR = WHITE
+BAD_ENTITY_COLOR = PURPLE
+
+PATTERN_SEPARATOR_COLOR = (98, 234, 223) # light-blue
 INACTIVE_ACTION_SLOT_COLOR = WHITE
 ACTIVE_ACTION_SLOT_COLOR = RED
 
@@ -37,11 +43,11 @@ class Visualizer(Constants):
         self._iter = None
 
         self._color_map = {
-            self.BALL_IDX: GREEN,
+            self.BALL_IDX: BALL_COLOR,
             self.PADDLE_IDX: PADDLE_COLOR,  # red-like
             self.WALL_IDX: WALL_COLOR,  # gray-like
             self.BRICK_IDX: BRICK_COLOR,  # dark-blue-like
-            self.VOID_IDX: BACKGROUND_COLOR  # pure black
+            self.VOID_IDX: VOID_COLOR
         }
 
     def set_params(self, attribute_tensor, iter):
@@ -80,7 +86,8 @@ class Visualizer(Constants):
             print()
             # raise AssertionError
 
-        flat_pixels = np.full((n_entities, self.N_CHANNELS), self.VOID_IDX, dtype=np.uint8)
+        flat_pixels = np.empty((n_entities, self.N_CHANNELS), dtype=np.uint8)
+        flat_pixels[:] = BACKGROUND_COLOR
         if colors.size:
             flat_pixels[unique, :] = colors
 
@@ -143,13 +150,13 @@ class Visualizer(Constants):
 
         # taking separator's width = 1, color = 'white'
         v_separator = np.empty((self.FILTER_SIZE, 1, self.N_CHANNELS), dtype=np.uint8)
-        v_separator[:, :] = SEPARATOR_COLOR
+        v_separator[:, :] = PATTERN_SEPARATOR_COLOR
         concat_pixmap = np.hstack(
             (pixmaps[0], v_separator, pixmaps[1])
         )
 
         h_separator = np.empty((1, 2 * self.FILTER_SIZE + 1, self.N_CHANNELS), dtype=np.uint8)
-        h_separator[:, :] = SEPARATOR_COLOR
+        h_separator[:, :] = PATTERN_SEPARATOR_COLOR
 
         # adding actions indicator
         offsets = (-2, 0, 2) if self.ACTION_SPACE_DIM == 3 else (-1, 1)
@@ -157,7 +164,7 @@ class Visualizer(Constants):
         activated_slots_indices = action_slots_indices[active_actions]
 
         actions_indicator = np.empty((3, 2 * self.FILTER_SIZE + 1, self.N_CHANNELS), dtype=np.uint8)
-        actions_indicator[:, :] = BACKGROUND_COLOR
+        actions_indicator[:, :] = PATTERN_SEPARATOR_COLOR
         actions_indicator[1, action_slots_indices] = INACTIVE_ACTION_SLOT_COLOR
         actions_indicator[1, activated_slots_indices] = ACTIVE_ACTION_SLOT_COLOR
 

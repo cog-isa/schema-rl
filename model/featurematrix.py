@@ -7,20 +7,19 @@ class FeatureMatrix(Constants):
         """
         :param env: object of class environment.schema_games.breakout.games
         """
-        self.matrix = np.zeros((self.SCREEN_HEIGHT * self.SCREEN_WIDTH, self.M))
+        self.matrix = np.zeros((self.N, self.M))
         self.planned_action = None
 
         for ball in env.balls:
             if ball.is_entity:
                 for state, eid in env.parse_object_into_pixels(ball):
                     pos = list(state.keys())[0][1]
-                    print('ball', pos)
+                    #print('ball', pos)
                     ind = self.transform_pos_to_index(pos)
                     self.matrix[ind][self.BALL_IDX] = 1
 
         if env.paddle.is_entity:
             for state, eid in env.parse_object_into_pixels(env.paddle):
-                # TODO: add parts of paddle
                 pos = list(state.keys())[0][1]
                 print('paddle', pos)
                 for i in range(-11, 12):
@@ -45,6 +44,11 @@ class FeatureMatrix(Constants):
                         for j in range(-4, 4):
                             ind = self.transform_pos_to_index((pos[0] + i, pos[1] + j))
                             self.matrix[ind][self.BRICK_IDX] = 1
+
+        # set VOID bit
+        for i in range(self.N):
+            if not self.matrix[i].any():
+                self.matrix[i, self.VOID_IDX] = 1
 
     def transform_pos_to_index(self, pos):
         return pos[0] * self.SCREEN_WIDTH + pos[1]
