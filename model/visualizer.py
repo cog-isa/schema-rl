@@ -31,7 +31,6 @@ class Visualizer(Constants):
         self.N_CHANNELS = 3
         self.STATE_SCALE = 4
         self.SCHEMA_SCALE = 128
-        self.BACKGROUND_IDX = self.M
 
         # ((FRAME_STACK_SIZE + T) x self.N x self.M)
         self._attribute_tensor = None
@@ -42,7 +41,7 @@ class Visualizer(Constants):
             self.PADDLE_IDX: PADDLE_COLOR,  # red-like
             self.WALL_IDX: WALL_COLOR,  # gray-like
             self.BRICK_IDX: BRICK_COLOR,  # dark-blue-like
-            self.BACKGROUND_IDX: BACKGROUND_COLOR  # pure black
+            self.VOID_IDX: BACKGROUND_COLOR  # pure black
         }
 
     def set_params(self, attribute_tensor, iter):
@@ -81,7 +80,7 @@ class Visualizer(Constants):
             print()
             # raise AssertionError
 
-        flat_pixels = np.full((n_entities, self.N_CHANNELS), self.BACKGROUND_IDX, dtype=np.uint8)
+        flat_pixels = np.full((n_entities, self.N_CHANNELS), self.VOID_IDX, dtype=np.uint8)
         if colors.size:
             flat_pixels[unique, :] = colors
 

@@ -8,6 +8,7 @@ class HardcodedSchemaVectors(Constants):
     PADDLE_IDX = Constants.PADDLE_IDX
     WALL_IDX = Constants.WALL_IDX
     BRICK_IDX = Constants.BRICK_IDX
+    VOID_IDX = Constants.VOID_IDX
 
     Precondition = namedtuple('Precondition', ['time_step', 'di', 'dj', 'entity_type_idx'])
     wall = [
@@ -28,17 +29,23 @@ class HardcodedSchemaVectors(Constants):
     ball = [
         # linear movement
         (Precondition('prev', -2, -2, BALL_IDX),
-         Precondition('curr', -1, -1, BALL_IDX)),
+         Precondition('curr', -1, -1, BALL_IDX),
+         Precondition('curr', 0, 0, VOID_IDX)),
         (Precondition('prev', -2, 2, BALL_IDX),
-         Precondition('curr', -1, 1, BALL_IDX)),
+         Precondition('curr', -1, 1, BALL_IDX),
+         Precondition('curr', 0, 0, VOID_IDX)),
         (Precondition('prev', 2, 2, BALL_IDX),
-         Precondition('curr', 1, 1, BALL_IDX)),
+         Precondition('curr', 1, 1, BALL_IDX),
+         Precondition('curr', 0, 0, VOID_IDX)),
         (Precondition('prev', 2, -2, BALL_IDX),
-         Precondition('curr', 1, -1, BALL_IDX)),
+         Precondition('curr', 1, -1, BALL_IDX),
+         Precondition('curr', 0, 0, VOID_IDX)),
         (Precondition('prev', -2, 0, BALL_IDX),
-         Precondition('curr', -1, 0, BALL_IDX)),
+         Precondition('curr', -1, 0, BALL_IDX),
+         Precondition('curr', 0, 0, VOID_IDX)),
         (Precondition('prev', 2, 0, BALL_IDX),
-         Precondition('curr', 1, 0, BALL_IDX)),
+         Precondition('curr', 1, 0, BALL_IDX),
+         Precondition('curr', 0, 0, VOID_IDX)),
         # bounce from paddle
         (Precondition('prev', 0, -2, BALL_IDX),  # left to right
          Precondition('curr', 1, -1, BALL_IDX),

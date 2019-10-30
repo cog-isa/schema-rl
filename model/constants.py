@@ -16,8 +16,8 @@ class Constants:
         SCREEN_HEIGHT = 117
 
         N = SCREEN_WIDTH * SCREEN_HEIGHT
-        M = 4
-        T = 3
+        M = 5
+        T = 1
         ACTION_SPACE_DIM = 3
         REWARD_SPACE_DIM = 2
 
@@ -49,6 +49,7 @@ class Constants:
     PADDLE_IDX = 1
     WALL_IDX = 2
     BRICK_IDX = 3
+    VOID_IDX = 4
 
     ENTITY_NAMES = {
         BALL_IDX: 'BALL',
