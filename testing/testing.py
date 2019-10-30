@@ -76,6 +76,21 @@ class HardcodedSchemaVectors(Constants):
 
     entity_types = (ball, paddle, wall, brick)
 
+    positive_reward = [
+        (Precondition('curr', 0, 0, BALL_IDX),  # attack from left
+         Precondition('prev', 1, -1, BALL_IDX),
+         Precondition('curr', -1, 0, BRICK_IDX),),
+        (Precondition('curr', 0, 0, BALL_IDX),  # attack from right
+         Precondition('prev', 1, 1, BALL_IDX),
+         Precondition('curr', -1, 0, BRICK_IDX),),
+    ]
+    negative_reward = [
+        (Precondition('curr', 0, 0, BALL_IDX),  # all-in-center (just to fill 1 schema)
+         Precondition('curr', 0, 0, PADDLE_IDX),
+         Precondition('curr', 0, 0, WALL_IDX),
+         Precondition('curr', 0, 0, BRICK_IDX),)
+    ]
+
     @classmethod
     def convert_filter_offset_to_schema_vec_idx(cls, time_step, di, dj, entity_type_idx):
         assert time_step in ('prev', 'curr')
