@@ -21,6 +21,9 @@ class HardcodedSchemaVectors(Constants):
     paddle = [
         (Precondition('prev', 0, 0, PADDLE_IDX),
          Precondition('curr', 0, 0, PADDLE_IDX)),
+        # paddle growing
+        (Precondition('curr', 0, -1, PADDLE_IDX)),  # to right
+        (Precondition('curr', 0, 1, PADDLE_IDX)),  # to left
     ]
     ball = [
         # linear movement
