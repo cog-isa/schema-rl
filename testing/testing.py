@@ -90,6 +90,7 @@ class HardcodedSchemaVectors(Constants):
          Precondition('curr', 0, 0, WALL_IDX),
          Precondition('curr', 0, 0, BRICK_IDX),)
     ]
+    rewards = [positive_reward, negative_reward]
 
     @classmethod
     def convert_filter_offset_to_schema_vec_idx(cls, time_step, di, dj, entity_type_idx):
@@ -114,23 +115,33 @@ class HardcodedSchemaVectors(Constants):
         return vec_idx
 
     @classmethod
-    def gen_attribute_schema_matrices(cls):
-        W = []
-        for entity_type in cls.entity_types:
-            W_i = []
-            for schema in entity_type:
-                vec = np.full(cls.SCHEMA_VEC_SIZE, False, dtype=bool)
-                for precondition in schema:
-                    idx = cls.convert_filter_offset_to_schema_vec_idx(precondition.time_step,
-                                                                      precondition.di,
-                                                                      precondition.dj,
-                                                                      precondition.entity_type_idx)
-                    vec[idx] = True
-                W_i.append(vec)
-            W.append(W_i)
+    def make_schema_vec(cls, preconditions):
+        vec = np.full(cls.SCHEMA_VEC_SIZE, False, dtype=bool)
+        for precondition in preconditions:
+            idx = cls.convert_filter_offset_to_schema_vec_idx(precondition.time_step,
+                                                              precondition.di,
+                                                              precondition.dj,
+                                                              precondition.entity_type_idx)
+            vec[idx] = True
+        return vec
 
-        W = [np.stack(W_i, axis=0).T for W_i in W]
-        return W
+    @classmethod
+    def make_target_schema_matrices(cls, prediction_targets):
+        A = []
+        for target in prediction_targets:
+            A_i = []
+            for schema_preconditions in target:
+                vec = cls.make_schema_vec(schema_preconditions)
+                A_i.append(vec)
+            A.append(A_i)
+        A = [np.stack(A_i, axis=0).T for A_i in A]
+        return A
+
+    @classmethod
+    def gen_schema_matrices(cls):
+        W = cls.make_target_schema_matrices(cls.entity_types)
+        R = cls.make_target_schema_matrices(cls.rewards)
+        return W, R
 
 
 class TestFSS1:

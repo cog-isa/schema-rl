@@ -15,10 +15,9 @@ class Runner(Constants):
 
     def load_schema_matrices(self, generate=True):
         if generate:
-            W = HardcodedSchemaVectors.gen_attribute_schema_matrices()
+            W, R = HardcodedSchemaVectors.gen_schema_matrices()
             for w in W:
                 print(w.shape)
-            R = W[:2].copy()  # temporarily
         else:
             dir_name = './dump'
             W = []
