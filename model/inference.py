@@ -89,9 +89,6 @@ class SchemaNetwork(Constants):
         self._reward_nodes = np.array(reward_nodes)
 
     def plan_actions(self):
-        # stub for proxy_env list of objects
-        # TODO
-        # add function to check if we have enough frames to make forward pass
         if len(self._tensor_handler._entities_stack) < self.FRAME_STACK_SIZE:
             print('Small ENTITIES_STACK. Abort.')
             planned_actions = np.random.randint(low=0,

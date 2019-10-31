@@ -70,7 +70,7 @@ class Planner(Constants):
 
     def _plan_for_rewards(self, reward_sign):
         """
-        :param reward_sign: POS or NEG rewards are we looking for?
+        :param reward_sign: {pos, neg}
         :return: ndarray of len (T)
                  None if cannot plan for this sign of rewards
         """

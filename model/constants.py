@@ -17,7 +17,7 @@ class Constants:
 
         N = SCREEN_WIDTH * SCREEN_HEIGHT
         M = 5
-        T = 1
+        T = 1  # min 112; better 130
         ACTION_SPACE_DIM = 3
         REWARD_SPACE_DIM = 2
 
@@ -50,6 +50,11 @@ class Constants:
     WALL_IDX = 2
     BRICK_IDX = 3
     VOID_IDX = 4
+
+    # action indices
+    ACTION_NOP = 0
+    ACTION_MOVE_LEFT = 1
+    ACTION_MOVE_RIGHT = 2
 
     ENTITY_NAMES = {
         BALL_IDX: 'BALL',
