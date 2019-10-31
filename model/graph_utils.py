@@ -33,7 +33,7 @@ class Schema(Constants):
                                                             .required_cumulative_actions))]
 
                 to_merge = attribute_node.activating_schema.required_cumulative_actions
-                assert (len(to_merge) == len(merged_history))
+                #assert (len(to_merge) == len(merged_history))
                 merged_history = [a + b for a, b in zip(merged_history, to_merge)]
             else:
                 assert (attribute_node.t < self.FRAME_STACK_SIZE)

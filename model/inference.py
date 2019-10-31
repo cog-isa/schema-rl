@@ -104,12 +104,13 @@ class SchemaNetwork(Constants):
         if self.VISUALIZE_SCHEMAS:
             self._visualizer.visualize_schemas(self._W, self._R)
         if self.VISUALIZE_INNER_STATE:
-            self._visualizer.visualize_predicted_entities(check_correctness=True)
+            self._visualizer.visualize_predicted_entities(check_correctness=False)
 
         # planning actions
         actions, target_reward_nodes = self._planner.plan_actions()
 
         if self.VISUALIZE_BACKTRACKING:
-            self._visualizer.visualize_backtracking(target_reward_nodes)
+            self._visualizer.visualize_backtracking(target_reward_nodes,
+                                                    self._planner.node2triplets)
 
         return actions

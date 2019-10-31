@@ -92,6 +92,9 @@ class HardcodedSchemaVectors(Constants):
         (AttributePrecondition('curr', 0, 0, BALL_IDX),  # attack from right
          AttributePrecondition('prev', 1, 1, BALL_IDX),
          AttributePrecondition('curr', -1, 0, BRICK_IDX),),
+        (AttributePrecondition('curr', 0, 0, BALL_IDX),  # upright attack
+         AttributePrecondition('prev', 1, 0, BALL_IDX),
+         AttributePrecondition('curr', -1, 0, BRICK_IDX),),
     ]
     negative_reward = [
         (AttributePrecondition('curr', 0, 0, BALL_IDX),  # all-in-center (just to fill 1 schema)

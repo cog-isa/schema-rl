@@ -81,10 +81,13 @@ class Visualizer(Constants):
                            for row_idx, col_idx in zip(unique, col_indices[unique_index])])
 
         if duplicate_indices.size:
+            pass
+            """
             print('BAD_ENTITY (several bits per pixel): {} conflicts'.format(duplicate_indices.size))
             for idx in duplicate_indices:
                 print('idx: {}, entity: {}'.format(idx, entities[idx]))
             print()
+            """
             # raise AssertionError
 
         flat_pixels = np.empty((n_entities, self.N_CHANNELS), dtype=np.uint8)
@@ -202,9 +205,9 @@ class Visualizer(Constants):
                 self._save_schema_image(vec, path)
 
     # ------------- VISUALIZING BACKTRACKING -------------- #
-    def find_required_triplets(self, node):
+    def find_connected_component_triplets(self, node):
         if node.activating_schema is None:
-            return
+            return None
         triplets = []
         for precondition in node.activating_schema.attribute_preconditions:
             t = precondition.t
@@ -213,7 +216,7 @@ class Visualizer(Constants):
             triplet = (t, i, j)
             triplets.append(triplet)
 
-            child_triplets = self.find_required_triplets(precondition)
+            child_triplets = self.find_connected_component_triplets(precondition)
             if child_triplets is not None:
                 triplets.extend(child_triplets)
         return triplets
@@ -225,13 +228,16 @@ class Visualizer(Constants):
             base_state[i, j] = True
         return base_state
 
-    def visualize_node_backtracking(self, reward_node, image_path):
-        triplets = self.find_required_triplets(reward_node)
+    def visualize_node_backtracking(self, reward_node, image_path, partial_triplets):
+        if partial_triplets is not None:
+            triplets = partial_triplets[reward_node]
+        else:
+            triplets = self.find_connected_component_triplets(reward_node)
         entities = self.apply_triplets_to_base_state(triplets)
         self.visualize_entities(entities, image_path)
 
-    def visualize_backtracking(self, target_reward_nodes):
+    def visualize_backtracking(self, target_reward_nodes, partial_triplets):
         for idx, reward_node in enumerate(target_reward_nodes):
             file_name = 'iter_{}__node_{}.png'.format(self._iter, idx)
             path = os.path.join(self.BACKTRACKING_DIR_NAME, file_name)
-            self.visualize_node_backtracking(reward_node, path)
+            self.visualize_node_backtracking(reward_node, path, partial_triplets)

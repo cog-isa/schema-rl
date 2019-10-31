@@ -115,7 +115,7 @@ class TensorHandler(Constants):
     def _instantiate_attribute_grounded_schemas(self, attribute_idx, t, reference_matrix, W, predicted_matrix):
         """
         :param reference_matrix: (N x (MR + A))
-        :param t: schema output time
+        :param t: schema output time_step
         """
         for entity_idx in range(self.N):
             activity_mask = predicted_matrix[entity_idx, :]

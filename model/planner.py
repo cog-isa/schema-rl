@@ -1,3 +1,4 @@
+from collections import defaultdict
 import numpy as np
 from .constants import Constants
 from .graph_utils import Action, Reward
@@ -8,6 +9,10 @@ class Planner(Constants):
         # from SchemaNetwork
         # (T x REWARD_SPACE_DIM)
         self._reward_nodes = reward_nodes
+
+        # for visualizing purposes
+        self.curr_target = None
+        self.node2triplets = defaultdict(list)
 
     def _backtrace_schema(self, schema):
         """
@@ -48,6 +53,7 @@ class Planner(Constants):
             if schema.is_reachable:
                 # attribute is reachable by this schema
                 node.is_reachable = True
+                self.node2triplets[self.curr_target].append((node.t, node.entity_idx, node.attribute_idx))
                 node.activating_schema = schema
                 node.activating_schema.compute_cumulative_actions()
                 break
@@ -92,6 +98,7 @@ class Planner(Constants):
             search_from = reward_node.t + 1
 
             # backtrace from it
+            self.curr_target = reward_node
             self._backtrace_node(reward_node)
             if reward_node.is_reachable:
                 print('actions for reaching target {} reward node have been found successfully!'.format(reward_sign))
