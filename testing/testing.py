@@ -49,12 +49,13 @@ class HardcodedSchemaVectors(Constants):
         # bounce from paddle
         (Precondition('prev', 0, -2, BALL_IDX),  # left to right
          Precondition('curr', 1, -1, BALL_IDX),
-         Precondition('prev', 2, -1, PADDLE_IDX),
          Precondition('curr', 2, -1, PADDLE_IDX)),
         (Precondition('prev', 0, 2, BALL_IDX),  # right to left
          Precondition('curr', 1, 1, BALL_IDX),
-         Precondition('prev', 2, 1, PADDLE_IDX),
          Precondition('curr', 2, 1, PADDLE_IDX)),
+        (Precondition('prev', 0, 0, BALL_IDX),  # upright
+         Precondition('curr', 1, 0, BALL_IDX),
+         Precondition('curr', 2, 0, PADDLE_IDX)),
         # bounce from wall
         (Precondition('prev', 2, 0, BALL_IDX),  # left wall, bounce bottom-up
          Precondition('curr', 1, -1, BALL_IDX),
