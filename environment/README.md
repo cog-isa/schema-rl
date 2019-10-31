@@ -10,9 +10,3 @@ python play.py RandomTargetBreakout
 python play.py JugglingBreakout
 python play.py MovingObstaclesBreakout
 ```
-
-
-
-## References
-- [Blog post: General Game Playing with Schema Networks](https://www.vicarious.com/general-game-playing-with-schema-networks.html)
-- [Paper: Kansky, Silver, Mély, Eldawy, Lázaro-Gredilla, Lou, Dorfman, Sidor, Phoenix and George. 2017.](https://www.vicarious.com/img/icml2017-schemas.pdf)
