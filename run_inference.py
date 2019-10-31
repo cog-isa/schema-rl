@@ -16,8 +16,6 @@ class Runner(Constants):
     def load_schema_matrices(self, generate=True):
         if generate:
             W, R = HardcodedSchemaVectors.gen_schema_matrices()
-            for w in W:
-                print(w.shape)
         else:
             dir_name = './dump'
             W = []

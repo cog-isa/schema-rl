@@ -10,6 +10,7 @@ class Constants:
 
     VISUALIZE_SCHEMAS = True
     VISUALIZE_INNER_STATE = True
+    VISUALIZE_BACKTRACKING = True
 
     if not DEBUG:
         SCREEN_WIDTH = 94

@@ -33,6 +33,7 @@ class Visualizer(Constants):
         self.ATTRIBUTE_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'attribute_schemas')
         self.REWARD_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'reward_schemas')
         self.ENTITIES_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'entities')
+        self.BACKTRACKING_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'backtracking')
 
         self.N_CHANNELS = 3
         self.STATE_SCALE = 4
@@ -199,3 +200,38 @@ class Visualizer(Constants):
                                                              vec_idx)
                 path = os.path.join(self.REWARD_SCHEMAS_DIR_NAME, file_name)
                 self._save_schema_image(vec, path)
+
+    # ------------- VISUALIZING BACKTRACKING -------------- #
+    def find_required_triplets(self, node):
+        if node.activating_schema is None:
+            return
+        triplets = []
+        for precondition in node.activating_schema.attribute_preconditions:
+            t = precondition.t
+            i = precondition.entity_idx
+            j = precondition.attribute_idx
+            triplet = (t, i, j)
+            triplets.append(triplet)
+
+            child_triplets = self.find_required_triplets(precondition)
+            if child_triplets is not None:
+                triplets.extend(child_triplets)
+        return triplets
+
+    def apply_triplets_to_base_state(self, triplets):
+        base_state = self._attribute_tensor[self.FRAME_STACK_SIZE - 1, :, :]
+        for t, i, j in triplets:
+            base_state[i, :] = False
+            base_state[i, j] = True
+        return base_state
+
+    def visualize_node_backtracking(self, reward_node, image_path):
+        triplets = self.find_required_triplets(reward_node)
+        entities = self.apply_triplets_to_base_state(triplets)
+        self.visualize_entities(entities, image_path)
+
+    def visualize_backtracking(self, target_reward_nodes):
+        for idx, reward_node in enumerate(target_reward_nodes):
+            file_name = 'iter_{}__node_{}.png'.format(self._iter, idx)
+            path = os.path.join(self.BACKTRACKING_DIR_NAME, file_name)
+            self.visualize_node_backtracking(reward_node, path)

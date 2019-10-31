@@ -107,6 +107,9 @@ class SchemaNetwork(Constants):
             self._visualizer.visualize_predicted_entities(check_correctness=True)
 
         # planning actions
-        actions = self._planner.plan_actions()
+        actions, target_reward_nodes = self._planner.plan_actions()
+
+        if self.VISUALIZE_BACKTRACKING:
+            self._visualizer.visualize_backtracking(target_reward_nodes)
 
         return actions

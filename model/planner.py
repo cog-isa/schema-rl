@@ -74,6 +74,7 @@ class Planner(Constants):
         :return: ndarray of len (T)
                  None if cannot plan for this sign of rewards
         """
+        target_reward_nodes = []
         print('trying to plan for {} rewards...'.format(reward_sign))
         planned_actions = None
 
@@ -85,6 +86,7 @@ class Planner(Constants):
                 print('cannot find more {} reward nodes'.format(reward_sign))
                 break
 
+            target_reward_nodes.append(reward_node)
             print('found feasible {} reward node, starting to backtrace it...'.format(reward_sign))
 
             search_from = reward_node.t + 1
@@ -105,17 +107,11 @@ class Planner(Constants):
 
             print('backtraced {} reward node is unreachable'.format(reward_sign))
 
-        return planned_actions
+        return planned_actions, target_reward_nodes
 
     def plan_actions(self):
 
-        planned_actions = self._plan_for_rewards('pos')
-        if planned_actions is None:
-            # no positive rewards are reachable from current state,
-            # trying to find closest negative reward
-            # do NOT backtrace negative reward
-            #planned_actions = self._plan_for_rewards('neg')
-            pass
+        planned_actions, target_reward_nodes = self._plan_for_rewards('pos')
 
         if planned_actions is not None:
             randomness_mask = np.random.choice([True, False],
@@ -133,5 +129,5 @@ class Planner(Constants):
                                                 high=self.ACTION_SPACE_DIM,
                                                 size=self.T)
 
-        return planned_actions
+        return planned_actions, target_reward_nodes
 
