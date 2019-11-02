@@ -6,11 +6,11 @@ class Constants:
     L: number of schemas
     T: size of look-ahead window
     """
-    DEBUG = False
+    DEBUG = True
 
     VISUALIZE_SCHEMAS = False
-    VISUALIZE_INNER_STATE = True
-    VISUALIZE_BACKTRACKING = True
+    VISUALIZE_INNER_STATE = False
+    VISUALIZE_BACKTRACKING = False
 
     if not DEBUG:
         SCREEN_HEIGHT = 67  # 117
@@ -28,7 +28,7 @@ class Constants:
         SCREEN_HEIGHT = 3
 
         N = 9  # SCREEN_WIDTH * SCREEN_HEIGHT
-        M = 1
+        M = 2
         T = 50
         ACTION_SPACE_DIM = 3
         REWARD_SPACE_DIM = 2
@@ -51,6 +51,8 @@ class Constants:
     WALL_IDX = 2
     BRICK_IDX = 3
     VOID_IDX = 4
+    if DEBUG:
+        VOID_IDX = 1
 
     # action indices
     ACTION_NOP = 0
