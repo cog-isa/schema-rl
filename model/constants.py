@@ -50,8 +50,9 @@ class Constants:
     PADDLE_IDX = 1
     WALL_IDX = 2
     BRICK_IDX = 3
-    VOID_IDX = 4
-    if DEBUG:
+    if not DEBUG:
+        VOID_IDX = 4
+    else:
         VOID_IDX = 1
 
     # action indices

@@ -5,10 +5,11 @@ from .constants import Constants
 class Schema(Constants):
     """Grounded schema type."""
 
-    def __init__(self, attribute_preconditions, action_preconditions):
+    def __init__(self, t, attribute_preconditions, action_preconditions):
         """
         preconditions: list of Nodes
         """
+        self.t = t
         self.attribute_preconditions = attribute_preconditions
         self.action_preconditions = action_preconditions
         self.is_reachable = None
@@ -17,34 +18,32 @@ class Schema(Constants):
 
     def compute_cumulative_actions(self):
         """
-        arrays are grouped by time steps
+        index of schema_t is the time_step of its output
+        schema_t has exactly len(required_cumulative_actions) == t
+        but last elem may not be used (all preconditions are 2 layers down)
+        child schemas should have buffer of (t-1) or (t-2) size
         """
-        self.required_cumulative_actions = []
-
-        merged_history = None
+        merging_buff = [[] for _ in range(self.t)]
 
         for attribute_node in self.attribute_preconditions:
-            if attribute_node.activating_schema is not None:  # if node is not at t == 0
-                assert (attribute_node.t != 0)
-
-                if merged_history is None:
-                    merged_history = [[] for _ in range(len(attribute_node
-                                                            .activating_schema
-                                                            .required_cumulative_actions))]
+            if attribute_node.activating_schema is not None:
+                assert (attribute_node.t >= self.FRAME_STACK_SIZE)
 
                 to_merge = attribute_node.activating_schema.required_cumulative_actions
-                #assert (len(to_merge) == len(merged_history))
-                merged_history = [a + b for a, b in zip(merged_history, to_merge)]
+
+                # e.g. buff has (t-1) size, to_merge has (t-2) size
+                assert (self.t - 2) <= len(to_merge) <= (self.t - 1)
+
+                for i in range(len(to_merge)):
+                    merging_buff[i].extend(to_merge[i])
             else:
                 assert (attribute_node.t < self.FRAME_STACK_SIZE)
 
-        if merged_history is not None:
-            self.required_cumulative_actions.extend(
-                merged_history
-            )
-        self.required_cumulative_actions.append(
-            [action_node.idx for action_node in self.action_preconditions]
-        )
+        # add action preconditions of current schema
+        for action_node in self.action_preconditions:
+            merging_buff[action_node.t].append(action_node.idx)
+
+        self.required_cumulative_actions = merging_buff
 
     def _get_margin(self):
         """
@@ -74,7 +73,6 @@ class Node:
         """
         value: bool variable
         schemas: list of schemas
-        is_discovered: has node been seen during graph traversal
         """
         self.t = t
 
@@ -108,7 +106,7 @@ class Node:
                 raise AssertionError
 
         self.schemas.append(
-            Schema(attribute_preconditions, action_preconditions)
+            Schema(self.t, attribute_preconditions, action_preconditions)
         )
 
     def sort_schemas_by_harmfulness(self, neg_schemas):

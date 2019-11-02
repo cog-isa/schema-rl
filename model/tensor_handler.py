@@ -72,7 +72,7 @@ class TensorHandler(Constants):
             shape, None, dtype=object
         )
         offset = self.FRAME_STACK_SIZE - 1
-        for t in range(offset, offset + self.T):
+        for t in range(offset, offset + self.T + 1):
             src_slice = self._get_tensor_slice(t, 'nodes')
             self._reference_attribute_nodes[t, :, :] = self._shaper.transform_node_matrix(
                 src_slice, self._action_nodes, t
@@ -99,7 +99,7 @@ class TensorHandler(Constants):
 
     def _get_reference_matrix(self, t):
         """
-        :param t: layer of tensor to which references are established,
+        :param t: rightmost FS's layer to which references are established,
                   time step where we got matrix
         :return: (N x (MR + A)) matrix of references to nodes
         """

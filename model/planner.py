@@ -25,8 +25,8 @@ class Planner(Constants):
 
         for precondition in schema.attribute_preconditions:
             if precondition.is_reachable is None:
-                # this node is NOT at t = 0 AND we have not computed it's value
-                # dfs over precondition's schemas
+                # this node is NOT at t < FRAME_STACK_SIZE (otherwise it would be initialized as reachable)
+                # and we have not computed it's reachability yet
                 self._backtrace_node(precondition)
             if not precondition.is_reachable:
                 # schema can *never* be reachable, break and try another schema
@@ -53,9 +53,18 @@ class Planner(Constants):
             if schema.is_reachable:
                 # attribute is reachable by this schema
                 node.is_reachable = True
-                self.node2triplets[self.curr_target].append((node.t, node.entity_idx, node.attribute_idx))
                 node.activating_schema = schema
                 node.activating_schema.compute_cumulative_actions()
+                if type(node) is not Reward:
+                    self.node2triplets[self.curr_target].append((node.t, node.entity_idx, node.attribute_idx))
+                else:
+                    pass
+                    """
+                    print('Encountered Reward node during backtracking.')
+                    print(vars(node))
+                    for s in node.schemas:
+                        print(vars(s))
+                    """
                 break
 
     def _find_closest_reward(self, reward_sign, search_from):
