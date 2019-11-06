@@ -18,7 +18,7 @@ class Constants:
 
         N = SCREEN_WIDTH * SCREEN_HEIGHT
         M = 5
-        T = 3  # was 50  # min 112; better 130
+        T = 50  # was 50  # min 112; better 130
         ACTION_SPACE_DIM = 3
         REWARD_SPACE_DIM = 2
 

@@ -241,7 +241,7 @@ class Visualizer(Constants):
     def write_block(self, block, file, indent_size=0):
         if indent_size != 0:
             block = [line + (indent_size * ' ') for line in block]
-        file.write('\n'.join(block))
+        file.write('\n'.join(block) + '\n')
 
     def log_precondition_node(self, node, file):
         """
