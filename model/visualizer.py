@@ -314,6 +314,9 @@ class Visualizer(Constants):
     def log_balls_at_backtracking(self, reward_node):
         for t in range(self.TIME_SIZE):
             ball_entity_idx = self._tensor_handler.get_ball_entity_idx(t)
+            if ball_entity_idx is None:
+                continue
+
             ball_node = self._attribute_nodes[t, ball_entity_idx, self.BALL_IDX]
 
             file_name = 'iter_{}__ball_node_at_time_{}'.format(self._iter, t)

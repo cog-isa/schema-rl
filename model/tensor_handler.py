@@ -206,8 +206,11 @@ class TensorHandler(Constants):
         entities = self._attribute_tensor[t, :, :]
         row_indices = entities[:, self.BALL_IDX].nonzero()[0]  # returns tuple
 
-        assert row_indices.size == 1, 'BAD_N_BALLS'
-        ball_idx = row_indices[0]
+        assert row_indices.size <= 1, 'BAD_N_BALLS'
+        if row_indices:
+            ball_idx = row_indices[0]
+        else:
+            ball_idx = None
         return ball_idx
 
     def get_attribute_tensor(self):
