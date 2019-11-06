@@ -203,7 +203,6 @@ class TensorHandler(Constants):
         if n_predicted_balls > 1:
             print('BAD_BALL: {} balls exist. t: {}'.format(n_predicted_balls, t))
 
-
     def get_ball_entity_idx(self, t):
         """
         :param t: time_step you need to look at
@@ -212,7 +211,9 @@ class TensorHandler(Constants):
         entities = self._attribute_tensor[t, :, :]
         row_indices = entities[:, self.BALL_IDX].nonzero()[0]  # returns tuple
 
-        assert row_indices.size <= 1, 'BAD_N_BALLS'
+        if row_indices.size > 1:
+            print('BAD_N_BALLS, n: {}, t: {}'.format(row_indices.size, t))
+
         if row_indices:
             ball_idx = row_indices[0]
         else:

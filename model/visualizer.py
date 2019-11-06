@@ -217,7 +217,7 @@ class Visualizer(Constants):
         return triplets
 
     def apply_triplets_to_base_state(self, triplets):
-        base_state = self._attribute_tensor[self.FRAME_STACK_SIZE - 1, :, :]
+        base_state = self._attribute_tensor[self.FRAME_STACK_SIZE - 1, :, :].copy()
         for t, i, j in triplets:
             base_state[i, :] = False
             base_state[i, j] = True
