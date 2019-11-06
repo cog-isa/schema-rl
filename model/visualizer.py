@@ -248,7 +248,6 @@ class Visualizer(Constants):
             self.visualize_node_backtracking(reward_node, image_path, partial_triplets)
 
 # -------------- LOGGING BACKTRACKING --------------- #
-    @staticmethod
     def write_block(self, block, file, indent_size=0):
         if indent_size != 0:
             block = [line + (indent_size * ' ') for line in block]
