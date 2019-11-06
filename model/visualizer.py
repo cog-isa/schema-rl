@@ -60,15 +60,12 @@ class Visualizer(Constants):
     def set_iter(self, iter):
         self._iter = iter
 
-    def _check_entities_for_correctness(self, entities):
+    def _check_entities_for_correctness(self, t, entities):
         _, col_indices = np.where(entities)
         n_predicted_balls = np.count_nonzero(col_indices == self.BALL_IDX)
-        if n_predicted_balls == 0:
-            print('BAD_BALL: zero balls exist.')
-        elif n_predicted_balls > 1:
+        print('t: ', sep='')
+        if n_predicted_balls > 1:
             print('BAD_BALL: multiple balls exist.')
-        else:
-            print('OKAY: Only one ball exists.')
 
     def _convert_entities_to_pixels(self, entities):
         """
@@ -116,7 +113,7 @@ class Visualizer(Constants):
     def visualize_predicted_entities(self, check_correctness=False):
         for t in range(self._attribute_tensor.shape[0]):
             if check_correctness:
-                self._check_entities_for_correctness(self._attribute_tensor[t])
+                self._check_entities_for_correctness(t, self._attribute_tensor[t])
 
             file_name = 'iter_{}__t_{}.png'.format(self._iter, t)
             image_path = os.path.join(self.ENTITIES_DIR_NAME, file_name)

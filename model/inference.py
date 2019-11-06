@@ -104,7 +104,7 @@ class SchemaNetwork(Constants):
         if self.VISUALIZE_SCHEMAS:
             self._visualizer.visualize_schemas(self._W, self._R)
         if self.VISUALIZE_INNER_STATE:
-            self._visualizer.visualize_predicted_entities(check_correctness=False)
+            self._visualizer.visualize_predicted_entities(check_correctness=True)
 
         # planning actions
         actions, target_reward_nodes = self._planner.plan_actions()
