@@ -130,7 +130,7 @@ class Attribute(Node):
         self.entity_idx = entity_idx
         self.attribute_idx = attribute_idx
         super().__init__(t)
-        if is_active:
+        if is_active or attribute_idx == self.VOID_IDX:
             self.is_reachable = True
 
 
