@@ -37,7 +37,8 @@ class Schema(Constants):
                 for i in range(len(to_merge)):
                     merging_buff[i].extend(to_merge[i])
             else:
-                assert (attribute_node.t < self.FRAME_STACK_SIZE)
+                assert attribute_node.t < self.FRAME_STACK_SIZE \
+                    or attribute_node.attribute_idx == self.VOID_IDX
 
         # add action preconditions of current schema
         for action_node in self.action_preconditions:
@@ -121,7 +122,7 @@ class Node:
                               key=lambda x: x.harmfulness)
 
 
-class Attribute(Node):
+class Attribute(Node, Constants):
     def __init__(self, entity_idx, attribute_idx, t, is_active):
         """
         entity_idx: entity unique idx [0, N)
