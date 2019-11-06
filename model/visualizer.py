@@ -2,6 +2,7 @@ import os
 import numpy as np
 from PIL import Image
 from .constants import Constants
+from .graph_utils import Attribute, Action, Reward, Schema
 
 
 # colors
@@ -28,7 +29,7 @@ ACTIVE_ACTION_SLOT_COLOR = RED
 
 
 class Visualizer(Constants):
-    def __init__(self):
+    def __init__(self, tensor_handler, planner, attribute_nodes):
         self.VISUALIZATION_DIR_NAME = './visualization'
         self.ATTRIBUTE_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'attribute_schemas')
         self.REWARD_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'reward_schemas')
@@ -39,8 +40,13 @@ class Visualizer(Constants):
         self.STATE_SCALE = 4
         self.SCHEMA_SCALE = 128
 
+        # need other objects' internal structure for visualizing purposes
+        self._tensor_handler = tensor_handler
+        self._planner = planner
+        self._attribute_nodes = attribute_nodes
+
         # ((FRAME_STACK_SIZE + T) x self.N x self.M)
-        self._attribute_tensor = None
+        self._attribute_tensor = self._tensor_handler.get_attribute_tensor()
         self._iter = None
 
         self._color_map = {
@@ -51,8 +57,7 @@ class Visualizer(Constants):
             self.VOID_IDX: VOID_COLOR
         }
 
-    def set_params(self, attribute_tensor, iter):
-        self._attribute_tensor = attribute_tensor
+    def set_iter(self, iter):
         self._iter = iter
 
     def _check_entities_for_correctness(self, entities):
@@ -239,5 +244,82 @@ class Visualizer(Constants):
     def visualize_backtracking(self, target_reward_nodes, partial_triplets):
         for idx, reward_node in enumerate(target_reward_nodes):
             file_name = 'iter_{}__node_{}.png'.format(self._iter, idx)
-            path = os.path.join(self.BACKTRACKING_DIR_NAME, file_name)
-            self.visualize_node_backtracking(reward_node, path, partial_triplets)
+            image_path = os.path.join(self.BACKTRACKING_DIR_NAME, file_name)
+            self.visualize_node_backtracking(reward_node, image_path, partial_triplets)
+
+# -------------- LOGGING BACKTRACKING --------------- #
+    @staticmethod
+    def write_block(self, block, file, indent_size=0):
+        if indent_size != 0:
+            block = [line + (indent_size * ' ') for line in block]
+        file.write('\n'.join(block))
+
+    def log_precondition_node(self, node, file):
+        """
+        expecting only attribute or action nodes
+        """
+        assert type(node) in (Attribute, Action)
+
+        if type(node) is Attribute:
+            block = [
+                'type: {}'.format(type(node)),
+                't: {}'.format(node.t),
+                'is_reachable: {}'.format(node.is_reachable),
+                'entity_idx: {}'.format(node.entity_idx),
+                'attribute_idx: {}'.format(node.attribute_idx)
+            ]
+        else:
+            block = [
+                'type: {}'.format(type(node)),
+                't: {}'.format(node.t),
+                'idx: {}'.format(node.idx),
+            ]
+        self.write_block(block, file, indent_size=4)
+        self.write_block([''], file)
+
+    def log_schema_preconditions(self, schema_idx, schema, file):
+        block = [
+            '#{} schema:'.format(schema_idx),
+            't: {}'.format(schema.t),
+            'is_reachable: {}'.format(schema.is_reachable),
+            '',
+            'attribute preconditions: {}'.format(len(schema.attribute_preconditions))
+        ]
+        self.write_block(block, file)
+        for attribute_node in schema.attribute_preconditions:
+            self.log_precondition_node(attribute_node, file)
+
+        block = ['action preconditions']
+        self.write_block(block, file)
+
+        for action_node in schema.action_preconditions:
+            self.log_precondition_node(action_node, file)
+
+    def log_node_with_schemas(self, node, file):
+        block = [
+            '----------------',
+            'NODE of type {}'.format(type(node)),
+            't: {}'.format(node.t),
+            'entity_idx: {}'.format(node.entity_idx),
+            'attribute_idx: {}'.format(node.attribute_idx),
+            'is_reachable: {}'.format(node.is_reachable),
+            'activating_schema: {}'.format(node.activating_schema),
+            '---',
+            'n_schemas: {}'.format(len(node.schemas)),
+            '---'
+        ]
+        self.write_block(block, file)
+        for schema_idx, schema in enumerate(node.schemas):
+            self.log_schema_preconditions(schema_idx, schema, file)
+
+    def log_balls_at_backtracking(self, reward_node):
+        for t in range(self.TIME_SIZE):
+            ball_entity_idx = self._tensor_handler.get_ball_entity_idx(t)
+            ball_node = self._attribute_nodes[t, ball_entity_idx, self.BALL_IDX]
+
+            file_name = 'iter_{}__ball_node_at_time_{}'.format(self._iter, t)
+            logfile_path = os.path.join(self.BACKTRACKING_DIR_NAME, file_name)
+            with open(logfile_path, 'wt') as file:
+                self.log_node_with_schemas(ball_node, file)
+
+

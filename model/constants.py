@@ -41,9 +41,10 @@ class Constants:
 
     FAKE_ENTITY_IDX = N
     EPSILON = 0
-    FRAME_STACK_SIZE = 2
 
+    FRAME_STACK_SIZE = 2
     SCHEMA_VEC_SIZE = FRAME_STACK_SIZE * (M * (NEIGHBORS_NUM + 1)) + ACTION_SPACE_DIM
+    TIME_SIZE = FRAME_STACK_SIZE + T
 
     # indices of corresponding attributes in entities' vectors
     BALL_IDX = 0

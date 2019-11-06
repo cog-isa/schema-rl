@@ -197,3 +197,17 @@ class TensorHandler(Constants):
             self._predict_next_reward_layer(t)
 
         return self._attribute_tensor
+
+    def get_ball_entity_idx(self, t):
+        """
+        :param t: time_step you need to look at
+        :return: entity_idx of the ball
+        """
+        entities = self._attribute_tensor[t, :, :]
+        row_indices, col_indices = entities[:, self.BALL_IDX].nonzero()
+        assert len(row_indices) == 1, 'BAD_N_BALLS'
+        ball_idx = row_indices[0]
+        return ball_idx
+
+    def get_attribute_tensor(self):
+        return self._attribute_tensor
