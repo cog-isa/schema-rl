@@ -278,7 +278,7 @@ class Visualizer(Constants):
         for attribute_node in schema.attribute_preconditions:
             self.log_precondition_node(attribute_node, file)
 
-        block = ['action preconditions']
+        block = ['action preconditions: {}'.format(len(schema.action_preconditions))]
         self.write_block(block, file)
 
         for action_node in schema.action_preconditions:
