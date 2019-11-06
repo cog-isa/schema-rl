@@ -204,8 +204,9 @@ class TensorHandler(Constants):
         :return: entity_idx of the ball
         """
         entities = self._attribute_tensor[t, :, :]
-        row_indices, col_indices = entities[:, self.BALL_IDX].nonzero()
-        assert len(row_indices) == 1, 'BAD_N_BALLS'
+        row_indices = entities[:, self.BALL_IDX].nonzero()[0]  # returns tuple
+
+        assert row_indices.size == 1, 'BAD_N_BALLS'
         ball_idx = row_indices[0]
         return ball_idx
 
