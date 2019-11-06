@@ -198,6 +198,12 @@ class TensorHandler(Constants):
 
         return self._attribute_tensor
 
+    def check_entities_for_correctness(self, t):
+        n_predicted_balls = np.count_nonzero(self._attribute_tensor[t, :, self.BALL_IDX])
+        if n_predicted_balls > 1:
+            print('BAD_BALL: {} balls exist. t: {}'.format(n_predicted_balls, t))
+
+
     def get_ball_entity_idx(self, t):
         """
         :param t: time_step you need to look at

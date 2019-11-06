@@ -2,7 +2,7 @@ import os
 import numpy as np
 from PIL import Image
 from .constants import Constants
-from .graph_utils import Attribute, Action, Reward, Schema
+from .graph_utils import Attribute, Action
 
 
 # colors
@@ -23,7 +23,7 @@ VOID_COLOR = BLACK
 
 BAD_ENTITY_COLOR = PURPLE
 
-PATTERN_SEPARATOR_COLOR = (98, 234, 223) # light-blue
+PATTERN_SEPARATOR_COLOR = (98, 234, 223)  # light-blue
 INACTIVE_ACTION_SLOT_COLOR = WHITE
 ACTIVE_ACTION_SLOT_COLOR = RED
 
@@ -59,13 +59,6 @@ class Visualizer(Constants):
 
     def set_iter(self, iter):
         self._iter = iter
-
-    def _check_entities_for_correctness(self, t, entities):
-        _, col_indices = np.where(entities)
-        n_predicted_balls = np.count_nonzero(col_indices == self.BALL_IDX)
-        print('t: ', sep='')
-        if n_predicted_balls > 1:
-            print('BAD_BALL: multiple balls exist.')
 
     def _convert_entities_to_pixels(self, entities):
         """
@@ -111,9 +104,9 @@ class Visualizer(Constants):
         image.save(image_path)
 
     def visualize_predicted_entities(self, check_correctness=False):
-        for t in range(self._attribute_tensor.shape[0]):
+        for t in range(self.TIME_SIZE):
             if check_correctness:
-                self._check_entities_for_correctness(t, self._attribute_tensor[t])
+                self._tensor_handler.check_entities_for_correctness(t)
 
             file_name = 'iter_{}__t_{}.png'.format(self._iter, t)
             image_path = os.path.join(self.ENTITIES_DIR_NAME, file_name)

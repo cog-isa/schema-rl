@@ -104,10 +104,13 @@ class SchemaNetwork(Constants):
         if self.VISUALIZE_SCHEMAS:
             self._visualizer.visualize_schemas(self._W, self._R)
         if self.VISUALIZE_INNER_STATE:
-            self._visualizer.visualize_predicted_entities(check_correctness=True)
+            self._visualizer.visualize_predicted_entities(check_correctness=False)
 
         # planning actions
         actions, target_reward_nodes = self._planner.plan_actions()
+
+        for t in range(self.TIME_SIZE):
+            self._tensor_handler.check_entities_for_correctness(t)
 
         if self.VISUALIZE_BACKTRACKING:
             if target_reward_nodes:
