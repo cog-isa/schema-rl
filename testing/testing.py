@@ -29,9 +29,9 @@ class HardcodedSchemaVectors(Constants):
          AttributePrecondition('curr', 0, 0, PADDLE_IDX),
          ActionPrecondition(ACTION_NOP)),
         # paddle growing
-        (AttributePrecondition('curr', 0, -1, PADDLE_IDX),
+        (AttributePrecondition('curr', 0, -2, PADDLE_IDX),
          ActionPrecondition(ACTION_MOVE_RIGHT)),  # to right
-        (AttributePrecondition('curr', 0, 1, PADDLE_IDX),
+        (AttributePrecondition('curr', 0, 2, PADDLE_IDX),
          ActionPrecondition(ACTION_MOVE_LEFT)),  # to left
     ]
     ball = [
