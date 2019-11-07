@@ -35,7 +35,12 @@ class Schema(Constants):
                 assert (self.t - 2) <= len(to_merge) <= (self.t - 1)
 
                 for i in range(len(to_merge)):
-                    merging_buff[i].extend(to_merge[i])
+                    if len(merging_buff[i]) == 0:
+                        merging_buff[i].extend(to_merge[i])
+                    else:
+                        if merging_buff[i] != to_merge[i]:
+                            pass
+                            # print('merge conflict detected')
             else:
                 assert attribute_node.t < self.FRAME_STACK_SIZE \
                     or attribute_node.attribute_idx == self.VOID_IDX
