@@ -76,8 +76,8 @@ class Runner(Constants):
 
 
 def main():
-    n_episodes = 8
-    n_steps = 64
+    n_episodes = 16
+    n_steps = 1024
     plan_every = 30
 
     runner = Runner(n_episodes=n_episodes,

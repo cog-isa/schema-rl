@@ -73,3 +73,11 @@ class Constants:
         0: 'POSITIVE',
         1: 'NEGATIVE',
     }
+
+"""
+env changed constants:
+DEFAULT_NUM_BRICKS_COLS = 11
+BOUNCE_STOCHASTICITY = 0.25
+PADDLE_SPEED_DISTRIBUTION[-1] = 0.90
+PADDLE_SPEED_DISTRIBUTION[-2] = 0.10
+"""
