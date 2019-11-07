@@ -9,9 +9,10 @@ from testing.testing import HardcodedSchemaVectors
 
 
 class Runner(Constants):
-    def __init__(self, n_episodes, n_steps):
+    def __init__(self, n_episodes, n_steps, plan_every):
         self.n_episodes = n_episodes
         self.n_steps = n_steps
+        self.plan_every = plan_every
 
     def load_schema_matrices(self, generate=True):
         if generate:
@@ -40,16 +41,22 @@ class Runner(Constants):
 
         for episode_idx in range(self.n_episodes):
             frame_stack = deque(maxlen=self.FRAME_STACK_SIZE)
+            actions = deque()
 
             for step_idx in range(self.n_steps):
                 obs = FeatureMatrix(env).matrix
                 frame_stack.append(obs)
 
-                if len(frame_stack) >= self.FRAME_STACK_SIZE:
+                if (step_idx - 1) % self.plan_every == 0 \
+                        and len(frame_stack) >= self.FRAME_STACK_SIZE:
                     model = SchemaNetwork(W, R, frame_stack)
                     model.set_curr_iter(episode_idx * self.n_steps + step_idx)
-                    actions = model.plan_actions()
-                    action = actions[0]
+                    planned_actions = model.plan_actions()
+                    actions.clear()
+                    actions.extend(planned_actions)
+
+                if actions:
+                    action = actions.popleft()
                 else:
                     action = 0
 
@@ -62,9 +69,11 @@ class Runner(Constants):
 def main():
     n_episodes = 8
     n_steps = 64
+    plan_every = 30
 
     runner = Runner(n_episodes=n_episodes,
-                    n_steps=n_steps)
+                    n_steps=n_steps,
+                    plan_every=plan_every)
     runner.loop()
 
 
