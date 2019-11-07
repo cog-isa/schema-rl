@@ -116,9 +116,9 @@ class SchemaNetwork(Constants):
             if target_reward_nodes:
                 self._visualizer.visualize_backtracking(target_reward_nodes,
                                                         self._planner.node2triplets)
-                for t in range(self.TIME_SIZE):
-                    self._tensor_handler.check_entities_for_correctness(t)
+                #for t in range(self.TIME_SIZE):
+                    #self._tensor_handler.check_entities_for_correctness(t)
 
-                self._visualizer.log_balls_at_backtracking(target_reward_nodes[0])
+                #self._visualizer.log_balls_at_backtracking(target_reward_nodes[0])
 
         return actions

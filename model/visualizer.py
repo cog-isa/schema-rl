@@ -35,6 +35,7 @@ class Visualizer(Constants):
         self.REWARD_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'reward_schemas')
         self.ENTITIES_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'entities')
         self.BACKTRACKING_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'backtracking')
+        self.STATE_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'state')
 
         self.N_CHANNELS = 3
         self.STATE_SCALE = 4
@@ -46,7 +47,8 @@ class Visualizer(Constants):
         self._attribute_nodes = attribute_nodes
 
         # ((FRAME_STACK_SIZE + T) x self.N x self.M)
-        self._attribute_tensor = self._tensor_handler.get_attribute_tensor()
+        if tensor_handler is not None:
+            self._attribute_tensor = self._tensor_handler.get_attribute_tensor()
         self._iter = None
 
         self._color_map = {
@@ -111,6 +113,11 @@ class Visualizer(Constants):
             file_name = 'iter_{}__t_{}.png'.format(self._iter, t)
             image_path = os.path.join(self.ENTITIES_DIR_NAME, file_name)
             self.visualize_entities(self._attribute_tensor[t], image_path)
+
+    def visualize_env_state(self, state):
+        file_name = 'iter_{}.png'.format(self._iter)
+        image_path = os.path.join(self.STATE_DIR_NAME, file_name)
+        self.visualize_entities(state, image_path)
 
 # ------------- SCHEMA VISUALIZING ------------- #
 

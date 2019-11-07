@@ -11,6 +11,7 @@ class Constants:
     VISUALIZE_SCHEMAS = False
     VISUALIZE_INNER_STATE = True
     VISUALIZE_BACKTRACKING = True
+    VISUALIZE_STATE = True
 
     if not DEBUG:
         SCREEN_HEIGHT = 67  # 117
