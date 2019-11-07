@@ -29,9 +29,9 @@ class HardcodedSchemaVectors(Constants):
          AttributePrecondition('curr', 0, 0, PADDLE_IDX),
          ActionPrecondition(ACTION_NOP)),
         # paddle growing
-        (AttributePrecondition('curr', 0, -1, PADDLE_IDX),
+        (AttributePrecondition('curr', 0, -2, PADDLE_IDX),
          ActionPrecondition(ACTION_MOVE_RIGHT)),  # to right
-        (AttributePrecondition('curr', 0, 1, PADDLE_IDX),
+        (AttributePrecondition('curr', 0, 2, PADDLE_IDX),
          ActionPrecondition(ACTION_MOVE_LEFT)),  # to left
     ]
     ball = [
@@ -91,6 +91,9 @@ class HardcodedSchemaVectors(Constants):
          AttributePrecondition('curr', -1, 0, BRICK_IDX),),
         (AttributePrecondition('curr', 0, 0, BALL_IDX),  # attack from right
          AttributePrecondition('prev', 1, 1, BALL_IDX),
+         AttributePrecondition('curr', -1, 0, BRICK_IDX),),
+        (AttributePrecondition('curr', 0, 0, BALL_IDX),  # upright attack
+         AttributePrecondition('prev', 1, 0, BALL_IDX),
          AttributePrecondition('curr', -1, 0, BRICK_IDX),),
     ]
     negative_reward = [
@@ -175,17 +178,17 @@ class TestFSS1:
 
 
 class TestFSS2:
-    W1 = np.reshape(np.array([0, 1, 0, 0, 1, 0, 0, 0, 0,
-                              0, 0, 0, 0, 0, 0, 0, 0, 0,
-                              0, 1, 0]), (21, 1)).astype(bool)
+    W1 = np.reshape(np.array([0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                              0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                              0, 1, 0]), (39, 1)).astype(bool)
     W = [W1]
 
-    R1 = np.reshape(np.array([0, 0, 0, 0, 0, 0, 0, 0, 1,
-                              0, 0, 0, 0, 0, 0, 0, 0, 0,
-                              0, 0, 1]), (21, 1)).astype(bool)
+    R1 = np.reshape(np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+                              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                              0, 0, 1]), (39, 1)).astype(bool)
 
-    R2 = np.reshape(np.array([0, 0, 0, 0, 0, 0, 0, 0, 0,
-                              0, 0, 0, 0, 0, 0, 0, 0, 0,
-                              0, 0, 0]), (21, 1)).astype(bool)
+    R2 = np.reshape(np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                              0, 0, 0]), (39, 1)).astype(bool)
 
     R = [R1, R2]

@@ -41,9 +41,9 @@ class TensorHandler(Constants):
 
         if self.DEBUG:
             print('STUB: get_env_attribute_tensor()')
-            attribute_tensor = np.array([1, 0, 0, 1, 0, 0, 1, 0, 0,
-                                         1, 0, 0, 1, 0, 0, 1, 0, 0])
-            attribute_tensor = np.reshape(attribute_tensor, (2, 9, 1))
+            attribute_tensor = np.array([1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+                                         1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
+            attribute_tensor = np.reshape(attribute_tensor, (2, 9, 2))
             attribute_tensor = attribute_tensor.astype(bool)
         else:
             matrix_shape = (self.N, self.M)
@@ -72,7 +72,7 @@ class TensorHandler(Constants):
             shape, None, dtype=object
         )
         offset = self.FRAME_STACK_SIZE - 1
-        for t in range(offset, offset + self.T):
+        for t in range(offset, offset + self.T + 1):
             src_slice = self._get_tensor_slice(t, 'nodes')
             self._reference_attribute_nodes[t, :, :] = self._shaper.transform_node_matrix(
                 src_slice, self._action_nodes, t
@@ -99,7 +99,7 @@ class TensorHandler(Constants):
 
     def _get_reference_matrix(self, t):
         """
-        :param t: layer of tensor to which references are established,
+        :param t: rightmost FS's layer to which references are established,
                   time step where we got matrix
         :return: (N x (MR + A)) matrix of references to nodes
         """
@@ -115,7 +115,7 @@ class TensorHandler(Constants):
     def _instantiate_attribute_grounded_schemas(self, attribute_idx, t, reference_matrix, W, predicted_matrix):
         """
         :param reference_matrix: (N x (MR + A))
-        :param t: schema output time
+        :param t: schema output time_step
         """
         for entity_idx in range(self.N):
             activity_mask = predicted_matrix[entity_idx, :]
@@ -196,4 +196,29 @@ class TensorHandler(Constants):
             self._predict_next_attribute_layer(t)
             self._predict_next_reward_layer(t)
 
+        return self._attribute_tensor
+
+    def check_entities_for_correctness(self, t):
+        n_predicted_balls = np.count_nonzero(self._attribute_tensor[t, :, self.BALL_IDX])
+        if n_predicted_balls > 1:
+            print('BAD_BALL: {} balls exist. t: {}'.format(n_predicted_balls, t))
+
+    def get_ball_entity_idx(self, t):
+        """
+        :param t: time_step you need to look at
+        :return: entity_idx of the ball
+        """
+        entities = self._attribute_tensor[t, :, :]
+        row_indices = entities[:, self.BALL_IDX].nonzero()[0]  # returns tuple
+
+        if row_indices.size > 1:
+            print('BAD_N_BALLS, n: {}, t: {}'.format(row_indices.size, t))
+
+        if row_indices:
+            ball_idx = row_indices[0]
+        else:
+            ball_idx = None
+        return ball_idx
+
+    def get_attribute_tensor(self):
         return self._attribute_tensor

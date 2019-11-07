@@ -1,3 +1,4 @@
+from collections import defaultdict
 import numpy as np
 from .constants import Constants
 from .graph_utils import Action, Reward
@@ -8,6 +9,10 @@ class Planner(Constants):
         # from SchemaNetwork
         # (T x REWARD_SPACE_DIM)
         self._reward_nodes = reward_nodes
+
+        # for visualizing purposes
+        self.curr_target = None
+        self.node2triplets = defaultdict(list)
 
     def _backtrace_schema(self, schema):
         """
@@ -20,8 +25,8 @@ class Planner(Constants):
 
         for precondition in schema.attribute_preconditions:
             if precondition.is_reachable is None:
-                # this node is NOT at t = 0 AND we have not computed it's value
-                # dfs over precondition's schemas
+                # this node is NOT at t < FRAME_STACK_SIZE (otherwise it would be initialized as reachable)
+                # and we have not computed it's reachability yet
                 self._backtrace_node(precondition)
             if not precondition.is_reachable:
                 # schema can *never* be reachable, break and try another schema
@@ -50,6 +55,16 @@ class Planner(Constants):
                 node.is_reachable = True
                 node.activating_schema = schema
                 node.activating_schema.compute_cumulative_actions()
+                if type(node) is not Reward:
+                    self.node2triplets[self.curr_target].append((node.t, node.entity_idx, node.attribute_idx))
+                else:
+                    pass
+                    """
+                    print('Encountered Reward node during backtracking.')
+                    print(vars(node))
+                    for s in node.schemas:
+                        print(vars(s))
+                    """
                 break
 
     def _find_closest_reward(self, reward_sign, search_from):
@@ -92,6 +107,7 @@ class Planner(Constants):
             search_from = reward_node.t + 1
 
             # backtrace from it
+            self.curr_target = reward_node
             self._backtrace_node(reward_node)
             if reward_node.is_reachable:
                 print('actions for reaching target {} reward node have been found successfully!'.format(reward_sign))

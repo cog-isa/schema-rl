@@ -30,7 +30,7 @@ class SchemaNetwork(Constants):
                                              self._action_nodes, self._reward_nodes,
                                              entities_stack)
         self._planner = Planner(self._reward_nodes)
-        self._visualizer = Visualizer()
+        self._visualizer = Visualizer(self._tensor_handler, self._planner, self._attribute_nodes)
         self._iter = None
 
     def _process_input(self, W, R):
@@ -100,16 +100,25 @@ class SchemaNetwork(Constants):
         attribute_tensor = self._tensor_handler.forward_pass()
 
         # visualizing
-        self._visualizer.set_params(attribute_tensor, self._iter)
+        self._visualizer.set_iter(self._iter)
         if self.VISUALIZE_SCHEMAS:
             self._visualizer.visualize_schemas(self._W, self._R)
         if self.VISUALIZE_INNER_STATE:
-            self._visualizer.visualize_predicted_entities(check_correctness=True)
+            self._visualizer.visualize_predicted_entities(check_correctness=False)
 
         # planning actions
         actions, target_reward_nodes = self._planner.plan_actions()
 
+        for t in range(self.TIME_SIZE):
+            self._tensor_handler.check_entities_for_correctness(t)
+
         if self.VISUALIZE_BACKTRACKING:
-            self._visualizer.visualize_backtracking(target_reward_nodes)
+            if target_reward_nodes:
+                self._visualizer.visualize_backtracking(target_reward_nodes,
+                                                        self._planner.node2triplets)
+                #for t in range(self.TIME_SIZE):
+                    #self._tensor_handler.check_entities_for_correctness(t)
+
+                #self._visualizer.log_balls_at_backtracking(target_reward_nodes[0])
 
         return actions

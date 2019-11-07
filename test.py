@@ -6,7 +6,7 @@ from testing.testing import TestFSS2
 env = StandardBreakout()
 env.reset()
 
-W, R = TestFSS2.W, TestFSS2.W
+W, R = TestFSS2.W, TestFSS2.R
 model = SchemaNetwork(W, R, [None, None])
 model.set_curr_iter(0)
 
