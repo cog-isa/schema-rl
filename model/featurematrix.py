@@ -21,7 +21,7 @@ class FeatureMatrix(Constants):
         if env.paddle.is_entity:
             for state, eid in env.parse_object_into_pixels(env.paddle):
                 pos = list(state.keys())[0][1]
-                print('paddle', pos)
+                #print('paddle', pos)
                 for i in range(-11, 12):
                     for j in range(-1, 3):
                         ind = self.transform_pos_to_index((pos[0]+j, pos[1]+i))

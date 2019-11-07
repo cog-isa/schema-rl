@@ -14,7 +14,7 @@ from .constants import Constants
 class Shaper(Constants):
     def __init__(self):
 
-        # N x (R-1)
+        # N x NEIGHBORS_NUM
         # using (N+1) as invalid index to prevent blanks during filling matrix in
         self._ne_entity_indices = np.full((self.N, self.NEIGHBORS_NUM), self.N + 1, dtype=int)
         self._gen_ne_entity_indices()
@@ -38,7 +38,7 @@ class Shaper(Constants):
         """
         i = idx // self.SCREEN_WIDTH
         j = idx % self.SCREEN_WIDTH
-        return (i, j)
+        return i, j
 
     def _gen_ne_entity_indices(self):
         """
