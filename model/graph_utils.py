@@ -77,18 +77,20 @@ class Schema(Constants):
 class Node:
     def __init__(self, t):
         """
-        value: bool variable
         schemas: list of schemas
         """
         self.t = t
 
         self.is_feasible = False
-
         self.is_reachable = None
         self.activating_schema = None  # reachable by this schema
-
-        self.value = None
         self.schemas = []
+
+    def reset(self):
+        self.is_feasible = False
+        self.is_reachable = None
+        self.activating_schema = None
+        self.schemas.clear()
 
     def add_schema(self, preconditions):
         # in current implementation schemas are instantiated only on feasible nodes
@@ -128,7 +130,7 @@ class Node:
 
 
 class Attribute(Node, Constants):
-    def __init__(self, entity_idx, attribute_idx, t, is_active):
+    def __init__(self, entity_idx, attribute_idx, t):
         """
         entity_idx: entity unique idx [0, N)
         attribute_idx: attribute index in entity's attribute vector
@@ -136,7 +138,11 @@ class Attribute(Node, Constants):
         self.entity_idx = entity_idx
         self.attribute_idx = attribute_idx
         super().__init__(t)
-        if is_active or attribute_idx == self.VOID_IDX:
+
+    def reset(self):
+        super().reset()
+
+        if self.t < self.FRAME_STACK_SIZE or self.attribute_idx == self.VOID_IDX:
             self.is_reachable = True
 
 
@@ -167,6 +173,9 @@ class Reward(Node):
     def __init__(self, idx, t):
         self.idx = idx
         super().__init__(t)
+
+    def reset(self):
+        super().reset()
 
 
 class MetaObject:

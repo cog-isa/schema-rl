@@ -13,13 +13,20 @@ class Constants:
     VISUALIZE_BACKTRACKING = True
     VISUALIZE_STATE = True
 
+    USE_SMALL_ENV = False
+
     if not DEBUG:
-        SCREEN_HEIGHT = 67  # 117
-        SCREEN_WIDTH = 54  # 94      using 5 brick columns
+        if USE_SMALL_ENV:
+            SCREEN_HEIGHT = 67
+            SCREEN_WIDTH = 54  # using 5 brick columns
+            T = 50
+        else:
+            SCREEN_HEIGHT = 117
+            SCREEN_WIDTH = 94
+            T = 130  # min 112
 
         N = SCREEN_WIDTH * SCREEN_HEIGHT
         M = 5
-        T = 3  # was 50  # min 112; better 130
         ACTION_SPACE_DIM = 3
         REWARD_SPACE_DIM = 2
 

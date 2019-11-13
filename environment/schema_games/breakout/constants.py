@@ -5,6 +5,7 @@ remaining constants may be changed with caution. Proceed at your own risk.
 """
 
 import numpy as np
+from model.constants import Constants
 
 
 ###############################################################################
@@ -30,7 +31,12 @@ CORRUPT_RENDERED_IMAGE = False
 DEBUGGING = False
 DEFAULT_BRICK_REWARD = 1
 DEFAULT_BRICK_SHAPE = np.array([8, 4])
-DEFAULT_NUM_BRICKS_COLS = 6  # was 11
+
+if Constants.USE_SMALL_ENV:
+    DEFAULT_NUM_BRICKS_COLS = 6
+else:
+    DEFAULT_NUM_BRICKS_COLS = 11  # original size
+
 DEFAULT_NUM_BRICKS_ROWS = 6
 DEFAULT_WALL_THICKNESS = 3
 DEFAULT_WIDTH = (DEFAULT_WALL_THICKNESS * 2 +
