@@ -40,6 +40,7 @@ class Runner(Constants):
         env = StandardBreakout()
         env.reset()
 
+        planner = SchemaNetwork()
         visualizer = Visualizer(None, None, None)
 
         for episode_idx in range(self.n_episodes):
@@ -58,9 +59,10 @@ class Runner(Constants):
 
                 if (step_idx - 1) % self.plan_every == 0 \
                         and len(frame_stack) >= self.FRAME_STACK_SIZE:
-                    model = SchemaNetwork(W, R, frame_stack)
-                    model.set_curr_iter(curr_iter)
-                    planned_actions = model.plan_actions()
+                    planner.set_weights(W, R)
+                    planner.set_curr_iter(curr_iter)
+                    planned_actions = planner.plan_actions(frame_stack)
+
                     actions.clear()
                     actions.extend(planned_actions)
 
@@ -78,7 +80,7 @@ class Runner(Constants):
 def main():
     n_episodes = 16
     n_steps = 1024
-    plan_every = 30
+    plan_every = 10
 
     runner = Runner(n_episodes=n_episodes,
                     n_steps=n_steps,

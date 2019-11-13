@@ -7,16 +7,13 @@ from .visualizer import Visualizer
 
 
 class SchemaNetwork(Constants):
-    def __init__(self, W, R, entities_stack):
+    def __init__(self):
         """
         :param W: list of M matrices, each of [(MR + A) x L] shape
         :param R: list of 2 matrices, each of [(MN + A) x L] shape, 1st - pos, 2nd - neg
         """
-        self._process_input(W, R)
-        self._print_input_stats(W)
-
-        self._W = W
-        self._R = R
+        self._W = None
+        self._R = None
 
         self._attribute_nodes = None  # tensor ((FRAME_STACK_SIZE + T) x N x M)
         self._action_nodes = None  # tensor ((FRAME_STACK_SIZE + T) x ACTION_SPACE_DIM)
@@ -26,12 +23,19 @@ class SchemaNetwork(Constants):
         self._gen_action_nodes()
         self._gen_reward_nodes()
 
-        self._tensor_handler = TensorHandler(self._W, self._R, self._attribute_nodes,
-                                             self._action_nodes, self._reward_nodes,
-                                             entities_stack)
+        self._tensor_handler = TensorHandler(self._attribute_nodes,
+                                             self._action_nodes, self._reward_nodes)
         self._planner = Planner(self._reward_nodes)
         self._visualizer = Visualizer(self._tensor_handler, self._planner, self._attribute_nodes)
         self._iter = None
+
+    def set_weights(self, W, R):
+        self._process_input(W, R)
+        self._print_input_stats(W)
+
+        self._tensor_handler.set_weights(W, R)
+        self._W = W
+        self._R = R
 
     def _process_input(self, W, R):
         assert len(W) == self.M - 1, 'BAD_W_NUM'
@@ -49,7 +53,6 @@ class SchemaNetwork(Constants):
             assert matrix.size, 'EMPTY_MATRIX'
 
     def _print_input_stats(self, W):
-        print('Constructing SchemaNetwork object...')
         print('Numbers of schemas in W are: ', end='')
         for idx, w in enumerate(W):
             print('{}'.format(w.shape[1]), end='')
@@ -63,9 +66,8 @@ class SchemaNetwork(Constants):
     def _gen_attribute_node_matrix(self, t):
         n_rows = self.N
         n_cols = self.M
-        is_active = True if t < self.FRAME_STACK_SIZE else False
         matrix = [
-            [Attribute(entity_idx, attribute_idx, t, is_active) for attribute_idx in range(n_cols)]
+            [Attribute(entity_idx, attribute_idx, t) for attribute_idx in range(n_cols)]
             for entity_idx in range(n_rows)
         ]
         return matrix
@@ -73,6 +75,10 @@ class SchemaNetwork(Constants):
     def _gen_attribute_nodes(self):
         tensor = [self._gen_attribute_node_matrix(t) for t in range(self.FRAME_STACK_SIZE + self.T)]
         self._attribute_nodes = np.array(tensor)
+
+    def _init_attribute_nodes(self):
+        for node in self._attribute_nodes.flat:
+            node.reset()
 
     def _gen_action_nodes(self):
         action_nodes = [
@@ -88,16 +94,23 @@ class SchemaNetwork(Constants):
         ]
         self._reward_nodes = np.array(reward_nodes)
 
-    def plan_actions(self):
-        if len(self._tensor_handler._entities_stack) < self.FRAME_STACK_SIZE:
+    def _init_reward_nodes(self):
+        for node in self._reward_nodes.flat:
+            node.reset()
+
+    def plan_actions(self, frame_stack):
+        if len(frame_stack) < self.FRAME_STACK_SIZE:
             print('Small ENTITIES_STACK. Abort.')
             planned_actions = np.random.randint(low=0,
                                                 high=self.ACTION_SPACE_DIM,
                                                 size=self.T)
             return planned_actions
 
+        self._init_attribute_nodes()
+        self._init_reward_nodes()
+
         # instantiate schemas, determine nodes feasibility
-        attribute_tensor = self._tensor_handler.forward_pass()
+        self._tensor_handler.forward_pass(frame_stack)
 
         # visualizing
         self._visualizer.set_iter(self._iter)

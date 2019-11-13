@@ -5,11 +5,11 @@ from .graph_utils import MetaObject, Attribute, FakeAttribute, Action
 
 
 class TensorHandler(Constants):
-    def __init__(self, W, R, attribute_nodes, action_nodes, reward_nodes, entities_stack):
-        self._W = W
-        self._R = R
+    def __init__(self, attribute_nodes, action_nodes, reward_nodes):
+        self._W = None
+        self._R = None
 
-        self._entities_stack = entities_stack
+        self._entities_stack = None
 
         # ((FRAME_STACK_SIZE + T) x self.N x self.M)
         self._attribute_tensor = None
@@ -30,6 +30,10 @@ class TensorHandler(Constants):
         self._gen_attribute_tensor()
         self._gen_reward_tensor()
         self._gen_reference_attribute_nodes()
+
+    def set_weights(self, W, R):
+        self._W = W
+        self._R = R
 
     def _get_env_attribute_tensor(self):
         """
@@ -57,11 +61,21 @@ class TensorHandler(Constants):
 
     def _gen_attribute_tensor(self):
         shape = (self.FRAME_STACK_SIZE + self.T, self.N, self.M)
-        self._attribute_tensor = np.full(shape, False, dtype=bool)
+        self._attribute_tensor = np.empty(shape, dtype=bool)
+
+    def _init_attribute_tensor(self, src_tensor):
+        """
+        :param tensor: (FRAME_STACK_SIZE x N x M) ndarray of attributes
+        """
+        self._attribute_tensor[:self.FRAME_STACK_SIZE, :, :] = src_tensor
+        self._attribute_tensor[self.FRAME_STACK_SIZE:, :, :] = False
 
     def _gen_reward_tensor(self):
         shape = (self.FRAME_STACK_SIZE + self.T, self.REWARD_SPACE_DIM)
         self._reward_tensor = np.empty(shape, dtype=bool)
+
+    def _init_reward_tensor(self):
+        self._reward_tensor[:, :] = False
 
     def _gen_reference_attribute_nodes(self):
         # ((FRAME_STACK_SIZE + T) x N x (MR*ss + A))
@@ -105,12 +119,6 @@ class TensorHandler(Constants):
         """
         reference_matrix = self._reference_attribute_nodes[t, :, :]
         return reference_matrix
-
-    def _init_attributes(self, tensor):
-        """
-        :param tensor: (FRAME_STACK_SIZE x N x M) ndarray of attributes
-        """
-        self._attribute_tensor[:self.FRAME_STACK_SIZE, :, :] = tensor
 
     def _instantiate_attribute_grounded_schemas(self, attribute_idx, t, reference_matrix, W, predicted_matrix):
         """
@@ -181,22 +189,21 @@ class TensorHandler(Constants):
             self._instantiate_reward_grounded_schemas(reward_idx, t + 1, reference_matrix, R, predicted_matrix)
             self._reward_tensor[t + 1, reward_idx] = predicted_matrix.any()  # OR over all dimensions
 
-    def forward_pass(self):
+    def forward_pass(self, entities_stack):
         """
         Fill attribute_nodes and reward_nodes with schema information
         """
-        # init first matrix from env
-        attribute_tensor = self._get_env_attribute_tensor()
+        self._entities_stack = entities_stack
+        src_tensor = self._get_env_attribute_tensor()
 
-        self._init_attributes(attribute_tensor)
+        self._init_attribute_tensor(src_tensor)
+        self._init_reward_tensor()
 
         # propagate forward
         offset = self.FRAME_STACK_SIZE - 1
         for t in range(offset, offset + self.T):
             self._predict_next_attribute_layer(t)
             self._predict_next_reward_layer(t)
-
-        return self._attribute_tensor
 
     def check_entities_for_correctness(self, t):
         n_predicted_balls = np.count_nonzero(self._attribute_tensor[t, :, self.BALL_IDX])
