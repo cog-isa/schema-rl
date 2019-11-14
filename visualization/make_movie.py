@@ -9,16 +9,18 @@ ap.add_argument("-o", "--output", required=False, default='output.mp4', help="ou
 args = vars(ap.parse_args())
 
 # Arguments
-dir_path = 'state'
+dir_path = 'movie'
 ext = args['extension']
 output = args['output']
 
 FPS = 60.0
+n_images = 10000
 
 images = [os.path.join(dir_path, file_name) for file_name in os.listdir(dir_path)]
-images = [[x, os.path.getctime(x)] for x in images]
+images = [[x, os.path.getmtime(x)] for x in images]
 images = sorted(images, key=lambda t: t[-1])
 images = [x[0] for x in images]
+images = images[:n_images]
 
 # Determine the width and height from the first image
 image_path = images[0]
