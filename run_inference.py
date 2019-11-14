@@ -17,7 +17,7 @@ class Runner(Constants):
 
     def load_schema_matrices(self, generate=True):
         if generate:
-            W, R = HardcodedSchemaVectors.gen_schema_matrices()
+            W, R, R_weights = HardcodedSchemaVectors.gen_schema_matrices()
         else:
             dir_name = './dump'
             W = []
@@ -32,10 +32,10 @@ class Runner(Constants):
                 path = os.path.join(dir_name, file_name)
                 r = np.load(path, allow_pickle=True)
                 R.append(r)
-        return W, R
+        return W, R, R_weights
 
     def loop(self):
-        W, R = self.load_schema_matrices()
+        W, R, R_weights = self.load_schema_matrices()
 
         env = StandardBreakout()
         env.reset()
@@ -59,7 +59,7 @@ class Runner(Constants):
 
                 if (step_idx - 1) % self.plan_every == 0 \
                         and len(frame_stack) >= self.FRAME_STACK_SIZE:
-                    planner.set_weights(W, R)
+                    planner.set_weights(W, R, R_weights)
                     planner.set_curr_iter(curr_iter)
                     planned_actions = planner.plan_actions(frame_stack)
 

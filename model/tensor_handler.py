@@ -8,6 +8,7 @@ class TensorHandler(Constants):
     def __init__(self, attribute_nodes, action_nodes, reward_nodes):
         self._W = None
         self._R = None
+        self._R_weights = None
 
         self._entities_stack = None
 
@@ -31,9 +32,10 @@ class TensorHandler(Constants):
         self._gen_reward_tensor()
         self._gen_reference_attribute_nodes()
 
-    def set_weights(self, W, R):
+    def set_weights(self, W, R, R_weights):
         self._W = W
         self._R = R
+        self._R_weights = R_weights
 
     def _get_env_attribute_tensor(self):
         """
@@ -152,10 +154,12 @@ class TensorHandler(Constants):
         for row_idx in range(self.N):
             activity_mask = predicted_matrix[row_idx, :]
             precondition_masks = R[:, activity_mask].T
+            masks_weights = self._R_weights[activity_mask]
 
-            for mask in precondition_masks:
+            for mask, weight in zip(precondition_masks, masks_weights):
                 preconditions = reference_matrix[row_idx, mask]
                 self._reward_nodes[t, reward_idx].add_schema(preconditions)
+                self._reward_nodes[t, reward_idx].set_weight(weight)
 
     def _predict_next_attribute_layer(self, t):
         """

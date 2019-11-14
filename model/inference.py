@@ -14,6 +14,7 @@ class SchemaNetwork(Constants):
         """
         self._W = None
         self._R = None
+        self._R_weights = None
 
         self._attribute_nodes = None  # tensor ((FRAME_STACK_SIZE + T) x N x M)
         self._action_nodes = None  # tensor ((FRAME_STACK_SIZE + T) x ACTION_SPACE_DIM)
@@ -29,13 +30,14 @@ class SchemaNetwork(Constants):
         self._visualizer = Visualizer(self._tensor_handler, self._planner, self._attribute_nodes)
         self._iter = None
 
-    def set_weights(self, W, R):
+    def set_weights(self, W, R, R_weights):
         self._process_input(W, R)
         self._print_input_stats(W)
 
-        self._tensor_handler.set_weights(W, R)
+        self._tensor_handler.set_weights(W, R, R_weights)
         self._W = W
         self._R = R
+        self._R_weights = R_weights
 
     def _process_input(self, W, R):
         assert len(W) == self.M - 1, 'BAD_W_NUM'
