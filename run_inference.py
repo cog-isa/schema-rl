@@ -22,6 +22,7 @@ class Runner(Constants):
             dir_name = './dump'
             W = []
             R = []
+            R_weights = None
             for idx in range(self.M):
                 file_name = 'w_{}'.format(idx)
                 path = os.path.join(dir_name, file_name)

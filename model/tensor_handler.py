@@ -154,12 +154,18 @@ class TensorHandler(Constants):
         for row_idx in range(self.N):
             activity_mask = predicted_matrix[row_idx, :]
             precondition_masks = R[:, activity_mask].T
-            masks_weights = self._R_weights[activity_mask]
 
-            for mask, weight in zip(precondition_masks, masks_weights):
-                preconditions = reference_matrix[row_idx, mask]
-                self._reward_nodes[t, reward_idx].add_schema(preconditions)
-                self._reward_nodes[t, reward_idx].set_weight(weight)
+            # save weights in graph for positive reward nodes
+            if reward_idx == 0:
+                masks_weights = self._R_weights[activity_mask]
+                for mask, weight in zip(precondition_masks, masks_weights):
+                    preconditions = reference_matrix[row_idx, mask]
+                    self._reward_nodes[t, reward_idx].add_schema(preconditions)
+                    self._reward_nodes[t, reward_idx].set_weight(weight)
+            else:
+                for mask in precondition_masks:
+                    preconditions = reference_matrix[row_idx, mask]
+                    self._reward_nodes[t, reward_idx].add_schema(preconditions)
 
     def _predict_next_attribute_layer(self, t):
         """
