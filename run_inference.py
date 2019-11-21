@@ -22,16 +22,19 @@ class Runner(Constants):
             dir_name = './dump'
             W = []
             R = []
-            for idx in range(self.M):
-                file_name = 'w_{}'.format(idx)
+            for idx in range(self.M - 1):
+                file_name = '_schemas_standard/schema{}.txt'.format(idx)
                 path = os.path.join(dir_name, file_name)
-                w = np.load(path, allow_pickle=True)
+                w = np.loadtxt(path).astype(bool)
                 W.append(w)
-            for idx in range(2):
-                file_name = 'r_{}'.format(idx)
+            for idx in range(1):
+                file_name = '_schemas_standardreward/schema{}.txt'.format(idx)
                 path = os.path.join(dir_name, file_name)
-                r = np.load(path, allow_pickle=True)
+                r = np.loadtxt(path).astype(bool)
                 R.append(r)
+
+            W_synth, R_synth = HardcodedSchemaVectors.gen_schema_matrices()
+            R.append(R_synth[1])
         return W, R
 
     def loop(self):
@@ -63,8 +66,9 @@ class Runner(Constants):
                     planner.set_curr_iter(curr_iter)
                     planned_actions = planner.plan_actions(frame_stack)
 
-                    actions.clear()
-                    actions.extend(planned_actions)
+                    if planned_actions is not None:
+                        actions.clear()
+                        actions.extend(planned_actions)
 
                 if actions:
                     action = actions.popleft()
