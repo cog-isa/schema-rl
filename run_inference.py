@@ -63,8 +63,9 @@ class Runner(Constants):
                     planner.set_curr_iter(curr_iter)
                     planned_actions = planner.plan_actions(frame_stack)
 
-                    actions.clear()
-                    actions.extend(planned_actions)
+                    if planned_actions is not None:
+                        actions.clear()
+                        actions.extend(planned_actions)
 
                 if actions:
                     action = actions.popleft()

@@ -90,10 +90,10 @@ class HardcodedSchemaVectors(Constants):
     positive_reward = [
         (AttributePrecondition('curr', 0, 0, BALL_IDX),  # attack from left
          AttributePrecondition('prev', 1, -1, BALL_IDX),
-         AttributePrecondition('curr', -1, 0, BRICK_IDX),),
+         AttributePrecondition('curr', -1, 1, BRICK_IDX),),
         (AttributePrecondition('curr', 0, 0, BALL_IDX),  # attack from right
          AttributePrecondition('prev', 1, 1, BALL_IDX),
-         AttributePrecondition('curr', -1, 0, BRICK_IDX),),
+         AttributePrecondition('curr', -1, -1, BRICK_IDX),),
         (AttributePrecondition('curr', 0, 0, BALL_IDX),  # upright attack
          AttributePrecondition('prev', 1, 0, BALL_IDX),
          AttributePrecondition('curr', -1, 0, BRICK_IDX),),

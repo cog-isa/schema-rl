@@ -41,6 +41,10 @@ class Schema(Constants):
                         if merging_buff[i] != to_merge[i]:
                             pass
                             # print('merge conflict detected')
+
+                        if merging_buff[i][0] == 0 and len(to_merge[i]) != 0:
+                            merging_buff[i].clear()
+                            merging_buff[i].extend(to_merge[i])
             else:
                 assert attribute_node.t < self.FRAME_STACK_SIZE \
                     or attribute_node.attribute_idx == self.VOID_IDX
@@ -127,6 +131,10 @@ class Node:
 
         self.schemas = sorted(self.schemas,
                               key=lambda x: x.harmfulness)
+
+    def sort_schemas_by_min_req_actions(self):
+        self.schemas = sorted(self.schemas,
+                              key=lambda schema: len(schema.action_preconditions))
 
 
 class Attribute(Node, Constants):

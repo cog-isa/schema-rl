@@ -12,7 +12,7 @@ class Planner(Constants):
 
         # for visualizing purposes
         self.curr_target = None
-        self.node2triplets = defaultdict(list)
+        self.node2triplets = None
 
     def _backtrace_schema(self, schema):
         """
@@ -45,6 +45,8 @@ class Planner(Constants):
         # neg_schemas for reward at the same time step as node's time step
         # neg_schemas = self._reward_nodes[node.t, Reward.sign2idx['neg']].schemas
         # node.sort_schemas_by_harmfulness(neg_schemas)
+
+        node.sort_schemas_by_min_req_actions()
 
         for schema in node.schemas:
             if schema.is_reachable is None:
@@ -108,6 +110,7 @@ class Planner(Constants):
 
             # backtrace from it
             self.curr_target = reward_node
+            self.node2triplets = defaultdict(list)
             self._backtrace_node(reward_node)
             if reward_node.is_reachable:
                 print('actions for reaching target {} reward node have been found successfully!'.format(reward_sign))
@@ -116,6 +119,10 @@ class Planner(Constants):
 
                 # here planned_actions is len(t-1) List of len(max(x, ACTION_SPACE_DIM)) Lists]
                 # picking FIRST action as a result
+
+                # HOT FIX
+                planned_actions = planned_actions[self.FRAME_STACK_SIZE-1:]
+
                 planned_actions = [actions_at_t[0] if actions_at_t else Action.not_planned_idx
                                    for actions_at_t in planned_actions]
                 planned_actions = np.array(planned_actions)
@@ -130,6 +137,8 @@ class Planner(Constants):
         planned_actions, target_reward_nodes = self._plan_for_rewards('pos')
 
         if planned_actions is not None:
+            pass
+            """
             randomness_mask = np.random.choice([True, False],
                                                size=planned_actions.size,
                                                p=[self.EPSILON, 1 - self.EPSILON])
@@ -138,12 +147,10 @@ class Planner(Constants):
             planned_actions[randomness_mask] = np.random.randint(low=0,
                                                                  high=self.ACTION_SPACE_DIM,
                                                                  size=randomness_size)
+            """
         else:
             # can't plan anything
-            print('Planner failed to plan, returning random actions.')
-            planned_actions = np.random.randint(low=0,
-                                                high=self.ACTION_SPACE_DIM,
-                                                size=self.T)
+            print('Planner failed to plan.')
 
         return planned_actions, target_reward_nodes
 

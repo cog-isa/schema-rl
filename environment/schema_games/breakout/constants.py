@@ -15,7 +15,7 @@ from model.constants import Constants
 #   These constants determine the maximum radius up to which graceful dynamics
 #   are guaranteed without too many visual artifacts. Recommended value: 2.
 #
-_MAX_SPEED = 2
+_MAX_SPEED = 1
 _BALL_SHAPE = np.array([1, 1])
 ###############################################################################
 
