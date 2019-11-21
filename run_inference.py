@@ -65,12 +65,12 @@ class Runner(Constants):
                 visualizer.set_iter(curr_iter)
                 visualizer.visualize_env_state(obs)
 
-                if (step_idx - 1) % self.plan_every == 0 \
-                        and len(frame_stack) >= self.FRAME_STACK_SIZE:
+                if len(frame_stack) >= self.FRAME_STACK_SIZE \
+                        and len(actions) == 0:
                     planner.set_weights(W, R, R_weights)
                     planner.set_curr_iter(curr_iter)
-                    planned_actions = planner.plan_actions(frame_stack)
 
+                    planned_actions = planner.plan_actions(frame_stack)
                     if planned_actions is not None:
                         actions.clear()
                         actions.extend(planned_actions)
@@ -89,8 +89,8 @@ class Runner(Constants):
 def main():
     n_episodes = 16
     n_steps = 1024
-    plan_every = 10
-    env_type = 'standard'
+    plan_every = 30
+    env_type = 'juggling'
     assert env_type in ('standard', 'offset-paddle', 'juggling')
 
     runner = Runner(env_type=env_type,
