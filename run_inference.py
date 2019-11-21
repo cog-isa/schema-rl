@@ -56,9 +56,10 @@ class Runner(Constants):
                 obs = FeatureMatrix(env).matrix
                 frame_stack.append(obs)
 
-                # visualize env state
-                visualizer.set_iter(curr_iter)
-                visualizer.visualize_env_state(obs)
+                if self.VISUALIZE_STATE:
+                    # visualize env state
+                    visualizer.set_iter(curr_iter)
+                    visualizer.visualize_env_state(obs)
 
                 if (step_idx - 1) % self.plan_every == 0 \
                         and len(frame_stack) >= self.FRAME_STACK_SIZE:
