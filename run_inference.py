@@ -1,7 +1,7 @@
 import os
 from collections import deque
 import numpy as np
-from environment.schema_games.breakout.games import StandardBreakout
+from environment.schema_games.breakout.games import StandardBreakout, OffsetPaddleBreakout, JugglingBreakout
 from model.featurematrix import FeatureMatrix
 from model.inference import SchemaNetwork
 from model.visualizer import Visualizer
@@ -10,7 +10,14 @@ from testing.testing import HardcodedSchemaVectors
 
 
 class Runner(Constants):
-    def __init__(self, n_episodes, n_steps, plan_every):
+    env_type_to_class = {
+        'standard': StandardBreakout,
+        'offset-paddle': OffsetPaddleBreakout,
+        'juggling': JugglingBreakout
+    }
+
+    def __init__(self, env_type, n_episodes, n_steps, plan_every):
+        self.env_class = self.env_type_to_class[env_type]
         self.n_episodes = n_episodes
         self.n_steps = n_steps
         self.plan_every = plan_every
@@ -40,7 +47,7 @@ class Runner(Constants):
     def loop(self):
         W, R = self.load_schema_matrices()
 
-        env = StandardBreakout()
+        env = self.env_class()
         env.reset()
 
         planner = SchemaNetwork()
@@ -85,8 +92,11 @@ def main():
     n_episodes = 16
     n_steps = 1024
     plan_every = 10
+    env_type = 'standard'
+    assert env_type in ('standard', 'offset-paddle', 'juggling')
 
-    runner = Runner(n_episodes=n_episodes,
+    runner = Runner(env_type=env_type,
+                    n_episodes=n_episodes,
                     n_steps=n_steps,
                     plan_every=plan_every)
     runner.loop()
