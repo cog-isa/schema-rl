@@ -14,6 +14,7 @@ class SchemaNetwork(Constants):
         """
         self._W = None
         self._R = None
+        self._R_weights = None
 
         self._attribute_nodes = None  # tensor ((FRAME_STACK_SIZE + T) x N x M)
         self._action_nodes = None  # tensor ((FRAME_STACK_SIZE + T) x ACTION_SPACE_DIM)
@@ -29,13 +30,17 @@ class SchemaNetwork(Constants):
         self._visualizer = Visualizer(self._tensor_handler, self._planner, self._attribute_nodes)
         self._iter = None
 
-    def set_weights(self, W, R):
+    def set_weights(self, W, R, R_weights=None):
         self._process_input(W, R)
         self._print_input_stats(W)
 
-        self._tensor_handler.set_weights(W, R)
+        if R_weights is None:
+            R_weights = np.ones(R[0].shape[1], dtype=np.float)
+
         self._W = W
         self._R = R
+        self._R_weights = R_weights
+        self._tensor_handler.set_weights(W, R, R_weights)
 
     def _process_input(self, W, R):
         assert len(W) == self.M - 1, 'BAD_W_NUM'
@@ -101,10 +106,7 @@ class SchemaNetwork(Constants):
     def plan_actions(self, frame_stack):
         if len(frame_stack) < self.FRAME_STACK_SIZE:
             print('Small ENTITIES_STACK. Abort.')
-            planned_actions = np.random.randint(low=0,
-                                                high=self.ACTION_SPACE_DIM,
-                                                size=self.T)
-            return planned_actions
+            return None
 
         self._init_attribute_nodes()
         self._init_reward_nodes()
