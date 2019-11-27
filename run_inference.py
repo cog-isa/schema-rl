@@ -21,8 +21,8 @@ class Runner(Constants):
         self.n_episodes = n_episodes
         self.n_steps = n_steps
 
-    def load_schema_matrices(self, generate=True):
-        if generate:
+    def load_schema_matrices(self):
+        if not self.USE_LEARNED_SCHEMAS:
             W, R, R_weights = HardcodedSchemaVectors.gen_schema_matrices()
         else:
             dir_name = './dump'

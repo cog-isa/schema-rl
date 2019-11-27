@@ -14,6 +14,7 @@ class Constants:
     VISUALIZE_BACKTRACKING = True
     VISUALIZE_STATE = True
 
+    USE_LEARNED_SCHEMAS = True
     EMERGENCY_REPLANNING_PERIOD = 30
 
     if not DEBUG:
