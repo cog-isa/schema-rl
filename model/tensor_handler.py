@@ -213,7 +213,7 @@ class TensorHandler(Constants):
         for t in range(offset, offset + self.T):
             self._predict_next_attribute_layer(t)
             is_pos_reward_predicted = self._predict_next_reward_layer(t)
-            
+
             if is_pos_reward_predicted:
                 break
 

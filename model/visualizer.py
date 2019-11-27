@@ -182,7 +182,7 @@ class Visualizer(Constants):
         concat_pixmap = np.vstack((concat_pixmap, h_separator, actions_indicator))
         return concat_pixmap
 
-    def _save_schema_image(self, vec, image_path):
+    def save_schema_image(self, vec, image_path):
         entities_stack, active_actions = self._parse_schema_vector(vec)
         pixmap = self._gen_schema_activation_pattern(entities_stack, active_actions)
         n_rows, n_cols, _ = pixmap.shape
@@ -199,7 +199,7 @@ class Visualizer(Constants):
                 file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
                     self._iter, self.ENTITY_NAMES[attribute_idx], vec_idx, ipl=self.ITER_PADDING_LENGTH)
                 path = os.path.join(self.ATTRIBUTE_SCHEMAS_DIR_NAME, file_name)
-                self._save_schema_image(vec, path)
+                self.save_schema_image(vec, path)
 
         # reward schemas
         for reward_type, r in enumerate(R):
