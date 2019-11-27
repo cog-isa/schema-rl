@@ -141,16 +141,7 @@ class TensorHandler(Constants):
         :param reference_matrix: (1 x (MN + A))
         :param t: schema output time
         """
-        """code for old flat rewards:
-        activity_mask = np.squeeze(predicted_matrix, axis=0)  # get rid of first dimension
-        reference_matrix = np.squeeze(reference_matrix, axis=0)
-
-        precondition_masks = R[:, activity_mask].T
-
-        for mask in precondition_masks:
-            preconditions = reference_matrix[mask]
-            self._reward_nodes[t, reward_idx].add_schema(preconditions)
-        """
+        n_pos_schemas_instantiated = 0
         for row_idx in range(self.N):
             activity_mask = predicted_matrix[row_idx, :]
             precondition_masks = R[:, activity_mask].T
@@ -162,10 +153,12 @@ class TensorHandler(Constants):
                     preconditions = reference_matrix[row_idx, mask]
                     self._reward_nodes[t, reward_idx].add_schema(preconditions)
                     self._reward_nodes[t, reward_idx].set_weight(weight)
+                    n_pos_schemas_instantiated += 1
             else:
                 for mask in precondition_masks:
                     preconditions = reference_matrix[row_idx, mask]
                     self._reward_nodes[t, reward_idx].add_schema(preconditions)
+        return n_pos_schemas_instantiated
 
     def _predict_next_attribute_layer(self, t):
         """
@@ -194,10 +187,16 @@ class TensorHandler(Constants):
         transformed_matrix = self._shaper.transform_matrix(src_slice)
         reference_matrix = self._get_reference_matrix(t)
 
+        is_pos_reward_predicted = False
         for reward_idx, R in enumerate(self._R):
             predicted_matrix = ~(~transformed_matrix @ R)
-            self._instantiate_reward_grounded_schemas(reward_idx, t + 1, reference_matrix, R, predicted_matrix)
             self._reward_tensor[t + 1, reward_idx] = predicted_matrix.any()  # OR over all dimensions
+
+            n_pos_schemas_instantiated = \
+                self._instantiate_reward_grounded_schemas(reward_idx, t + 1, reference_matrix, R, predicted_matrix)
+            is_pos_reward_predicted |= bool(n_pos_schemas_instantiated)
+
+        return is_pos_reward_predicted
 
     def forward_pass(self, entities_stack):
         """
@@ -213,7 +212,10 @@ class TensorHandler(Constants):
         offset = self.FRAME_STACK_SIZE - 1
         for t in range(offset, offset + self.T):
             self._predict_next_attribute_layer(t)
-            self._predict_next_reward_layer(t)
+            is_pos_reward_predicted = self._predict_next_reward_layer(t)
+            
+            if is_pos_reward_predicted:
+                break
 
     def check_entities_for_correctness(self, t):
         n_predicted_balls = np.count_nonzero(self._attribute_tensor[t, :, self.BALL_IDX])

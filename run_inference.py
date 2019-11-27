@@ -43,7 +43,7 @@ class Runner(Constants):
         return W, R, R_weights
 
     def loop(self):
-        W, R, R_weights = self.load_schema_matrices()
+        W, R, _ = self.load_schema_matrices()
 
         env = self.env_class()
         env.reset()
@@ -68,7 +68,7 @@ class Runner(Constants):
 
                 if len(frame_stack) >= self.FRAME_STACK_SIZE \
                         and len(actions) == 0:
-                    planner.set_weights(W, R, R_weights)
+                    planner.set_weights(W, R)
                     planner.set_curr_iter(curr_iter)
 
                     planned_actions = planner.plan_actions(frame_stack)
@@ -90,8 +90,7 @@ class Runner(Constants):
 def main():
     n_episodes = 16
     n_steps = 1024
-    plan_every = 30
-    env_type = 'juggling'
+    env_type = 'standard'
     assert env_type in ('standard', 'offset-paddle', 'juggling')
 
     runner = Runner(env_type=env_type,
