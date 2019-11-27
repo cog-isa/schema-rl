@@ -37,6 +37,9 @@ class Visualizer(Constants):
         self.BACKTRACKING_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'backtracking')
         self.STATE_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'state')
 
+        self.ITER_PADDING_LENGTH = 8
+        self.TIME_STEP_PADDING_LENGTH = len(str(self.T))
+
         self.N_CHANNELS = 3
         self.STATE_SCALE = 4
         self.SCHEMA_SCALE = 128
@@ -110,12 +113,14 @@ class Visualizer(Constants):
             if check_correctness:
                 self._tensor_handler.check_entities_for_correctness(t)
 
-            file_name = 'iter_{}__t_{}.png'.format(self._iter, t)
+            file_name = 'iter_{:0{ipl}d}__t_{:0{tspl}d}.png'.format(
+                self._iter, t, ipl=self.ITER_PADDING_LENGTH, tspl=self.TIME_STEP_PADDING_LENGTH)
             image_path = os.path.join(self.ENTITIES_DIR_NAME, file_name)
             self.visualize_entities(self._attribute_tensor[t], image_path)
 
     def visualize_env_state(self, state):
-        file_name = 'iter_{}.png'.format(self._iter)
+        file_name = 'iter_{:0{ipl}d}.png'.format(
+            self._iter, ipl=self.ITER_PADDING_LENGTH)
         image_path = os.path.join(self.STATE_DIR_NAME, file_name)
         self.visualize_entities(state, image_path)
 
@@ -191,18 +196,16 @@ class Visualizer(Constants):
         # attribute schemas
         for attribute_idx, w in enumerate(W):
             for vec_idx, vec in enumerate(w.T):
-                file_name = 'iter_{}__{}__vec_{}.png'.format(self._iter,
-                                                             self.ENTITY_NAMES[attribute_idx],
-                                                             vec_idx)
+                file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
+                    self._iter, self.ENTITY_NAMES[attribute_idx], vec_idx, ipl=self.ITER_PADDING_LENGTH)
                 path = os.path.join(self.ATTRIBUTE_SCHEMAS_DIR_NAME, file_name)
                 self._save_schema_image(vec, path)
 
         # reward schemas
         for reward_type, r in enumerate(R):
             for vec_idx, vec in enumerate(r.T):
-                file_name = 'iter_{}__{}__vec_{}.png'.format(self._iter,
-                                                             self.REWARD_NAMES[reward_type],
-                                                             vec_idx)
+                file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
+                    self._iter, self.REWARD_NAMES[reward_type], vec_idx, ipl=self.ITER_PADDING_LENGTH)
                 path = os.path.join(self.REWARD_SCHEMAS_DIR_NAME, file_name)
                 self._save_schema_image(vec, path)
 
@@ -240,7 +243,8 @@ class Visualizer(Constants):
 
     def visualize_backtracking(self, target_reward_nodes, partial_triplets):
         for idx, reward_node in enumerate(target_reward_nodes):
-            file_name = 'iter_{}__node_{}.png'.format(self._iter, idx)
+            file_name = 'iter_{:0{ipl}d}__node_{}.png'.format(
+                self._iter, idx, ipl=self.ITER_PADDING_LENGTH)
             image_path = os.path.join(self.BACKTRACKING_DIR_NAME, file_name)
             self.visualize_node_backtracking(reward_node, image_path, partial_triplets)
 

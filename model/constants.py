@@ -23,7 +23,7 @@ class Constants:
         else:
             SCREEN_HEIGHT = 117
             SCREEN_WIDTH = 94
-            T = 130  # min 112
+            T = 3  # min 112
 
         N = SCREEN_WIDTH * SCREEN_HEIGHT
         M = 5
