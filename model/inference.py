@@ -35,7 +35,7 @@ class SchemaNetwork(Constants):
         self._print_input_stats(W)
 
         if R_weights is None:
-            R_weights = np.ones(R.shape[1], dtype=np.float)
+            R_weights = np.ones(R[0].shape[1], dtype=np.float)
 
         self._W = W
         self._R = R
@@ -106,10 +106,7 @@ class SchemaNetwork(Constants):
     def plan_actions(self, frame_stack):
         if len(frame_stack) < self.FRAME_STACK_SIZE:
             print('Small ENTITIES_STACK. Abort.')
-            planned_actions = np.random.randint(low=0,
-                                                high=self.ACTION_SPACE_DIM,
-                                                size=self.T)
-            return planned_actions
+            return None
 
         self._init_attribute_nodes()
         self._init_reward_nodes()

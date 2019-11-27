@@ -97,11 +97,13 @@ class HardcodedSchemaVectors(Constants):
         (AttributePrecondition('curr', 0, 0, BALL_IDX),  # upright attack
          AttributePrecondition('prev', 1, 0, BALL_IDX),
          AttributePrecondition('curr', -1, 0, BRICK_IDX),),
-        (AttributePrecondition('curr', 0, 0, BALL_IDX),  # bounce from paddle
-         AttributePrecondition('curr', 1, -1, PADDLE_IDX),
-         AttributePrecondition('curr', 1, 0, PADDLE_IDX),
-         AttributePrecondition('curr', 1, 1, PADDLE_IDX),),
     ]
+    """
+    (AttributePrecondition('curr', 0, 0, BALL_IDX),  # bounce from paddle
+     AttributePrecondition('curr', 1, -1, PADDLE_IDX),
+     AttributePrecondition('curr', 1, 0, PADDLE_IDX),
+     AttributePrecondition('curr', 1, 1, PADDLE_IDX),),
+    """
     R_weights = np.array([1, 1, 1, 0.1])
     negative_reward = [
         (AttributePrecondition('curr', 0, 0, BALL_IDX),  # all-in-center (just to fill 1 schema)

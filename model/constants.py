@@ -7,13 +7,14 @@ class Constants:
     T: size of look-ahead window
     """
     DEBUG = False
+    USE_SMALL_ENV = False
 
     VISUALIZE_SCHEMAS = False
     VISUALIZE_INNER_STATE = True
     VISUALIZE_BACKTRACKING = True
     VISUALIZE_STATE = True
 
-    USE_SMALL_ENV = False
+    EMERGENCY_REPLANNING_PERIOD = 30
 
     if not DEBUG:
         if USE_SMALL_ENV:

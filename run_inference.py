@@ -16,11 +16,10 @@ class Runner(Constants):
         'juggling': JugglingBreakout
     }
 
-    def __init__(self, env_type, n_episodes, n_steps, plan_every):
+    def __init__(self, env_type, n_episodes, n_steps):
         self.env_class = self.env_type_to_class[env_type]
         self.n_episodes = n_episodes
         self.n_steps = n_steps
-        self.plan_every = plan_every
 
     def load_schema_matrices(self, generate=True):
         if generate:
@@ -54,6 +53,7 @@ class Runner(Constants):
         for episode_idx in range(self.n_episodes):
             frame_stack = deque(maxlen=self.FRAME_STACK_SIZE)
             actions = deque()
+            emergency_replanning_timer = None
 
             for step_idx in range(self.n_steps):
                 curr_iter = episode_idx * self.n_steps + step_idx
@@ -66,8 +66,12 @@ class Runner(Constants):
                     visualizer.set_iter(curr_iter)
                     visualizer.visualize_env_state(obs)
 
-                if len(frame_stack) >= self.FRAME_STACK_SIZE \
-                        and len(actions) == 0:
+                is_planning_needed = len(actions) == 0 and emergency_replanning_timer is None \
+                                     or emergency_replanning_timer == 0
+                can_run_planner = len(frame_stack) == self.FRAME_STACK_SIZE
+                if is_planning_needed and can_run_planner:
+                    emergency_replanning_timer = None
+
                     planner.set_weights(W, R)
                     planner.set_curr_iter(curr_iter)
 
@@ -80,6 +84,12 @@ class Runner(Constants):
                     action = actions.popleft()
                 else:
                     action = 0
+
+                    if can_run_planner:
+                        if emergency_replanning_timer is None:
+                            emergency_replanning_timer = self.EMERGENCY_REPLANNING_PERIOD
+                        emergency_replanning_timer -= 1
+
 
                 obs, reward, done, _ = env.step(action)
                 if done:
@@ -95,8 +105,7 @@ def main():
 
     runner = Runner(env_type=env_type,
                     n_episodes=n_episodes,
-                    n_steps=n_steps,
-                    plan_every=plan_every)
+                    n_steps=n_steps)
     runner.loop()
 
 
