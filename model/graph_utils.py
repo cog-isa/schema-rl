@@ -175,15 +175,20 @@ class Action:
 class Reward(Node):
     sign2idx = {'pos': 0,
                 'neg': 1}
-
     allowed_signs = sign2idx.keys()
 
     def __init__(self, idx, t):
         self.idx = idx
+        self.weight = None
+
         super().__init__(t)
+
+    def set_weight(self, w):
+        self.weight = w
 
     def reset(self):
         super().reset()
+        self.weight = None
 
 
 class MetaObject:

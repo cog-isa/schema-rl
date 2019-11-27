@@ -24,11 +24,12 @@ class Runner(Constants):
 
     def load_schema_matrices(self, generate=True):
         if generate:
-            W, R = HardcodedSchemaVectors.gen_schema_matrices()
+            W, R, R_weights = HardcodedSchemaVectors.gen_schema_matrices()
         else:
             dir_name = './dump'
             W = []
             R = []
+            R_weights = None
             for idx in range(self.M - 1):
                 file_name = '_schemas_standard/schema{}.txt'.format(idx)
                 path = os.path.join(dir_name, file_name)
@@ -39,13 +40,10 @@ class Runner(Constants):
                 path = os.path.join(dir_name, file_name)
                 r = np.loadtxt(path).astype(bool)
                 R.append(r)
-
-            W_synth, R_synth = HardcodedSchemaVectors.gen_schema_matrices()
-            R.append(R_synth[1])
-        return W, R
+        return W, R, R_weights
 
     def loop(self):
-        W, R = self.load_schema_matrices()
+        W, R, R_weights = self.load_schema_matrices()
 
         env = self.env_class()
         env.reset()
@@ -68,12 +66,12 @@ class Runner(Constants):
                     visualizer.set_iter(curr_iter)
                     visualizer.visualize_env_state(obs)
 
-                if (step_idx - 1) % self.plan_every == 0 \
-                        and len(frame_stack) >= self.FRAME_STACK_SIZE:
-                    planner.set_weights(W, R)
+                if len(frame_stack) >= self.FRAME_STACK_SIZE \
+                        and len(actions) == 0:
+                    planner.set_weights(W, R, R_weights)
                     planner.set_curr_iter(curr_iter)
-                    planned_actions = planner.plan_actions(frame_stack)
 
+                    planned_actions = planner.plan_actions(frame_stack)
                     if planned_actions is not None:
                         actions.clear()
                         actions.extend(planned_actions)
@@ -92,8 +90,8 @@ class Runner(Constants):
 def main():
     n_episodes = 16
     n_steps = 1024
-    plan_every = 10
-    env_type = 'standard'
+    plan_every = 30
+    env_type = 'juggling'
     assert env_type in ('standard', 'offset-paddle', 'juggling')
 
     runner = Runner(env_type=env_type,

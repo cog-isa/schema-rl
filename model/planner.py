@@ -85,6 +85,21 @@ class Planner(Constants):
 
         return closest_reward_node
 
+    def _find_all_rewards(self, reward_sign):
+        """
+        Returns all reward nodes of sign reward_sign
+        """
+        assert (reward_sign in Reward.allowed_signs)
+        reward_idx = Reward.sign2idx[reward_sign]
+
+        rewards = []
+
+        for node in self._reward_nodes[:, reward_idx]:
+            if node.is_feasible:
+                rewards.append(node)
+
+        return rewards
+
     def _plan_for_rewards(self, reward_sign):
         """
         :param reward_sign: {pos, neg}
@@ -92,43 +107,39 @@ class Planner(Constants):
                  None if cannot plan for this sign of rewards
         """
         target_reward_nodes = []
-        print('trying to plan for {} rewards...'.format(reward_sign))
+        print('Trying to plan for {} rewards...'.format(reward_sign))
         planned_actions = None
 
-        search_from = 0
-        while search_from < self.T:
-            reward_node = self._find_closest_reward(reward_sign, search_from)
+        rewards = self._find_all_rewards(reward_sign)
+        rewards = sorted(rewards, key=lambda node: node.weight, reverse=True)
 
-            if reward_node is None:
-                print('cannot find more {} reward nodes'.format(reward_sign))
-                break
-
+        for reward_node in rewards:
             target_reward_nodes.append(reward_node)
-            print('found feasible {} reward node, starting to backtrace it...'.format(reward_sign))
-
-            search_from = reward_node.t + 1
+            print('Found feasible {} reward node with weight {}...'.format(reward_sign, reward_node.weight))
 
             # backtrace from it
             self.curr_target = reward_node
             self.node2triplets = defaultdict(list)
             self._backtrace_node(reward_node)
             if reward_node.is_reachable:
-                print('actions for reaching target {} reward node have been found successfully!'.format(reward_sign))
-                # actions for reaching target reward are planned
-                planned_actions = reward_node.activating_schema.required_cumulative_actions
+                print('Actions have been planned successfully!')
 
                 # here planned_actions is len(t-1) List of len(max(x, ACTION_SPACE_DIM)) Lists]
-                # picking FIRST action as a result
+                planned_actions = reward_node.activating_schema.required_cumulative_actions
 
-                # HOT FIX
-                planned_actions = planned_actions[self.FRAME_STACK_SIZE-1:]
+                # remove actions planned for past
+                planned_actions = planned_actions[self.FRAME_STACK_SIZE - 1:]
 
+                # picking first action as a result
                 planned_actions = [actions_at_t[0] if actions_at_t else Action.not_planned_idx
                                    for actions_at_t in planned_actions]
+
                 planned_actions = np.array(planned_actions)
                 break
-
-            print('backtraced {} reward node is unreachable'.format(reward_sign))
+            else:
+                print('Backtraced {} reward node is unreachable.'.format(reward_sign))
+        else:
+            print('There are no more feasible {} reward nodes in the graph.'.format(reward_sign))
 
         return planned_actions, target_reward_nodes
 
