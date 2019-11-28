@@ -207,7 +207,7 @@ class Visualizer(Constants):
                 file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
                     self._iter, self.REWARD_NAMES[reward_type], vec_idx, ipl=self.ITER_PADDING_LENGTH)
                 path = os.path.join(self.REWARD_SCHEMAS_DIR_NAME, file_name)
-                self._save_schema_image(vec, path)
+                self.save_schema_image(vec, path)
 
     # ------------- VISUALIZING BACKTRACKING -------------- #
     def find_connected_component_triplets(self, node):
