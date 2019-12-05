@@ -36,6 +36,7 @@ class Visualizer(Constants):
         self.ENTITIES_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'entities')
         self.BACKTRACKING_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'backtracking')
         self.STATE_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'state')
+        self.BACKTRACKING_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'backtracking_schemas')
 
         self.ITER_PADDING_LENGTH = 8
         self.TIME_STEP_PADDING_LENGTH = len(str(self.T))
@@ -325,4 +326,11 @@ class Visualizer(Constants):
             with open(logfile_path, 'wt') as file:
                 self.log_node_with_schemas(ball_node, file)
 
+# -------------- BACKTRACKING SCHEMAS VISUALIZING --------------- #
+    def visualize_backtracking_schemas(self, schema_vectors):
+        for vec_idx, (vec, metadata) in enumerate(schema_vectors):
+            file_name = 'iter_{:0{ipl}}__t_{:03}__type_{}__attridx_{}.png'.format(
+                self._iter, metadata.t, metadata.type, metadata.attribute_idx, ipl=self.ITER_PADDING_LENGTH)
+            path = os.path.join(self.BACKTRACKING_SCHEMAS_DIR_NAME, file_name)
+            self.save_schema_image(vec, path)
 

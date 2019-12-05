@@ -5,8 +5,11 @@ remaining constants may be changed with caution. Proceed at your own risk.
 """
 
 import numpy as np
-from model.constants import Constants
 
+
+# DEFAULT, SMALL
+BRICK_SIZE = 'SMALL'
+ENV_SIZE = 'SMALL'
 
 ###############################################################################
 #
@@ -30,20 +33,39 @@ BOUNCE_STOCHASTICITY = 0  # was 0.25
 CORRUPT_RENDERED_IMAGE = False
 DEBUGGING = False
 DEFAULT_BRICK_REWARD = 1
-DEFAULT_BRICK_SHAPE = np.array([2, 2])
 
-if Constants.USE_SMALL_ENV:
-    DEFAULT_NUM_BRICKS_COLS = 6
+if BRICK_SIZE == 'DEFAULT':
+    DEFAULT_BRICK_SHAPE = np.array([8, 4])
+
+    if ENV_SIZE == 'DEFAULT':
+        DEFAULT_NUM_BRICKS_ROWS = 6
+        DEFAULT_NUM_BRICKS_COLS = 11
+    elif ENV_SIZE == 'SMALL':
+        DEFAULT_NUM_BRICKS_ROWS = 6
+        DEFAULT_NUM_BRICKS_COLS = 6
+    else:
+        raise AssertionError
+
+elif BRICK_SIZE == 'SMALL':
+    DEFAULT_BRICK_SHAPE = np.array([2, 2])
+
+    if ENV_SIZE == 'DEFAULT':
+        DEFAULT_NUM_BRICKS_ROWS = 12
+        DEFAULT_NUM_BRICKS_COLS = 44
+    elif ENV_SIZE == 'SMALL':
+        DEFAULT_NUM_BRICKS_ROWS = 12
+        DEFAULT_NUM_BRICKS_COLS = 24
+    else:
+        raise AssertionError
+
 else:
-    DEFAULT_NUM_BRICKS_COLS = 44  # 11
+    raise AssertionError
 
-DEFAULT_NUM_BRICKS_ROWS = 24  # 6
 DEFAULT_WALL_THICKNESS = 3
 DEFAULT_WIDTH = (DEFAULT_WALL_THICKNESS * 2 +
                  DEFAULT_NUM_BRICKS_COLS *
                  DEFAULT_BRICK_SHAPE[0])
 DEFAULT_HEIGHT = int(1.25 * DEFAULT_WIDTH)
-#print('HEIGHT: {}, WIDTH: {}'.format(DEFAULT_HEIGHT, DEFAULT_WIDTH))
 DEFAULT_PADDLE_SHAPE = np.array([int(DEFAULT_WIDTH * .25), 4])
 EXCLUDED_VELOCITIES = frozenset(
     {(u*(v+1), 0) for u in (-1, 1) for v in range(_MAX_SPEED)})

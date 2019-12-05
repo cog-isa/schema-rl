@@ -1,7 +1,9 @@
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import numpy as np
 from .constants import Constants
-from .graph_utils import Action, Reward
+from .graph_utils import Attribute, Action, Reward
+
+NodeMetadata = namedtuple('NodeMetadata', ['t', 'type', 'attribute_idx'])
 
 
 class Planner(Constants):
@@ -10,9 +12,17 @@ class Planner(Constants):
         # (T x REWARD_SPACE_DIM)
         self._reward_nodes = reward_nodes
 
-        # for visualizing purposes
+        # for backtracking state visualizing
         self.curr_target = None
         self.node2triplets = None
+
+        # for backtracking schemas visualizing
+        self.schema_vectors = None  # (TIME_SIZE) list of lists of schemas
+
+    def _reset(self):
+        self.curr_target = None
+        self.node2triplets = None
+        self.schema_vectors = []
 
     def _backtrace_schema(self, schema):
         """
@@ -57,16 +67,28 @@ class Planner(Constants):
                 node.is_reachable = True
                 node.activating_schema = schema
                 node.activating_schema.compute_cumulative_actions()
-                if type(node) is not Reward:
-                    self.node2triplets[self.curr_target].append((node.t, node.entity_idx, node.attribute_idx))
-                else:
-                    pass
-                    """
-                    print('Encountered Reward node during backtracking.')
-                    print(vars(node))
-                    for s in node.schemas:
-                        print(vars(s))
-                    """
+
+                # for visualizing backtracking inner state
+                if self.VISUALIZE_BACKTRACKING_INNER_STATE:
+                    if type(node) is not Reward:
+                        self.node2triplets[self.curr_target].append(
+                            (node.t, node.entity_idx, node.attribute_idx))
+                    else:
+                        pass
+                        """
+                        print('Encountered Reward node during backtracking.')
+                        print(vars(node))
+                        for s in node.schemas:
+                            print(vars(s))
+                        """
+
+                # for visualizing backtracking schemas
+                if self.VISUALIZE_BACKTRACKING_SCHEMAS and \
+                        len([a for a in schema.action_preconditions if a.idx != 0]):
+                    metadata = NodeMetadata(node.t, type(node).__name__,
+                                            node.attribute_idx if type(node) is Attribute else None)
+                    self.schema_vectors.append((schema.vector, metadata))
+
                 break
 
     def _find_closest_reward(self, reward_sign, search_from):
@@ -120,6 +142,8 @@ class Planner(Constants):
             # backtrace from it
             self.curr_target = reward_node
             self.node2triplets = defaultdict(list)
+            self.schema_vectors = []
+
             self._backtrace_node(reward_node)
             if reward_node.is_reachable:
                 print('Actions have been planned successfully!')
@@ -145,6 +169,7 @@ class Planner(Constants):
 
     def plan_actions(self):
 
+        self._reset()
         planned_actions, target_reward_nodes = self._plan_for_rewards('pos')
 
         if planned_actions is not None:
