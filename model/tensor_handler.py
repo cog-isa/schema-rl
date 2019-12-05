@@ -133,7 +133,7 @@ class TensorHandler(Constants):
 
             for mask in precondition_masks:
                 preconditions = reference_matrix[entity_idx, mask]
-                self._attribute_nodes[t, entity_idx, attribute_idx].add_schema(preconditions)
+                self._attribute_nodes[t, entity_idx, attribute_idx].add_schema(preconditions, mask)
 
     def _instantiate_reward_grounded_schemas(self, reward_idx, t, reference_matrix, R, predicted_matrix):
         """
@@ -151,13 +151,13 @@ class TensorHandler(Constants):
                 masks_weights = self._R_weights[activity_mask]
                 for mask, weight in zip(precondition_masks, masks_weights):
                     preconditions = reference_matrix[row_idx, mask]
-                    self._reward_nodes[t, reward_idx].add_schema(preconditions)
+                    self._reward_nodes[t, reward_idx].add_schema(preconditions, mask)
                     self._reward_nodes[t, reward_idx].set_weight(weight)
                     n_pos_schemas_instantiated += 1
             else:
                 for mask in precondition_masks:
                     preconditions = reference_matrix[row_idx, mask]
-                    self._reward_nodes[t, reward_idx].add_schema(preconditions)
+                    self._reward_nodes[t, reward_idx].add_schema(preconditions, mask)
         return n_pos_schemas_instantiated
 
     def _predict_next_attribute_layer(self, t):

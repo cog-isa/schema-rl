@@ -2,7 +2,7 @@ import os
 from collections import deque
 import numpy as np
 from environment.schema_games.breakout.games import StandardBreakout, OffsetPaddleBreakout, JugglingBreakout
-from model.featurematrix import FeatureMatrix
+from model.entity_extractor import EntityExtractor
 from model.inference import SchemaNetwork
 from model.visualizer import Visualizer
 from model.constants import Constants
@@ -14,6 +14,9 @@ class Runner(Constants):
         'standard': StandardBreakout,
         'offset-paddle': OffsetPaddleBreakout,
         'juggling': JugglingBreakout
+    }
+    env_params = {
+        'report_nzis_as_entities': 'all'
     }
 
     def __init__(self, env_type, n_episodes, n_steps):
@@ -44,7 +47,7 @@ class Runner(Constants):
     def loop(self):
         W, R, _ = self.load_schema_matrices()
 
-        env = self.env_class()
+        env = self.env_class(**self.env_params)
         env.reset()
 
         planner = SchemaNetwork()
@@ -58,7 +61,7 @@ class Runner(Constants):
             for step_idx in range(self.n_steps):
                 curr_iter = episode_idx * self.n_steps + step_idx
 
-                obs = FeatureMatrix(env).matrix
+                obs = EntityExtractor.extract(env)
                 frame_stack.append(obs)
 
                 if self.VISUALIZE_STATE:

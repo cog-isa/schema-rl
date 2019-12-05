@@ -5,13 +5,15 @@ from .constants import Constants
 class Schema(Constants):
     """Grounded schema type."""
 
-    def __init__(self, t, attribute_preconditions, action_preconditions):
+    def __init__(self, t, attribute_preconditions, action_preconditions, vector):
         """
         preconditions: list of Nodes
         """
         self.t = t
         self.attribute_preconditions = attribute_preconditions
         self.action_preconditions = action_preconditions
+        self.vector = vector
+
         self.is_reachable = None
         self.required_cumulative_actions = None
         self.harmfulness = None
@@ -96,7 +98,7 @@ class Node:
         self.activating_schema = None
         self.schemas.clear()
 
-    def add_schema(self, preconditions):
+    def add_schema(self, preconditions, vector):
         # in current implementation schemas are instantiated only on feasible nodes
         if not self.is_feasible:
             self.is_feasible = True
@@ -118,7 +120,7 @@ class Node:
                 raise AssertionError
 
         self.schemas.append(
-            Schema(self.t, attribute_preconditions, action_preconditions)
+            Schema(self.t, attribute_preconditions, action_preconditions, vector)
         )
 
     def sort_schemas_by_harmfulness(self, neg_schemas):
@@ -132,9 +134,18 @@ class Node:
         self.schemas = sorted(self.schemas,
                               key=lambda x: x.harmfulness)
 
-    def sort_schemas_by_min_req_actions(self):
-        self.schemas = sorted(self.schemas,
-                              key=lambda schema: len(schema.action_preconditions))
+    def sort_schemas_by_priority(self):
+        def cmp(schema):
+            actions = schema.action_preconditions
+            if len(actions) == 0:
+                priority = 0
+            elif actions[0].idx == 0:
+                priority = 1
+            else:
+                priority = 2
+            return priority
+        
+        self.schemas = sorted(self.schemas, key=cmp)
 
 
 class Attribute(Node, Constants):

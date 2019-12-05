@@ -1,3 +1,7 @@
+from environment.schema_games.breakout.constants import \
+    BRICK_SIZE, ENV_SIZE, DEFAULT_HEIGHT, DEFAULT_WIDTH
+
+
 class Constants:
     """
     N: number of entities
@@ -7,26 +11,25 @@ class Constants:
     T: size of look-ahead window
     """
     DEBUG = False
-    USE_SMALL_ENV = False
 
+    USE_LEARNED_SCHEMAS = False
+
+    VISUALIZE_STATE = True
     VISUALIZE_SCHEMAS = False
     VISUALIZE_INNER_STATE = True
-    VISUALIZE_BACKTRACKING = True
-    VISUALIZE_STATE = True
-
-    USE_LEARNED_SCHEMAS = True
-    EMERGENCY_REPLANNING_PERIOD = 30
+    VISUALIZE_BACKTRACKING_SCHEMAS = True
+    VISUALIZE_BACKTRACKING_INNER_STATE = True
 
     if not DEBUG:
-        if USE_SMALL_ENV:
-            SCREEN_HEIGHT = 67
-            SCREEN_WIDTH = 54  # using 5 brick columns
-            T = 50
-        else:
-            SCREEN_HEIGHT = 117
-            SCREEN_WIDTH = 94
-            T = 3  # min 112
+        if ENV_SIZE == 'DEFAULT':
+            T = 130  # min 112
+            EMERGENCY_REPLANNING_PERIOD = 30
+        elif ENV_SIZE == 'SMALL':
+            T = 50  # min 50
+            EMERGENCY_REPLANNING_PERIOD = 10
 
+        SCREEN_HEIGHT = DEFAULT_HEIGHT
+        SCREEN_WIDTH = DEFAULT_WIDTH
         N = SCREEN_WIDTH * SCREEN_HEIGHT
         M = 5
         ACTION_SPACE_DIM = 3
@@ -86,13 +89,12 @@ class Constants:
 """
 env changed constants:
 
-DEFAULT_NUM_BRICKS_COLS = 11
 BOUNCE_STOCHASTICITY = 0.25
 PADDLE_SPEED_DISTRIBUTION[-1] = 0.90
 PADDLE_SPEED_DISTRIBUTION[-2] = 0.10
 _MAX_SPEED = 2
 
 DEFAULT_BRICK_SHAPE = np.array([8, 4])
-DEFAULT_NUM_BRICKS_COLS = 11
 DEFAULT_NUM_BRICKS_ROWS = 6
+DEFAULT_NUM_BRICKS_COLS = 11
 """
