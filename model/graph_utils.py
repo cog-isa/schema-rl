@@ -134,9 +134,18 @@ class Node:
         self.schemas = sorted(self.schemas,
                               key=lambda x: x.harmfulness)
 
-    def sort_schemas_by_min_req_actions(self):
-        self.schemas = sorted(self.schemas,
-                              key=lambda schema: len(schema.action_preconditions))
+    def sort_schemas_by_priority(self):
+        def cmp(schema):
+            actions = schema.action_preconditions
+            if len(actions) == 0:
+                priority = 0
+            elif actions[0].idx == 0:
+                priority = 1
+            else:
+                priority = 2
+            return priority
+        
+        self.schemas = sorted(self.schemas, key=cmp)
 
 
 class Attribute(Node, Constants):

@@ -1,6 +1,5 @@
-rm visualization/attribute_schemas/* \
-    visualization/reward_schemas/* \
-    visualization/entities/* \
-    visualization/backtracking/* \
-    visualization/state/* \
-    visualization/backtracking_schemas/*
+find visualization/attribute_schemas/* -delete
+find visualization/reward_schemas/* -delete
+find visualization/entities/* -delete
+find visualization/backtracking/* -delete
+find visualization/state/* -delete
