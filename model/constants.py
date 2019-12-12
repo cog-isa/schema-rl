@@ -27,6 +27,8 @@ class Constants:
         elif ENV_SIZE == 'SMALL':
             T = 50  # min 50
             EMERGENCY_REPLANNING_PERIOD = 10
+        else:
+            raise AssertionError
 
         SCREEN_HEIGHT = DEFAULT_HEIGHT
         SCREEN_WIDTH = DEFAULT_WIDTH

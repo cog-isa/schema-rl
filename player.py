@@ -126,6 +126,7 @@ class Player(Constants):
         y_global = np.zeros((length_e, 1))
         y_reward = np.zeros((length_e, 1))
 
+        planner = SchemaNetwork()
         visualizer = Visualizer(None, None, None)
 
         for i in range(self.EP_NUM):
@@ -194,11 +195,17 @@ class Player(Constants):
                             action = actions.pop(0)
                         elif all(w.shape[1] > 0 for w in W):
                             frame_stack = [obj.matrix for obj in self._memory[-self.FRAME_STACK_SIZE:]]
-                            decision_model = SchemaNetwork(W, R, frame_stack)
-                            decision_model.set_curr_iter(vis_counter)
-                            actions = list(decision_model.plan_actions())
-                            print(vis_counter, 'got ', len(actions), ' actions:', actions)
-                            action = actions.pop(0)
+                            planner.set_weights(W, R)
+                            planner.set_curr_iter(vis_counter)
+                            
+                            planned_actions = planner.plan_actions(frame_stack)
+
+                            if planned_actions is not None:
+                                actions = list(planned_actions)
+                                print(vis_counter, 'got ', len(actions), ' actions:', actions)
+                                action = actions.pop(0)
+                            else:
+                                action = 0
                     self._memory.pop(0)
 
 
