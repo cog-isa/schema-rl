@@ -6,19 +6,31 @@ from model.constants import Constants
 
 
 class SchemaNet(Constants):
-    def __init__(self):
+    def __init__(self, void=1, is_for_reward=False):
         self.neighbour_num = ((self.NEIGHBORHOOD_RADIUS * 2 + 1) ** 2) * self.FRAME_STACK_SIZE
-        self._W = [np.zeros([self.neighbour_num * self.M + self.ACTION_SPACE_DIM, 1])[:] + 1 for i in range(self.M)]
+        self._W = [np.zeros([self.neighbour_num * self.M + self.ACTION_SPACE_DIM, 1])[:] + 1 for i in range(self.M - 1)]
         self.solved = np.array([])
-        # self._R = [np.zeros(self.neighbour_num * self.M + self.ACTION_SPACE_DIM) + 1] * 2
+        self.void = void
+        self.is_for_reward = is_for_reward
 
     def log(self):
         print('current net:\n', [self._W[i].shape for i in range(len(self._W))])
 
-    def print(self):
-        print('current net:\n')
-        for i in range(len(self._W)):
-            print('   ' * i, self._W[i].T)
+    # def
+
+    def _logical_filter(self, w, i, log=False):
+
+        # index of previous central attribute
+        ind = self.M * (self.NEIGHBORHOOD_RADIUS * 2 + 1) ** 2 + i
+
+        # if smth happened while agent stayed sill that was not due to agent's action
+        if w[-self.ACTION_SPACE_DIM] and not w[ind]:
+            schema = w
+            schema[-self.ACTION_SPACE_DIM] = False
+            if log:
+                print('action deleted')
+            return schema
+        return w
 
     def _predict_attr(self, X, i):
         if len(self._W[i].shape) == 1:
@@ -28,13 +40,21 @@ class SchemaNet(Constants):
     def _schema_predict_attr(self, X, i):
         return ((X == 0) @ self._W[i] == 0) != 0
 
+    def get_schema_num(self):
+        if self.is_for_reward:
+            return self.REWARD_SPACE_DIM
+        else:
+            return self.M - self.void
+
     def predict(self, X):
-        return np.array([self._predict_attr(X, i) for i in range(self.M)])
+        tmp = np.array([self._predict_attr(X, i) for i in range(self.get_schema_num())])
+        return np.concatenate((tmp, (tmp.sum(axis=0) == 0).reshape(1, -1)), axis=0)
 
     def add(self, schemas, i):
-        self._W[i] = np.vstack((self._W[i].T, schemas.T)).T
+        self._W[i] = np.vstack([self._W[i].T, schemas.T]).T
 
-    def scipy_solve_lp(self, zero_pred, c, A_ub, b_ub, A_eq, b_eq, options={'maxiter': 200, "disp": False}):
+    def scipy_solve_lp(self, zero_pred, c, A_ub, b_ub, A_eq, b_eq, maxiter=200):
+        options = {'maxiter': maxiter, "disp": False}
         if len(zero_pred) == 0:
             return linprog(c=c, A_eq=A_eq, b_eq=b_eq, options=options).x.round(2)
         else:
@@ -60,6 +80,8 @@ class SchemaNet(Constants):
 
         new_ent = self._get_next_to_predict(X, y, i, log=log)
         self.solved = np.array([new_ent])
+        if self.solved is None:
+            return None
 
         c = (1 - ones_pred).sum(axis=0)
         A_eq = 1 - self.solved
@@ -69,7 +91,12 @@ class SchemaNet(Constants):
         w = self.scipy_solve_lp(zero_pred, c, A_ub, b_ub, A_eq, b_eq)
 
         preds = ((X == 0) @ w) == 0
-        self.solved = np.vstack((self.solved, X[preds * (self._predict_attr(X, i) == 0)]))
+        print('expected:', (X[preds * (self._predict_attr(X, i) == 0)]).shape)
+        print('needed for:', (self._predict_attr(X, i) == 0).sum(), preds.sum())
+        if preds.sum() == 0:
+            return None
+        self.solved = np.vstack([X[preds * (self._predict_attr(X, i) == 0)]])
+        print('solved for:', self.solved.shape)
         if self.solved is None:
             print('CONFLICT DATA')
             return None
@@ -91,10 +118,13 @@ class SchemaNet(Constants):
         if len(self._W[i].shape) == 1:
             return np.zeros(self._W[i].shape[0])
         pred = self._schema_predict_attr(X, i).T
-        return ((y[i] - pred) == -1)
+        return (y[i] - pred) == -1
+
+    def _check_lim_size(self):
+        return np.all([schema.shape[1] < self.L for schema in self._W])
 
     def _remove_wrong_schemas(self, X, y):
-        for i in range(self.M):
+        for i in range(self.get_schema_num()):
             if len(self._W[i].shape) == 1:
                 break
             wrong_ind = self._actuality_check_attr(X, y, i).sum(axis=1)
@@ -103,34 +133,6 @@ class SchemaNet(Constants):
                 print('outdated schema was detected for attribute', i)
 
             self._W[i] = (self._W[i].T[wrong_ind == 0]).T
-
-    def add_cheat_schema(self, size=202):
-
-        w = np.zeros(size)
-        w[4 * 21 + self.PADDLE_IDX] = 1
-        w[4 * 11 + self.BALL_IDX] = 1
-        w[100 + 4 * 21 + self.PADDLE_IDX] = 1
-        w[100 + 4 * 16 + self.BALL_IDX] = 1
-
-        self.add(w, self.BALL_IDX)
-
-        w = np.zeros(size)
-        w[4 * 23 + self.PADDLE_IDX] = 1
-        w[4 * 14 + self.BALL_IDX] = 1
-        w[100 + 4 * 23 + self.PADDLE_IDX] = 1
-        w[100 + 4 * 18 + self.BALL_IDX] = 1
-
-        self.add(w, self.BALL_IDX)
-
-        w = np.zeros(size)
-        w[4 * 10 + self.WALL_IDX] = 1
-        w[4 * 3 + self.BALL_IDX] = 1
-        w[100 + 4 * 10 + self.WALL_IDX] = 1
-        w[100 + 4 * 9 + self.BALL_IDX] = 1
-
-        self.add(w, self.BALL_IDX)
-
-        return
 
     def fit(self, X, Y, log=True):
         tmp, ind = np.unique(X, return_index=True, axis=0)
@@ -142,43 +144,42 @@ class SchemaNet(Constants):
 
         self._remove_wrong_schemas(X, Y)
 
-        for i in (range(self.M)):
+        for i in (range(self.get_schema_num())):
 
-            for j in (range(self.L)):
+            while self._check_lim_size():
 
-                # change!!!!!!!
-                if isinstance((self._predict_attr(X, i) == Y[i]), np.ndarray):
-                    if (self._predict_attr(X, i) == Y[i]).all():
-                        if log:
-                            if i == 0:
-                                print('ball check', (self._predict_attr(X, i) == 1).any(), (Y[i] == 1).any())
+                if (self._predict_attr(X, i) == Y[i]).all():
+                    if log:
+                        if i == 0:
+                            print('ball check', (self._predict_attr(X, i) == 1).any(), (Y[i] == 1).any())
 
-                            print('all attrs are predicted for attr', i)
-                        break
-                else:
-                    if self._predict_attr(X, i) == Y[i]:
-                        if log:
-                            print('all attrs are predicted for attr', i)
-                        break
+                        print('all attrs are predicted for attr', i)
+                    break
 
                 x, y = self._get_not_predicted(X, Y[i], i)
 
                 w = self._get_schema(x, y, i)
                 if w is None:
-                    return
+                    return False
                 w = (self._simplify_schema(x, y) > 0.1).astype(np.bool, copy=False)
+                w = self._logical_filter(w, i, log=log)
                 self.add(w, i)
                 if log:
                     self.log()
+        return True
 
     def save(self, type_name='standard', is_reward=''):
         path = '_schemas_' + type_name + is_reward
         if not os.path.exists(path):
             os.makedirs(path)
-        for i in range(self.M):
+        for i in range(self.get_schema_num()):
             np.savetxt(path + '/schema' + str(i) + '.txt', self._W[i])
 
-    def load(self, type_name='standard'):
-        for i in range(self.M):
-            schema = np.loadtxt('_schemas_' + type_name + '/schema' + str(i) + '.txt')
-            self._W[i] = schema
+    def load(self, type_name='standard', is_reward=''):
+        path = '_schemas_' + type_name + is_reward
+        if not os.path.exists(path):
+            return
+        for i in range(self.get_schema_num()):
+            schema = np.loadtxt(path + '/schema' + str(i) + '.txt')
+            if len(schema.shape) > 1:
+                self._W[i] = schema
