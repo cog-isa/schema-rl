@@ -139,4 +139,7 @@ class SchemaNetwork(Constants):
 
                 #self._visualizer.log_balls_at_backtracking(target_reward_nodes[0])
 
+        if self.LOG_PLANNED_ACTIONS:
+            self._visualizer.log_planned_actions(actions)
+
         return actions

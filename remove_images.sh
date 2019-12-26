@@ -4,3 +4,4 @@ find visualization/entities/* -delete
 find visualization/backtracking/* -delete
 find visualization/state/* -delete
 find visualization/replay_buffer/* -delete
+find visualization/logs/* -delete
