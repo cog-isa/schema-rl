@@ -1,5 +1,4 @@
 from environment.schema_games.breakout.games import StandardBreakout
-from model.featurematrix import FeatureMatrix
 from model.inference import SchemaNetwork
 from testing.testing import TestFSS2
 
