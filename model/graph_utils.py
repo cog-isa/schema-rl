@@ -116,7 +116,27 @@ class Node:
                     print('schema is preconditioned more than on one action')
                     raise AssertionError
                 action_preconditions.append(precondition)
+            elif precondition is None:
+                # schema depends on VOID at padding, satisfy this
+                print('encountered precondition of type: {}'.format(type(precondition)))
+                print('precondition: {}'.format(precondition))
+                print('time: {}'.format(self.t))
+                print(self.is_feasible)
+                print(self.is_reachable)
             else:
+                print('encountered precondition of type: {}'.format(type(precondition)))
+                print('precondition: {}'.format(precondition))
+                print('time: {}'.format(self.t))
+                print(self.is_feasible)
+                print(self.is_reachable)
+                print(self.activating_schema)
+                print(vars(self.activating_schema))
+                print('--------')
+                for schema in self.schemas:
+                    print(vars(schema))
+                print('--------')
+                for p in preconditions:
+                    print(type(p))
                 raise AssertionError
 
         self.schemas.append(

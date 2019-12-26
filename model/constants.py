@@ -1,5 +1,5 @@
 from environment.schema_games.breakout.constants import \
-    BRICK_SIZE, ENV_SIZE, DEFAULT_HEIGHT, DEFAULT_WIDTH
+    BRICK_SIZE, ENV_SIZE, DEFAULT_HEIGHT, DEFAULT_WIDTH, DEFAULT_PADDLE_SHAPE
 
 
 class Constants:
@@ -12,13 +12,19 @@ class Constants:
     """
     DEBUG = False
 
-    USE_LEARNED_SCHEMAS = False
-
     VISUALIZE_STATE = True
-    VISUALIZE_SCHEMAS = False
+    VISUALIZE_SCHEMAS = True
     VISUALIZE_INNER_STATE = True
     VISUALIZE_BACKTRACKING_SCHEMAS = True
     VISUALIZE_BACKTRACKING_INNER_STATE = True
+    VISUALIZE_REPLAY_BUFFER = False
+
+    USE_LEARNED_SCHEMAS = True
+    LEARNING_PERIOD = 10 ** 9 + 7
+    N_LEARNING_THREADS = 8
+
+    LEARNING_SCHEMA_TOLERANCE = 1e-8
+    ADDING_SCHEMA_TOLERANCE = 1e-8
 
     if not DEBUG:
         if ENV_SIZE == 'DEFAULT':
@@ -34,6 +40,7 @@ class Constants:
         SCREEN_WIDTH = DEFAULT_WIDTH
         N = SCREEN_WIDTH * SCREEN_HEIGHT
         M = 5
+        N_PREDICTABLE_ATTRIBUTES = M - 1
         ACTION_SPACE_DIM = 3
         REWARD_SPACE_DIM = 2
 
@@ -50,7 +57,7 @@ class Constants:
 
         NEIGHBORHOOD_RADIUS = 1
 
-    L = 1000
+    L = 220
     FILTER_SIZE = 2 * NEIGHBORHOOD_RADIUS + 1
     NEIGHBORS_NUM = FILTER_SIZE ** 2 - 1
 
@@ -60,6 +67,8 @@ class Constants:
     FRAME_STACK_SIZE = 2
     SCHEMA_VEC_SIZE = FRAME_STACK_SIZE * (M * (NEIGHBORS_NUM + 1)) + ACTION_SPACE_DIM
     TIME_SIZE = FRAME_STACK_SIZE + T
+
+    LEARNING_BATCH_SIZE = FRAME_STACK_SIZE + 1
 
     # indices of corresponding attributes in entities' vectors
     BALL_IDX = 0
@@ -87,6 +96,8 @@ class Constants:
         0: 'POSITIVE',
         1: 'NEGATIVE',
     }
+
+    DEFAULT_PADDLE_SHAPE = DEFAULT_PADDLE_SHAPE
 
 """
 env changed constants:

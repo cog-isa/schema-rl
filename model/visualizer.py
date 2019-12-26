@@ -37,6 +37,7 @@ class Visualizer(Constants):
         self.BACKTRACKING_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'backtracking')
         self.STATE_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'state')
         self.BACKTRACKING_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'backtracking_schemas')
+        self.REPLAY_BUFFER_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'replay_buffer')
 
         self.ITER_PADDING_LENGTH = 8
         self.TIME_STEP_PADDING_LENGTH = len(str(self.T))
@@ -197,18 +198,30 @@ class Visualizer(Constants):
         # attribute schemas
         for attribute_idx, w in enumerate(W):
             for vec_idx, vec in enumerate(w.T):
-                file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
-                    self._iter, self.ENTITY_NAMES[attribute_idx], vec_idx, ipl=self.ITER_PADDING_LENGTH)
+                # file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
+                #     self._iter, self.ENTITY_NAMES[attribute_idx], vec_idx, ipl=self.ITER_PADDING_LENGTH)
+                file_name = '{}__vec_{:0{ipl}}.png'.format(
+                    self.ENTITY_NAMES[attribute_idx], vec_idx, ipl=self.ITER_PADDING_LENGTH)
                 path = os.path.join(self.ATTRIBUTE_SCHEMAS_DIR_NAME, file_name)
                 self.save_schema_image(vec, path)
 
         # reward schemas
+        if R is None:
+            return
+
         for reward_type, r in enumerate(R):
             for vec_idx, vec in enumerate(r.T):
                 file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
                     self._iter, self.REWARD_NAMES[reward_type], vec_idx, ipl=self.ITER_PADDING_LENGTH)
                 path = os.path.join(self.REWARD_SCHEMAS_DIR_NAME, file_name)
                 self.save_schema_image(vec, path)
+
+    def visualize_replay_buffer(self, replay):
+        for idx, sample_vec in enumerate(replay.x):
+            file_name = 'sample_{:0{ipl}}.png'.format(
+                idx, ipl=self.ITER_PADDING_LENGTH)
+            path = os.path.join(self.REPLAY_BUFFER_DIR_NAME, file_name)
+            self.save_schema_image(sample_vec, path)
 
     # ------------- VISUALIZING BACKTRACKING -------------- #
     def find_connected_component_triplets(self, node):

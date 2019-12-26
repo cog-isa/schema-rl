@@ -52,3 +52,32 @@ class EntityExtractor(Constants):
         pos = cls.get_entity_pos(state)
         idx = cls.transform_pos_to_index(pos)
         return idx
+
+    @classmethod
+    def get_ball_x(cls, env):
+        for ball in env.balls:
+            if ball.is_entity:
+                for state, eid in env.parse_object_into_pixels(ball):
+                    pos = cls.get_entity_pos(state)
+                    return pos[1]
+    @classmethod
+    def get_paddle_keypoints(cls, env):
+        if env.paddle.is_entity:
+            pixels = env.parse_object_into_pixels(env.paddle)
+
+            mid_state, eid = pixels[len(pixels) // 2]
+            mid_pos = cls.get_entity_pos(mid_state)
+            mid = mid_pos[1]
+            offset = cls.DEFAULT_PADDLE_SHAPE[0] // 2
+
+            left = mid - offset + 1
+            right = mid + offset - 1
+
+            soft_left = left + 1
+            soft_right = right - 1
+
+            return left, mid, right, soft_left, soft_right, right, left, left, right
+
+
+
+
