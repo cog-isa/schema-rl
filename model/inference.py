@@ -124,8 +124,8 @@ class SchemaNetwork(Constants):
         # planning actions
         actions, target_reward_nodes = self._planner.plan_actions()
 
-        for t in range(self.TIME_SIZE):
-            self._tensor_handler.check_entities_for_correctness(t)
+        #for t in range(self.TIME_SIZE):
+        #    self._tensor_handler.check_entities_for_correctness(t)
 
         if self.VISUALIZE_BACKTRACKING_SCHEMAS:
             self._visualizer.visualize_backtracking_schemas(self._planner.schema_vectors)
@@ -138,5 +138,8 @@ class SchemaNetwork(Constants):
                     #self._tensor_handler.check_entities_for_correctness(t)
 
                 #self._visualizer.log_balls_at_backtracking(target_reward_nodes[0])
+
+        if self.LOG_PLANNED_ACTIONS:
+            self._visualizer.log_planned_actions(actions)
 
         return actions

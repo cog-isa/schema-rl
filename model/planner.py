@@ -83,8 +83,10 @@ class Planner(Constants):
                         """
 
                 # for visualizing backtracking schemas
-                if self.VISUALIZE_BACKTRACKING_SCHEMAS and \
-                        len([a for a in schema.action_preconditions if a.idx != 0]):
+                # print attribute schemas with filter conditions
+                if self.VISUALIZE_BACKTRACKING_SCHEMAS and type(node) is Attribute and \
+                        node.attribute_idx in (self.BALL_IDX, self.PADDLE_IDX) and \
+                        schema.action_preconditions:
                     metadata = NodeMetadata(node.t, type(node).__name__,
                                             node.attribute_idx if type(node) is Attribute else None)
                     self.schema_vectors.append((schema.vector, metadata))

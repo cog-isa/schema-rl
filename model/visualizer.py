@@ -31,12 +31,16 @@ ACTIVE_ACTION_SLOT_COLOR = RED
 class Visualizer(Constants):
     def __init__(self, tensor_handler, planner, attribute_nodes):
         self.VISUALIZATION_DIR_NAME = './visualization'
+
         self.ATTRIBUTE_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'attribute_schemas')
         self.REWARD_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'reward_schemas')
         self.ENTITIES_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'entities')
         self.BACKTRACKING_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'backtracking')
         self.STATE_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'state')
         self.BACKTRACKING_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'backtracking_schemas')
+        self.REPLAY_BUFFER_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'replay_buffer')
+
+        self.LOG_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'logs')
 
         self.ITER_PADDING_LENGTH = 8
         self.TIME_STEP_PADDING_LENGTH = len(str(self.T))
@@ -197,12 +201,17 @@ class Visualizer(Constants):
         # attribute schemas
         for attribute_idx, w in enumerate(W):
             for vec_idx, vec in enumerate(w.T):
-                file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
-                    self._iter, self.ENTITY_NAMES[attribute_idx], vec_idx, ipl=self.ITER_PADDING_LENGTH)
+                # file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
+                #     self._iter, self.ENTITY_NAMES[attribute_idx], vec_idx, ipl=self.ITER_PADDING_LENGTH)
+                file_name = '{}__vec_{:0{ipl}}.png'.format(
+                    self.ENTITY_NAMES[attribute_idx], vec_idx, ipl=self.ITER_PADDING_LENGTH)
                 path = os.path.join(self.ATTRIBUTE_SCHEMAS_DIR_NAME, file_name)
                 self.save_schema_image(vec, path)
 
         # reward schemas
+        if R is None:
+            return
+
         for reward_type, r in enumerate(R):
             for vec_idx, vec in enumerate(r.T):
                 file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
@@ -210,19 +219,30 @@ class Visualizer(Constants):
                 path = os.path.join(self.REWARD_SCHEMAS_DIR_NAME, file_name)
                 self.save_schema_image(vec, path)
 
+    def visualize_replay_buffer(self, replay):
+        for idx, sample_vec in enumerate(replay.x):
+            file_name = 'sample_{:0{ipl}}.png'.format(
+                idx, ipl=self.ITER_PADDING_LENGTH)
+            path = os.path.join(self.REPLAY_BUFFER_DIR_NAME, file_name)
+            self.save_schema_image(sample_vec, path)
+
     # ------------- VISUALIZING BACKTRACKING -------------- #
-    def find_connected_component_triplets(self, node):
+    def find_connected_component_triplets(self, node, unique_nodes):
         if node.activating_schema is None:
             return None
+
         triplets = []
         for precondition in node.activating_schema.attribute_preconditions:
             t = precondition.t
             i = precondition.entity_idx
             j = precondition.attribute_idx
             triplet = (t, i, j)
+            if triplet in unique_nodes:
+                continue
+            unique_nodes.add(triplet)
             triplets.append(triplet)
 
-            child_triplets = self.find_connected_component_triplets(precondition)
+            child_triplets = self.find_connected_component_triplets(precondition, unique_nodes)
             if child_triplets is not None:
                 triplets.extend(child_triplets)
         return triplets
@@ -234,20 +254,38 @@ class Visualizer(Constants):
             base_state[i, j] = True
         return base_state
 
+    def apply_triplets_to_zero_state(self, triplets):
+        base_state = np.zeros_like(
+            self._attribute_tensor[self.FRAME_STACK_SIZE - 1, :, :].copy())
+        triplets = sorted(triplets, key=lambda t: t[2], reverse=True)
+        for t, i, j in triplets:
+            base_state[i, :] = False
+            base_state[i, j] = True
+        return base_state
+
     def visualize_node_backtracking(self, reward_node, image_path, partial_triplets):
         if partial_triplets is not None:
             triplets = partial_triplets[reward_node]
+            entities = self.apply_triplets_to_base_state(triplets)
         else:
-            triplets = self.find_connected_component_triplets(reward_node)
-        entities = self.apply_triplets_to_base_state(triplets)
+            unique_nodes = set()
+            triplets = self.find_connected_component_triplets(reward_node, unique_nodes)
+            entities = self.apply_triplets_to_zero_state(triplets)
         self.visualize_entities(entities, image_path)
 
     def visualize_backtracking(self, target_reward_nodes, partial_triplets):
         for idx, reward_node in enumerate(target_reward_nodes):
+            # visualizing partial triplets
+            file_name = 'iter_{:0{ipl}d}__node_{}_PARTIAL.png'.format(
+                self._iter, idx, ipl=self.ITER_PADDING_LENGTH)
+            image_path = os.path.join(self.BACKTRACKING_DIR_NAME, file_name)
+            self.visualize_node_backtracking(reward_node, image_path, partial_triplets=partial_triplets)
+
+            # visualizing connected component
             file_name = 'iter_{:0{ipl}d}__node_{}.png'.format(
                 self._iter, idx, ipl=self.ITER_PADDING_LENGTH)
             image_path = os.path.join(self.BACKTRACKING_DIR_NAME, file_name)
-            self.visualize_node_backtracking(reward_node, image_path, partial_triplets)
+            self.visualize_node_backtracking(reward_node, image_path, partial_triplets=None)
 
 # -------------- LOGGING BACKTRACKING --------------- #
     def write_block(self, block, file, indent_size=0):
@@ -334,3 +372,14 @@ class Visualizer(Constants):
             path = os.path.join(self.BACKTRACKING_SCHEMAS_DIR_NAME, file_name)
             self.save_schema_image(vec, path)
 
+# -------------------- LOG PLANNED ACTIONS ---------------------- #
+    def log_planned_actions(self, planned_actions):
+        if planned_actions is None:
+            return
+
+        file_name = 'iter_{:0{ipl}}'.format(
+            self._iter, ipl=self.ITER_PADDING_LENGTH)
+        path = os.path.join(self.LOG_DIR_NAME, file_name)
+
+        with open(path, 'wt') as file:
+            file.write(' '.join(str(num) for num in planned_actions))
