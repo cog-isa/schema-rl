@@ -1,6 +1,7 @@
 import os
 from enum import Enum
 import numpy as np
+import PIL
 from PIL import Image
 from .constants import Constants
 from .graph_utils import Attribute, Action
@@ -117,7 +118,8 @@ class Visualizer(Constants):
         pixmap = flat_pixels.reshape((self.SCREEN_HEIGHT, self.SCREEN_WIDTH, self.N_CHANNELS))
         image = Image.fromarray(pixmap)
         image = image.resize((self.SCREEN_WIDTH * self.STATE_SCALE,
-                              self.SCREEN_HEIGHT * self.STATE_SCALE))
+                              self.SCREEN_HEIGHT * self.STATE_SCALE),
+                             resample=PIL.Image.NEAREST)
         image.save(image_path)
 
     def visualize_predicted_entities(self, check_correctness=False):
