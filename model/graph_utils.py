@@ -181,6 +181,8 @@ class Attribute(Node, Constants):
     def reset(self):
         super().reset()
 
+        # schemas in the graph are instantiated only after real activation during forward pass
+        # thus, all init_cond nodes can be considered reachable
         if self.t < self.FRAME_STACK_SIZE or self.attribute_idx == self.VOID_IDX:
             self.is_reachable = True
 
