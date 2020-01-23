@@ -235,7 +235,13 @@ class GreedySchemaLearner(Constants):
         candidates = augmented_entities[zp_pl_mask]
 
         # solve LP
-        objective_coefficients = list((1 - candidates).sum(axis=0))
+        objective_coefficients = (1 - candidates).sum(axis=0)
+
+        # additional loss to prevent exploiting action bits
+        # objective_coefficients[-self.ACTION_SPACE_DIM:] = 300 * zp_pl_indices.size
+
+        objective_coefficients = list(objective_coefficients)
+        
         new_schema_vector = self._mip_models[attr_idx].optimize(objective_coefficients, zp_nl_mask, self._solved)
 
         if new_schema_vector is None:
@@ -338,6 +344,7 @@ class GreedySchemaLearner(Constants):
 
     def dump_weights(self, learned_W):
         dir_name = 'dump'
+        os.makedirs(dir_name, exist_ok=True)
         for attr_idx in range(self.N_PREDICTABLE_ATTRIBUTES):
             file_name = 'w_{}.pkl'.format(attr_idx)
             path = os.path.join(dir_name, file_name)

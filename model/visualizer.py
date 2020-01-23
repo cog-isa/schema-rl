@@ -1,4 +1,5 @@
 import os
+from collections import namedtuple
 from enum import Enum
 import numpy as np
 import PIL
@@ -25,6 +26,8 @@ BAD_ENTITY_COLOR = PURPLE
 PATTERN_SEPARATOR_COLOR = (98, 234, 223)  # light-blue
 INACTIVE_ACTION_SLOT_COLOR = WHITE
 ACTIVE_ACTION_SLOT_COLOR = RED
+
+NodeMetadata = namedtuple('NodeMetadata', ['t', 'type', 'attribute_idx'])
 
 
 class DirName(Enum):
@@ -203,7 +206,8 @@ class Visualizer(Constants):
 
         image = Image.fromarray(pixmap)
         image = image.resize((n_cols * self.SCHEMA_SCALE,
-                              n_rows * self.SCHEMA_SCALE))
+                              n_rows * self.SCHEMA_SCALE),
+                             resample=PIL.Image.NEAREST)
         image.save(image_path)
 
     def visualize_schemas(self, W, R):
@@ -236,25 +240,25 @@ class Visualizer(Constants):
             self.save_schema_image(sample_vec, path)
 
     # ------------- VISUALIZING BACKTRACKING -------------- #
-    def find_connected_component_triplets(self, node, unique_nodes):
+    def traverse_child_connected_component(self, node, unique_triplets, activating_schema_vectors):
+        """
+        :param unique_triplets: set
+        :param activating_schema_vectors: list
+        :return:
+        """
         if node.activating_schema is None:
             return None
 
-        triplets = []
+        activating_schema_vectors.append(node.activating_schema.vector)
+
         for precondition in node.activating_schema.attribute_preconditions:
             t = precondition.t
             i = precondition.entity_idx
             j = precondition.attribute_idx
             triplet = (t, i, j)
-            if triplet in unique_nodes:
-                continue
-            unique_nodes.add(triplet)
-            triplets.append(triplet)
-
-            child_triplets = self.find_connected_component_triplets(precondition, unique_nodes)
-            if child_triplets is not None:
-                triplets.extend(child_triplets)
-        return triplets
+            if triplet not in unique_triplets:
+                unique_triplets.add(triplet)
+                self.traverse_child_connected_component(precondition, unique_triplets, activating_schema_vectors)
 
     def apply_triplets_to_base_state(self, triplets):
         base_state = self._attribute_tensor[self.FRAME_STACK_SIZE - 1, :, :].copy()
@@ -272,14 +276,13 @@ class Visualizer(Constants):
             base_state[i, j] = True
         return base_state
 
-    def visualize_node_backtracking(self, reward_node, image_path, partial_triplets):
-        if partial_triplets is not None:
-            triplets = partial_triplets[reward_node]
-            entities = self.apply_triplets_to_base_state(triplets)
+    def visualize_node_backtracking(self, reward_node, image_path, triplets, is_partial):
+        if is_partial:
+            child_triplets = triplets[reward_node]
+            entities = self.apply_triplets_to_base_state(child_triplets)
         else:
-            unique_nodes = set()
-            triplets = self.find_connected_component_triplets(reward_node, unique_nodes)
             entities = self.apply_triplets_to_zero_state(triplets)
+
         self.visualize_entities(entities, image_path)
 
     def visualize_backtracking(self, target_reward_nodes, partial_triplets):
@@ -288,13 +291,21 @@ class Visualizer(Constants):
             file_name = 'iter_{:0{ipl}d}__node_{}_PARTIAL.png'.format(
                 self._iter, idx, ipl=self.ITER_PADDING_LENGTH)
             image_path = os.path.join(self._dir2path[DirName.BACKTRACKING], file_name)
-            self.visualize_node_backtracking(reward_node, image_path, partial_triplets=partial_triplets)
+            self.visualize_node_backtracking(reward_node, image_path, partial_triplets, is_partial=True)
 
             # visualizing connected component
+            unique_triplets = set()
+            activating_schema_vectors = []
+            self.traverse_child_connected_component(reward_node, unique_triplets,
+                                                    activating_schema_vectors)
+
             file_name = 'iter_{:0{ipl}d}__node_{}.png'.format(
                 self._iter, idx, ipl=self.ITER_PADDING_LENGTH)
             image_path = os.path.join(self._dir2path[DirName.BACKTRACKING], file_name)
-            self.visualize_node_backtracking(reward_node, image_path, partial_triplets=None)
+
+            self.visualize_node_backtracking(reward_node, image_path, unique_triplets, is_partial=False)
+
+        self.visualize_backtracking_schemas(self._planner.schema_vectors)
 
 # -------------- LOGGING BACKTRACKING --------------- #
     def write_block(self, block, file, indent_size=0):

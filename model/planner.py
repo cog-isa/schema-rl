@@ -2,8 +2,7 @@ from collections import defaultdict, namedtuple
 import numpy as np
 from .constants import Constants
 from .graph_utils import Attribute, Action, Reward
-
-NodeMetadata = namedtuple('NodeMetadata', ['t', 'type', 'attribute_idx'])
+from .visualizer import NodeMetadata
 
 
 class Planner(Constants):
@@ -68,8 +67,8 @@ class Planner(Constants):
                 node.activating_schema = schema
                 node.activating_schema.compute_cumulative_actions()
 
-                # for visualizing backtracking inner state
-                if self.VISUALIZE_BACKTRACKING_INNER_STATE:
+                # for visualizing backtracking
+                if self.VISUALIZE_BACKTRACKING:
                     if type(node) is not Reward:
                         self.node2triplets[self.curr_target].append(
                             (node.t, node.entity_idx, node.attribute_idx))
@@ -82,11 +81,11 @@ class Planner(Constants):
                             print(vars(s))
                         """
 
-                # for visualizing backtracking schemas
                 # print attribute schemas with filter conditions
-                if self.VISUALIZE_BACKTRACKING_SCHEMAS and type(node) is Attribute and \
+                if type(node) is Attribute and \
                         node.attribute_idx in (self.BALL_IDX, self.PADDLE_IDX) and \
                         schema.action_preconditions:
+
                     metadata = NodeMetadata(node.t, type(node).__name__,
                                             node.attribute_idx if type(node) is Attribute else None)
                     self.schema_vectors.append((schema.vector, metadata))
