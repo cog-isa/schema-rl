@@ -32,8 +32,8 @@ class Constants:
             T = 130  # min 112
             EMERGENCY_REPLANNING_PERIOD = 30
         elif ENV_SIZE == 'SMALL':
-            T = 50  # min 50
-            EMERGENCY_REPLANNING_PERIOD = 10
+            T = 60  # min 50
+            EMERGENCY_REPLANNING_PERIOD = 5
         else:
             raise AssertionError
 

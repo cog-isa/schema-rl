@@ -21,8 +21,14 @@ class HardcodedSchemaVectors(Constants):
          AttributePrecondition('curr', 0, 0, WALL_IDX)),
     ]
     brick = [
+        # move left
         (AttributePrecondition('prev', 0, 0, BRICK_IDX),
-         AttributePrecondition('curr', 0, 0, BRICK_IDX)),
+         AttributePrecondition('curr', 0, 0, BRICK_IDX),
+         ActionPrecondition(ACTION_MOVE_LEFT)),
+        # move right
+        (AttributePrecondition('prev', 0, 0, BRICK_IDX),
+         AttributePrecondition('curr', 0, 0, BRICK_IDX),
+         ActionPrecondition(ACTION_MOVE_RIGHT)),
     ]
     paddle = [
         (AttributePrecondition('prev', 0, 0, PADDLE_IDX),

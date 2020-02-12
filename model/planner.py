@@ -49,17 +49,13 @@ class Planner(Constants):
                 break
 
     def _backtrace_node_by_schema(self, node, schema):
-        assert schema.is_reachable is None, 'SCHEMA_MULTIPLE_BACKTRACKING'
+        # assert schema.is_reachable is None, 'SCHEMA_MULTIPLE_BACKTRACKING'
         self._backtrace_schema(schema)
 
         if schema.is_reachable:
             # attribute is reachable by this schema
             node.is_reachable = True
             node.activating_schema = schema
-
-            # handle joint constraints
-            # action_idx = schema.action_preconditions[0].idx if schema.action_preconditions else None
-            # curr_constraint = self._joint_constraints[node.t - 1]
 
             # conflicts of actions can occur here *only* during replanning calls
             # assuming they are satisfied, actual mutation of joint constraints is
@@ -140,17 +136,28 @@ class Planner(Constants):
             target_schemas = itertools.chain.from_iterable(
                 [v for k, v in node.schemas.items() if k is not None])
             self._backtrace_node_by_set_of_schemas(node, target_schemas)
+
+            # set new constraint
+            if node.is_reachable:
+                schema_action_idx = node.activating_schema.action_preconditions[0].idx
+                constraint.action_idx = schema_action_idx
+                constraint.committed_nodes.add(node)
+
             return
 
-        # try to activate node satisfying joint constraint at time node.t
+        # try to activate node satisfying joint constraint at time (node.t - 1)
         target_schemas = node.schemas[constraint.action_idx]
         self._backtrace_node_by_set_of_schemas(node, target_schemas)
+
         if node.is_reachable:
+            # add committed node to current constraint and exit
+            constraint.committed_nodes.add(node)
             return
 
         # with each loop we stray further from God
         # there is constraint on this level and no schema can be activated without violating it
         # replan all nodes that are committed to current constraint
+        print('Cannot activate schema without replanning.')
 
         # find actions, acceptable by conflicting nodes
         negotiated_actions = functools.reduce(
@@ -160,16 +167,21 @@ class Planner(Constants):
 
         for action in negotiated_actions:
             is_success = self._replan_nodes_with_constraint(
-                [node] + constraint.committed_nodes, action, node.t)
+                {node} | constraint.committed_nodes, action, node.t)
             if is_success:
+                print('Replanning was successfull.')
                 break
+            else:
+                print('Replanning failed.')
 
     def _replan_nodes_with_constraint(self, nodes, action, layer_t):
+        print('Replanning committed nodes to action: {}'.format(action))
         is_success = True
 
         for node in nodes:
             self._backtrace_node(node, desired_constraint=action)
             if not node.is_reachable:
+                node.is_reachable = True
                 is_success = False
                 break
 
@@ -243,7 +255,8 @@ class Planner(Constants):
                 # here planned_actions is len(t-1) List of len(max(x, ACTION_SPACE_DIM)) Lists]
                 # planned_actions = reward_node.activating_schema.required_cumulative_actions
 
-                planned_actions = [c.action_idx for c in self._joint_constraints]
+                constraints_before_reward = self._joint_constraints[:reward_node.t]
+                planned_actions = [c.action_idx for c in constraints_before_reward]
                 planned_actions = [a if a is not None else 0 for a in planned_actions]
 
                 # remove actions planned for past
