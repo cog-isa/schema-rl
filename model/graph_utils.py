@@ -1,4 +1,5 @@
 import numpy as np
+from collections import defaultdict
 from .constants import Constants
 
 
@@ -90,13 +91,19 @@ class Node:
         self.is_feasible = False
         self.is_reachable = None
         self.activating_schema = None  # reachable by this schema
-        self.schemas = []
+
+        # map: action_idx -> list of Schema objects
+        self.schemas = defaultdict(list)
+
+        # set of actions at node.t - 1, with which node can be potentially activated
+        self.acceptable_constraints = set()
 
     def reset(self):
         self.is_feasible = False
         self.is_reachable = None
         self.activating_schema = None
         self.schemas.clear()
+        self.acceptable_constraints.clear()
 
     def add_schema(self, preconditions, vector):
         # in current implementation schemas are instantiated only on feasible nodes
@@ -116,32 +123,37 @@ class Node:
                     print('schema is preconditioned more than on one action')
                     raise AssertionError
                 action_preconditions.append(precondition)
-            elif precondition is None:
-                # schema depends on VOID at padding, satisfy this
-                print('encountered precondition of type: {}'.format(type(precondition)))
-                print('precondition: {}'.format(precondition))
-                print('time: {}'.format(self.t))
-                print(self.is_feasible)
-                print(self.is_reachable)
-            else:
-                print('encountered precondition of type: {}'.format(type(precondition)))
-                print('precondition: {}'.format(precondition))
-                print('time: {}'.format(self.t))
-                print(self.is_feasible)
-                print(self.is_reachable)
-                print(self.activating_schema)
-                print(vars(self.activating_schema))
-                print('--------')
-                for schema in self.schemas:
-                    print(vars(schema))
-                print('--------')
-                for p in preconditions:
-                    print(type(p))
-                raise AssertionError
 
-        self.schemas.append(
-            Schema(self.t, attribute_preconditions, action_preconditions, vector)
-        )
+                # update constraints of current node
+                self.acceptable_constraints.add(precondition.idx)
+            elif precondition is None:
+                pass
+                # schema depends on VOID at padding, satisfy this
+                #print('encountered precondition of type: {}'.format(type(precondition)))
+                #print('precondition: {}'.format(precondition))
+                #print('time: {}'.format(self.t))
+                #print(self.is_feasible)
+                #print(self.is_reachable)
+            else:
+                pass
+                #print('encountered precondition of type: {}'.format(type(precondition)))
+                #print('precondition: {}'.format(precondition))
+                #print('time: {}'.format(self.t))
+                #print(self.is_feasible)
+                #print(self.is_reachable)
+                #print(self.activating_schema)
+                #print(vars(self.activating_schema))
+                #print('--------')
+                #for schema in self.schemas:
+                #    print(vars(schema))
+                #print('--------')
+                #for p in preconditions:
+                #    print(type(p))
+                #raise AssertionError
+
+        schema = Schema(self.t, attribute_preconditions, action_preconditions, vector)
+        key = action_preconditions[0].idx if action_preconditions else None
+        self.schemas[key].append(schema)
 
     def sort_schemas_by_harmfulness(self, neg_schemas):
         """
@@ -181,6 +193,8 @@ class Attribute(Node, Constants):
     def reset(self):
         super().reset()
 
+        # schemas in the graph are instantiated only after real activation during forward pass
+        # thus, all init_cond nodes can be considered reachable
         if self.t < self.FRAME_STACK_SIZE or self.attribute_idx == self.VOID_IDX:
             self.is_reachable = True
 
@@ -222,6 +236,16 @@ class Reward(Node):
         self.weight = None
 
 
+class Constraint:
+    def __init__(self):
+        self.action_idx = None
+        self.committed_nodes = set()
+
+    def reset(self):
+        self.action_idx = None
+        self.committed_nodes.clear()
+
+# ---------------------------------------------------------------- #
 class MetaObject:
     _allowed_types = (Attribute, FakeAttribute, Action, Reward)
 

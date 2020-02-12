@@ -104,7 +104,7 @@ class InferenceRunner(Constants):
 
 
 def main():
-    n_episodes = 16
+    n_episodes = 1
     n_steps = 1024
     env_type = 'standard'
     assert env_type in ('standard', 'offset-paddle', 'juggling')

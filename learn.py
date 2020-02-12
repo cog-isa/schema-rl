@@ -13,12 +13,13 @@ class DataLoader(Constants):
     def __init__(self, shaper):
         self._shaper = shaper
 
-    def make_batch(self, observations, actions):
+    def make_batch(self, observations, actions, reward):
         frame_stack = [observations[idx] for idx in range(self.FRAME_STACK_SIZE)]
         action = actions[self.FRAME_STACK_SIZE - 1]
         augmented_entities = self._shaper.transform_matrix(frame_stack, action=action)
         target = observations[self.FRAME_STACK_SIZE][:, :self.N_PREDICTABLE_ATTRIBUTES]
-        batch = GreedySchemaLearner.Batch(augmented_entities, target)
+        rewards = np.full(target.shape[0], reward) == 1
+        batch = GreedySchemaLearner.Batch(augmented_entities, target, rewards)
         return batch
 
 
@@ -67,6 +68,7 @@ class LearningRunner(Constants):
         visualizer = Visualizer(None, None, None)
 
         env.reset()
+        reward = 0
 
         for episode_idx in range(self.n_episodes):
             observations = deque(maxlen=self.LEARNING_BATCH_SIZE)
@@ -90,7 +92,7 @@ class LearningRunner(Constants):
 
                 # learning
                 if len(observations) >= self.LEARNING_BATCH_SIZE:
-                    batch = data_loader.make_batch(observations, actions)
+                    batch = data_loader.make_batch(observations, actions, reward)
 
                     learner.set_curr_iter(curr_iter)
                     learner.take_batch(batch)

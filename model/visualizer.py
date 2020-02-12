@@ -1,5 +1,8 @@
 import os
+from collections import namedtuple
+from enum import Enum
 import numpy as np
+import PIL
 from PIL import Image
 from .constants import Constants
 from .graph_utils import Attribute, Action
@@ -12,36 +15,34 @@ BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 PURPLE = (128, 0, 128)
-
 BACKGROUND_COLOR = WHITE
-
 BALL_COLOR = GREEN
 WALL_COLOR = (142, 142, 142)
 BRICK_COLOR = (66, 72, 200)
 PADDLE_COLOR = (200, 72, 73)
 VOID_COLOR = BLACK
-
 BAD_ENTITY_COLOR = PURPLE
 
 PATTERN_SEPARATOR_COLOR = (98, 234, 223)  # light-blue
 INACTIVE_ACTION_SLOT_COLOR = WHITE
 ACTIVE_ACTION_SLOT_COLOR = RED
 
+NodeMetadata = namedtuple('NodeMetadata', ['t', 'type', 'attribute_idx'])
+
+
+class DirName(Enum):
+    ATTRIBUTE_SCHEMAS = 'attribute_schemas'
+    REWARD_SCHEMAS = 'reward_schemas'
+    ENTITIES = 'entities'
+    BACKTRACKING = 'backtracking'
+    STATE = 'state'
+    BACKTRACKING_SCHEMAS = 'backtracking_schemas'
+    REPLAY_BUFFER = 'replay_buffer'
+    LOG = 'logs'
+
 
 class Visualizer(Constants):
     def __init__(self, tensor_handler, planner, attribute_nodes):
-        self.VISUALIZATION_DIR_NAME = './visualization'
-
-        self.ATTRIBUTE_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'attribute_schemas')
-        self.REWARD_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'reward_schemas')
-        self.ENTITIES_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'entities')
-        self.BACKTRACKING_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'backtracking')
-        self.STATE_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'state')
-        self.BACKTRACKING_SCHEMAS_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'backtracking_schemas')
-        self.REPLAY_BUFFER_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'replay_buffer')
-
-        self.LOG_DIR_NAME = os.path.join(self.VISUALIZATION_DIR_NAME, 'logs')
-
         self.ITER_PADDING_LENGTH = 8
         self.TIME_STEP_PADDING_LENGTH = len(str(self.T))
 
@@ -66,6 +67,16 @@ class Visualizer(Constants):
             self.BRICK_IDX: BRICK_COLOR,  # dark-blue-like
             self.VOID_IDX: VOID_COLOR
         }
+
+        # handle directories
+        self.VISUALIZATION_DIR_NAME = './visualization'
+        self._dir2path = {item: os.path.join(self.VISUALIZATION_DIR_NAME, item.value)
+                          for item in DirName}
+        self._create_necessary_dirs()
+
+    def _create_necessary_dirs(self):
+        for path in self._dir2path.values():
+            os.makedirs(path, exist_ok=True)
 
     def set_iter(self, iter):
         self._iter = iter
@@ -110,7 +121,8 @@ class Visualizer(Constants):
         pixmap = flat_pixels.reshape((self.SCREEN_HEIGHT, self.SCREEN_WIDTH, self.N_CHANNELS))
         image = Image.fromarray(pixmap)
         image = image.resize((self.SCREEN_WIDTH * self.STATE_SCALE,
-                              self.SCREEN_HEIGHT * self.STATE_SCALE))
+                              self.SCREEN_HEIGHT * self.STATE_SCALE),
+                             resample=PIL.Image.NEAREST)
         image.save(image_path)
 
     def visualize_predicted_entities(self, check_correctness=False):
@@ -120,13 +132,13 @@ class Visualizer(Constants):
 
             file_name = 'iter_{:0{ipl}d}__t_{:0{tspl}d}.png'.format(
                 self._iter, t, ipl=self.ITER_PADDING_LENGTH, tspl=self.TIME_STEP_PADDING_LENGTH)
-            image_path = os.path.join(self.ENTITIES_DIR_NAME, file_name)
+            image_path = os.path.join(self._dir2path[DirName.ENTITIES], file_name)
             self.visualize_entities(self._attribute_tensor[t], image_path)
 
     def visualize_env_state(self, state):
         file_name = 'iter_{:0{ipl}d}.png'.format(
             self._iter, ipl=self.ITER_PADDING_LENGTH)
-        image_path = os.path.join(self.STATE_DIR_NAME, file_name)
+        image_path = os.path.join(self._dir2path[DirName.STATE], file_name)
         self.visualize_entities(state, image_path)
 
 # ------------- SCHEMA VISUALIZING ------------- #
@@ -194,7 +206,8 @@ class Visualizer(Constants):
 
         image = Image.fromarray(pixmap)
         image = image.resize((n_cols * self.SCHEMA_SCALE,
-                              n_rows * self.SCHEMA_SCALE))
+                              n_rows * self.SCHEMA_SCALE),
+                             resample=PIL.Image.NEAREST)
         image.save(image_path)
 
     def visualize_schemas(self, W, R):
@@ -205,7 +218,7 @@ class Visualizer(Constants):
                 #     self._iter, self.ENTITY_NAMES[attribute_idx], vec_idx, ipl=self.ITER_PADDING_LENGTH)
                 file_name = '{}__vec_{:0{ipl}}.png'.format(
                     self.ENTITY_NAMES[attribute_idx], vec_idx, ipl=self.ITER_PADDING_LENGTH)
-                path = os.path.join(self.ATTRIBUTE_SCHEMAS_DIR_NAME, file_name)
+                path = os.path.join(self._dir2path[DirName.ATTRIBUTE_SCHEMAS], file_name)
                 self.save_schema_image(vec, path)
 
         # reward schemas
@@ -214,38 +227,40 @@ class Visualizer(Constants):
 
         for reward_type, r in enumerate(R):
             for vec_idx, vec in enumerate(r.T):
-                file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
-                    self._iter, self.REWARD_NAMES[reward_type], vec_idx, ipl=self.ITER_PADDING_LENGTH)
-                path = os.path.join(self.REWARD_SCHEMAS_DIR_NAME, file_name)
+                #file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
+                #    self._iter, self.REWARD_NAMES[reward_type], vec_idx, ipl=self.ITER_PADDING_LENGTH)
+                file_name = '{}__vec_{:0{ipl}}.png'.format(
+                    self.REWARD_NAMES[reward_type], vec_idx, ipl=self.ITER_PADDING_LENGTH)
+                path = os.path.join(self._dir2path[DirName.REWARD_SCHEMAS], file_name)
                 self.save_schema_image(vec, path)
 
     def visualize_replay_buffer(self, replay):
         for idx, sample_vec in enumerate(replay.x):
             file_name = 'sample_{:0{ipl}}.png'.format(
                 idx, ipl=self.ITER_PADDING_LENGTH)
-            path = os.path.join(self.REPLAY_BUFFER_DIR_NAME, file_name)
+            path = os.path.join(self._dir2path[DirName.REPLAY_BUFFER], file_name)
             self.save_schema_image(sample_vec, path)
 
     # ------------- VISUALIZING BACKTRACKING -------------- #
-    def find_connected_component_triplets(self, node, unique_nodes):
+    def traverse_child_connected_component(self, node, unique_triplets, activating_schema_vectors):
+        """
+        :param unique_triplets: set
+        :param activating_schema_vectors: list
+        :return:
+        """
         if node.activating_schema is None:
             return None
 
-        triplets = []
+        activating_schema_vectors.append(node.activating_schema.vector)
+
         for precondition in node.activating_schema.attribute_preconditions:
             t = precondition.t
             i = precondition.entity_idx
             j = precondition.attribute_idx
             triplet = (t, i, j)
-            if triplet in unique_nodes:
-                continue
-            unique_nodes.add(triplet)
-            triplets.append(triplet)
-
-            child_triplets = self.find_connected_component_triplets(precondition, unique_nodes)
-            if child_triplets is not None:
-                triplets.extend(child_triplets)
-        return triplets
+            if triplet not in unique_triplets:
+                unique_triplets.add(triplet)
+                self.traverse_child_connected_component(precondition, unique_triplets, activating_schema_vectors)
 
     def apply_triplets_to_base_state(self, triplets):
         base_state = self._attribute_tensor[self.FRAME_STACK_SIZE - 1, :, :].copy()
@@ -263,14 +278,13 @@ class Visualizer(Constants):
             base_state[i, j] = True
         return base_state
 
-    def visualize_node_backtracking(self, reward_node, image_path, partial_triplets):
-        if partial_triplets is not None:
-            triplets = partial_triplets[reward_node]
-            entities = self.apply_triplets_to_base_state(triplets)
+    def visualize_node_backtracking(self, reward_node, image_path, triplets, is_partial):
+        if is_partial:
+            child_triplets = triplets[reward_node]
+            entities = self.apply_triplets_to_base_state(child_triplets)
         else:
-            unique_nodes = set()
-            triplets = self.find_connected_component_triplets(reward_node, unique_nodes)
             entities = self.apply_triplets_to_zero_state(triplets)
+
         self.visualize_entities(entities, image_path)
 
     def visualize_backtracking(self, target_reward_nodes, partial_triplets):
@@ -278,14 +292,22 @@ class Visualizer(Constants):
             # visualizing partial triplets
             file_name = 'iter_{:0{ipl}d}__node_{}_PARTIAL.png'.format(
                 self._iter, idx, ipl=self.ITER_PADDING_LENGTH)
-            image_path = os.path.join(self.BACKTRACKING_DIR_NAME, file_name)
-            self.visualize_node_backtracking(reward_node, image_path, partial_triplets=partial_triplets)
+            image_path = os.path.join(self._dir2path[DirName.BACKTRACKING], file_name)
+            self.visualize_node_backtracking(reward_node, image_path, partial_triplets, is_partial=True)
 
             # visualizing connected component
+            unique_triplets = set()
+            activating_schema_vectors = []
+            self.traverse_child_connected_component(reward_node, unique_triplets,
+                                                    activating_schema_vectors)
+
             file_name = 'iter_{:0{ipl}d}__node_{}.png'.format(
                 self._iter, idx, ipl=self.ITER_PADDING_LENGTH)
-            image_path = os.path.join(self.BACKTRACKING_DIR_NAME, file_name)
-            self.visualize_node_backtracking(reward_node, image_path, partial_triplets=None)
+            image_path = os.path.join(self._dir2path[DirName.BACKTRACKING], file_name)
+
+            self.visualize_node_backtracking(reward_node, image_path, unique_triplets, is_partial=False)
+
+        self.visualize_backtracking_schemas(self._planner.schema_vectors)
 
 # -------------- LOGGING BACKTRACKING --------------- #
     def write_block(self, block, file, indent_size=0):
@@ -360,7 +382,7 @@ class Visualizer(Constants):
             ball_node = self._attribute_nodes[t, ball_entity_idx, self.BALL_IDX]
 
             file_name = 'iter_{}__ball_node_at_time_{}'.format(self._iter, t)
-            logfile_path = os.path.join(self.BACKTRACKING_DIR_NAME, file_name)
+            logfile_path = os.path.join(self._dir2path[DirName.BACKTRACKING], file_name)
             with open(logfile_path, 'wt') as file:
                 self.log_node_with_schemas(ball_node, file)
 
@@ -369,7 +391,7 @@ class Visualizer(Constants):
         for vec_idx, (vec, metadata) in enumerate(schema_vectors):
             file_name = 'iter_{:0{ipl}}__t_{:03}__type_{}__attridx_{}.png'.format(
                 self._iter, metadata.t, metadata.type, metadata.attribute_idx, ipl=self.ITER_PADDING_LENGTH)
-            path = os.path.join(self.BACKTRACKING_SCHEMAS_DIR_NAME, file_name)
+            path = os.path.join(self._dir2path[DirName.BACKTRACKING_SCHEMAS], file_name)
             self.save_schema_image(vec, path)
 
 # -------------------- LOG PLANNED ACTIONS ---------------------- #
@@ -379,7 +401,7 @@ class Visualizer(Constants):
 
         file_name = 'iter_{:0{ipl}}'.format(
             self._iter, ipl=self.ITER_PADDING_LENGTH)
-        path = os.path.join(self.LOG_DIR_NAME, file_name)
+        path = os.path.join(self._dir2path[DirName.LOG], file_name)
 
         with open(path, 'wt') as file:
             file.write(' '.join(str(num) for num in planned_actions))
