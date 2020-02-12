@@ -1,4 +1,5 @@
 import numpy as np
+from collections import defaultdict
 from .constants import Constants
 
 
@@ -90,13 +91,19 @@ class Node:
         self.is_feasible = False
         self.is_reachable = None
         self.activating_schema = None  # reachable by this schema
-        self.schemas = []
+
+        # map: action_idx -> list of Schema objects
+        self.schemas = defaultdict(list)
+
+        # set of actions at node.t - 1, with which node can be potentially activated
+        self.acceptable_constraints = set()
 
     def reset(self):
         self.is_feasible = False
         self.is_reachable = None
         self.activating_schema = None
         self.schemas.clear()
+        self.acceptable_constraints.clear()
 
     def add_schema(self, preconditions, vector):
         # in current implementation schemas are instantiated only on feasible nodes
@@ -116,6 +123,9 @@ class Node:
                     print('schema is preconditioned more than on one action')
                     raise AssertionError
                 action_preconditions.append(precondition)
+
+                # update constraints of current node
+                self.acceptable_constraints.add(precondition.idx)
             elif precondition is None:
                 # schema depends on VOID at padding, satisfy this
                 print('encountered precondition of type: {}'.format(type(precondition)))
@@ -139,9 +149,9 @@ class Node:
                     print(type(p))
                 raise AssertionError
 
-        self.schemas.append(
-            Schema(self.t, attribute_preconditions, action_preconditions, vector)
-        )
+        schema = Schema(self.t, attribute_preconditions, action_preconditions, vector)
+        key = action_preconditions[0].idx if action_preconditions else None
+        self.schemas[key].append(schema)
 
     def sort_schemas_by_harmfulness(self, neg_schemas):
         """
@@ -224,6 +234,16 @@ class Reward(Node):
         self.weight = None
 
 
+class Constraint:
+    def __init__(self):
+        self.action_idx = None
+        self.committed_nodes = set()
+
+    def reset(self):
+        self.action_idx = None
+        self.committed_nodes.clear()
+
+# ---------------------------------------------------------------- #
 class MetaObject:
     _allowed_types = (Attribute, FakeAttribute, Action, Reward)
 
