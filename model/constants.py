@@ -14,16 +14,16 @@ class Constants:
 
     VISUALIZE_STATE = True
     VISUALIZE_SCHEMAS = True
-    VISUALIZE_INNER_STATE = True
+    VISUALIZE_INNER_STATE = False
     VISUALIZE_BACKTRACKING = True
     VISUALIZE_REPLAY_BUFFER = False
     LOG_PLANNED_ACTIONS = True
 
-    USE_LEARNED_SCHEMAS = False
+    USE_LEARNED_SCHEMAS = True
     EPSILON = 0.8
     GAMMA = 0.997
 
-    LEARNING_PERIOD = 10
+    LEARNING_PERIOD = 256
     N_LEARNING_THREADS = 2
 
     LEARNING_SCHEMA_TOLERANCE = 1e-8
@@ -32,9 +32,11 @@ class Constants:
     if not DEBUG:
         if ENV_SIZE == 'DEFAULT':
             T = 130  # min 112
+            PLANNING_PERIOD = 10
             EMERGENCY_REPLANNING_PERIOD = 30
         elif ENV_SIZE == 'SMALL':
             T = 60  # min 50
+            PLANNING_PERIOD = 5
             EMERGENCY_REPLANNING_PERIOD = 5
         else:
             raise AssertionError
@@ -99,6 +101,10 @@ class Constants:
         0: 'POSITIVE',
         1: 'NEGATIVE',
     }
+
+    ATTRIBUTE = 'attribute'
+    REWARD = 'reward'
+    ALLOWED_OBJ_TYPES = {ATTRIBUTE, REWARD}
 
     DEFAULT_PADDLE_SHAPE = DEFAULT_PADDLE_SHAPE
 

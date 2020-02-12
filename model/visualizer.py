@@ -227,8 +227,10 @@ class Visualizer(Constants):
 
         for reward_type, r in enumerate(R):
             for vec_idx, vec in enumerate(r.T):
-                file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
-                    self._iter, self.REWARD_NAMES[reward_type], vec_idx, ipl=self.ITER_PADDING_LENGTH)
+                #file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
+                #    self._iter, self.REWARD_NAMES[reward_type], vec_idx, ipl=self.ITER_PADDING_LENGTH)
+                file_name = '{}__vec_{:0{ipl}}.png'.format(
+                    self.REWARD_NAMES[reward_type], vec_idx, ipl=self.ITER_PADDING_LENGTH)
                 path = os.path.join(self._dir2path[DirName.REWARD_SCHEMAS], file_name)
                 self.save_schema_image(vec, path)
 

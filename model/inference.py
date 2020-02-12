@@ -32,7 +32,7 @@ class SchemaNetwork(Constants):
 
     def set_weights(self, W, R, R_weights=None):
         self._process_input(W, R)
-        self._print_input_stats(W)
+        self._print_input_stats(W, R)
 
         if R_weights is None:
             R_weights = np.ones(R[0].shape[1], dtype=np.float)
@@ -57,11 +57,18 @@ class SchemaNetwork(Constants):
                     and matrix.shape[1] <= required_matrix_shape[1]), 'BAD_MATRIX_SHAPE'
             assert matrix.size, 'EMPTY_MATRIX'
 
-    def _print_input_stats(self, W):
+    def _print_input_stats(self, W, R):
         print('Numbers of schemas in W are: ', end='')
         for idx, w in enumerate(W):
             print('{}'.format(w.shape[1]), end='')
             if idx != len(W) - 1:
+                print(' / ', end='')
+        print()
+
+        print('Numbers of schemas in R are: ', end='')
+        for idx, r in enumerate(R):
+            print('{}'.format(r.shape[1]), end='')
+            if idx != len(R) - 1:
                 print(' / ', end='')
         print()
 
