@@ -350,6 +350,12 @@ class GreedySchemaLearner(Constants):
             path = os.path.join(dir_name, file_name)
             learned_W[attr_idx].dump(path)
 
+    def get_weights(self):
+        learned_W = [W[:, ~np.all(W, axis=0)] for W in self._W]
+        if any(w.size == 0 for w in learned_W):
+            learned_W = None
+        return learned_W
+
     def learn(self):
         # get full batch from buffer
         buff_batch = self._get_buff_batch()

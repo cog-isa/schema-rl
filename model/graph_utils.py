@@ -127,27 +127,29 @@ class Node:
                 # update constraints of current node
                 self.acceptable_constraints.add(precondition.idx)
             elif precondition is None:
+                pass
                 # schema depends on VOID at padding, satisfy this
-                print('encountered precondition of type: {}'.format(type(precondition)))
-                print('precondition: {}'.format(precondition))
-                print('time: {}'.format(self.t))
-                print(self.is_feasible)
-                print(self.is_reachable)
+                #print('encountered precondition of type: {}'.format(type(precondition)))
+                #print('precondition: {}'.format(precondition))
+                #print('time: {}'.format(self.t))
+                #print(self.is_feasible)
+                #print(self.is_reachable)
             else:
-                print('encountered precondition of type: {}'.format(type(precondition)))
-                print('precondition: {}'.format(precondition))
-                print('time: {}'.format(self.t))
-                print(self.is_feasible)
-                print(self.is_reachable)
-                print(self.activating_schema)
-                print(vars(self.activating_schema))
-                print('--------')
-                for schema in self.schemas:
-                    print(vars(schema))
-                print('--------')
-                for p in preconditions:
-                    print(type(p))
-                raise AssertionError
+                pass
+                #print('encountered precondition of type: {}'.format(type(precondition)))
+                #print('precondition: {}'.format(precondition))
+                #print('time: {}'.format(self.t))
+                #print(self.is_feasible)
+                #print(self.is_reachable)
+                #print(self.activating_schema)
+                #print(vars(self.activating_schema))
+                #print('--------')
+                #for schema in self.schemas:
+                #    print(vars(schema))
+                #print('--------')
+                #for p in preconditions:
+                #    print(type(p))
+                #raise AssertionError
 
         schema = Schema(self.t, attribute_preconditions, action_preconditions, vector)
         key = action_preconditions[0].idx if action_preconditions else None
