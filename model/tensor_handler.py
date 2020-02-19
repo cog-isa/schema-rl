@@ -214,8 +214,8 @@ class TensorHandler(Constants):
             self._predict_next_attribute_layer(t)
             is_pos_reward_predicted = self._predict_next_reward_layer(t)
 
-            if is_pos_reward_predicted:
-                break
+            #if is_pos_reward_predicted:
+            #    break
 
     def check_entities_for_correctness(self, t):
         n_predicted_balls = np.count_nonzero(self._attribute_tensor[t, :, self.BALL_IDX])

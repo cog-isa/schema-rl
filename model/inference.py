@@ -32,7 +32,7 @@ class SchemaNetwork(Constants):
 
     def set_weights(self, W, R, R_weights=None):
         self._process_input(W, R)
-        self._print_input_stats(W)
+        self._print_input_stats(W, R)
 
         if R_weights is None:
             R_weights = np.ones(R[0].shape[1], dtype=np.float)
@@ -57,11 +57,18 @@ class SchemaNetwork(Constants):
                     and matrix.shape[1] <= required_matrix_shape[1]), 'BAD_MATRIX_SHAPE'
             assert matrix.size, 'EMPTY_MATRIX'
 
-    def _print_input_stats(self, W):
+    def _print_input_stats(self, W, R):
         print('Numbers of schemas in W are: ', end='')
         for idx, w in enumerate(W):
             print('{}'.format(w.shape[1]), end='')
             if idx != len(W) - 1:
+                print(' / ', end='')
+        print()
+
+        print('Numbers of schemas in R are: ', end='')
+        for idx, r in enumerate(R):
+            print('{}'.format(r.shape[1]), end='')
+            if idx != len(R) - 1:
                 print(' / ', end='')
         print()
 
@@ -124,19 +131,14 @@ class SchemaNetwork(Constants):
         # planning actions
         actions, target_reward_nodes = self._planner.plan_actions()
 
-        for t in range(self.TIME_SIZE):
-            self._tensor_handler.check_entities_for_correctness(t)
-
-        if self.VISUALIZE_BACKTRACKING_SCHEMAS:
-            self._visualizer.visualize_backtracking_schemas(self._planner.schema_vectors)
-
-        if self.VISUALIZE_BACKTRACKING_INNER_STATE:
+        if self.VISUALIZE_BACKTRACKING:
             if target_reward_nodes:
                 self._visualizer.visualize_backtracking(target_reward_nodes,
                                                         self._planner.node2triplets)
-                #for t in range(self.TIME_SIZE):
-                    #self._tensor_handler.check_entities_for_correctness(t)
 
                 #self._visualizer.log_balls_at_backtracking(target_reward_nodes[0])
+
+        if self.LOG_PLANNED_ACTIONS:
+            self._visualizer.log_planned_actions(actions)
 
         return actions

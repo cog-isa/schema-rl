@@ -2,11 +2,9 @@
 !*/
 !.gitignore
 
-.ipynb_checkpoints/
-.DS_Store
-
 !*.py
 !*.md
 !*.sh
+!*.txt
 
 venv

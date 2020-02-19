@@ -9,7 +9,7 @@ from model.constants import Constants
 from testing.testing import HardcodedSchemaVectors
 
 
-class Runner(Constants):
+class InferenceRunner(Constants):
     env_type_to_class = {
         'standard': StandardBreakout,
         'offset-paddle': OffsetPaddleBreakout,
@@ -33,15 +33,18 @@ class Runner(Constants):
             R = []
             R_weights = None
             for idx in range(self.M - 1):
-                file_name = '_schemas_standard/schema{}.txt'.format(idx)
+                file_name = 'w_{}.pkl'.format(idx)
                 path = os.path.join(dir_name, file_name)
-                w = np.loadtxt(path).astype(bool)
+                w = np.load(path, allow_pickle=True).astype(bool)
                 W.append(w)
-            for idx in range(1):
-                file_name = '_schemas_standardreward/schema{}.txt'.format(idx)
-                path = os.path.join(dir_name, file_name)
-                r = np.loadtxt(path).astype(bool)
-                R.append(r)
+
+            #for idx in range(1):
+             #   file_name = '_schemas_standardreward/schema{}.txt'.format(idx)
+             #   path = os.path.join(dir_name, file_name)
+             #   r = np.loadtxt(path).astype(bool)
+             #   R.append(r)
+
+            _, R, _ = HardcodedSchemaVectors.gen_schema_matrices()
         return W, R, R_weights
 
     def loop(self):
@@ -101,14 +104,14 @@ class Runner(Constants):
 
 
 def main():
-    n_episodes = 16
+    n_episodes = 1
     n_steps = 1024
     env_type = 'standard'
     assert env_type in ('standard', 'offset-paddle', 'juggling')
 
-    runner = Runner(env_type=env_type,
-                    n_episodes=n_episodes,
-                    n_steps=n_steps)
+    runner = InferenceRunner(env_type=env_type,
+                             n_episodes=n_episodes,
+                             n_steps=n_steps)
     runner.loop()
 
 
