@@ -6,27 +6,27 @@ from environment.schema_games.breakout.games import StandardBreakout, OffsetPadd
 from model.entity_extractor import EntityExtractor
 from model.inference import SchemaNetwork
 from model.visualizer import Visualizer
-from model.constants import Constants
+from model.constants import Constants as C
 from testing.testing import HardcodedSchemaVectors
 from model.schema_learner import GreedySchemaLearner
 from model.shaper import Shaper
 
 
-class DataLoader(Constants):
+class DataLoader():
     def __init__(self, shaper):
         self._shaper = shaper
 
     def make_batch(self, observations, actions, reward):
-        frame_stack = [observations[idx] for idx in range(self.FRAME_STACK_SIZE)]
-        action = actions[self.FRAME_STACK_SIZE - 1]
+        frame_stack = [observations[idx] for idx in range(C.FRAME_STACK_SIZE)]
+        action = actions[C.FRAME_STACK_SIZE - 1]
         augmented_entities = self._shaper.transform_matrix(frame_stack, action=action)
-        target = observations[self.FRAME_STACK_SIZE][:, :self.N_PREDICTABLE_ATTRIBUTES]
+        target = observations[C.FRAME_STACK_SIZE][:, :C.N_PREDICTABLE_ATTRIBUTES]
         rewards = np.full(target.shape[0], reward) == 1
         batch = GreedySchemaLearner.Batch(augmented_entities, target, rewards)
         return batch
 
 
-class Runner(Constants):
+class Runner():
     env_type_to_class = {
         'standard': StandardBreakout,
         'offset-paddle': OffsetPaddleBreakout,
@@ -49,7 +49,7 @@ class Runner(Constants):
 
     def _get_hardcoded_action(self, env, eps=0.0):
         if np.random.uniform() < eps:
-            chosen_action = np.random.choice(self.ACTION_SPACE_DIM)
+            chosen_action = np.random.choice(C.ACTION_SPACE_DIM)
         else:
             ball_x = EntityExtractor.get_ball_x(env)
             targets = EntityExtractor.get_paddle_keypoints(env)
@@ -71,7 +71,7 @@ class Runner(Constants):
         return chosen_action
 
     def load_schema_matrices(self):
-        if not self.USE_LEARNED_SCHEMAS:
+        if not C.USE_LEARNED_SCHEMAS:
             W, R, R_weights = HardcodedSchemaVectors.gen_schema_matrices()
         else:
             dir_name = './dump'
@@ -121,9 +121,9 @@ class Runner(Constants):
             env.reset()
             reward = 0
 
-            observations = deque(maxlen=self.LEARNING_BATCH_SIZE)
-            frame_stack = deque(maxlen=self.FRAME_STACK_SIZE)
-            actions_taken = deque(maxlen=self.LEARNING_BATCH_SIZE)
+            observations = deque(maxlen=C.LEARNING_BATCH_SIZE)
+            frame_stack = deque(maxlen=C.FRAME_STACK_SIZE)
+            actions_taken = deque(maxlen=C.LEARNING_BATCH_SIZE)
             exec_actions = deque()
 
             planning_timer = 0
@@ -140,7 +140,7 @@ class Runner(Constants):
                 observations.append(obs)
                 frame_stack.append(obs)
 
-                if self.VISUALIZE_STATE:
+                if C.VISUALIZE_STATE:
                     # visualize env state
                     visualizer.set_iter(curr_iter)
                     visualizer.visualize_env_state(obs)
@@ -150,14 +150,20 @@ class Runner(Constants):
                 W, R = learner.get_weights()
                 are_weights_ok = W is not None and R is not None
 
-                can_run_planner = are_weights_ok and len(frame_stack) == self.FRAME_STACK_SIZE
-                #is_planning_needed = len(exec_actions) == 0 and emergency_replanning_timer is None \
-                #                     or emergency_replanning_timer == 0
-                is_planning_needed = (planning_timer == 0)
+                can_run_planner = are_weights_ok and len(frame_stack) == C.FRAME_STACK_SIZE
+
+                if C.USE_EMERGENCY_REPLANNING:
+                    is_planning_needed = len(exec_actions) == 0 and emergency_replanning_timer is None \
+                                        or emergency_replanning_timer == 0
+                else:
+                    is_planning_needed = (planning_timer == 0)
 
                 if is_planning_needed and can_run_planner:
                     print('Launching planning procedure...')
+
+                    # handle timers
                     emergency_replanning_timer = None
+                    planning_timer = C.PLANNING_PERIOD
 
                     planner.set_weights(W, R)
                     planner.set_curr_iter(curr_iter)
@@ -167,26 +173,24 @@ class Runner(Constants):
                         exec_actions.clear()
                         exec_actions.extend(planned_actions)
 
-                    planning_timer = self.PLANNING_PERIOD
-
-                if planning_timer > 0:
-                    planning_timer -= 1
-
                 if exec_actions:
                     chosen_action = exec_actions.popleft()
                 else:
-                    chosen_action = np.random.choice(self.ACTION_SPACE_DIM)
+                    chosen_action = np.random.choice(C.ACTION_SPACE_DIM)
 
                     if can_run_planner:
                         if emergency_replanning_timer is None:
-                            emergency_replanning_timer = self.EMERGENCY_REPLANNING_PERIOD
+                            emergency_replanning_timer = C.EMERGENCY_REPLANNING_PERIOD
                         emergency_replanning_timer -= 1
+
+                if planning_timer > 0:
+                    planning_timer -= 1
                 # ---------------------
 
                 actions_taken.append(chosen_action)
 
                 # --- learning ---
-                if len(observations) >= self.LEARNING_BATCH_SIZE:
+                if len(observations) >= C.LEARNING_BATCH_SIZE:
                     print('adding batch to learner')
                     batch = data_loader.make_batch(observations, actions_taken, reward)
 
@@ -194,7 +198,7 @@ class Runner(Constants):
                     learner.take_batch(batch)
 
                     is_flush_needed = curr_iter == self.n_episodes * self.n_steps - 1
-                    if curr_iter % self.LEARNING_PERIOD == 0 or is_flush_needed:
+                    if curr_iter % C.LEARNING_PERIOD == 0 or is_flush_needed:
                         print('Launching learning procedure...')
                         learner.learn()
 
@@ -207,8 +211,8 @@ class Runner(Constants):
 
 
 def main():
-    n_episodes = 256
-    n_steps = 3500
+    n_episodes = 64
+    n_steps = 512
     env_type = 'standard'
     assert env_type in ('standard', 'offset-paddle', 'juggling')
 

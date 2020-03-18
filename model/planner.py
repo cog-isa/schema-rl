@@ -76,9 +76,9 @@ class Planner(Constants):
                     """
 
             # print attribute schemas with filter conditions
-            if type(node) is Attribute and \
-                    node.attribute_idx in (self.BALL_IDX, self.PADDLE_IDX) and \
-                    schema.action_preconditions:
+            if type(node) is Attribute and node.attribute_idx in (self.BALL_IDX, self.PADDLE_IDX) \
+                    and schema.action_preconditions \
+                    or type(node) is Reward:
 
                 metadata = NodeMetadata(node.t, type(node).__name__,
                                         node.attribute_idx if type(node) is Attribute else None)
