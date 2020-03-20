@@ -108,7 +108,7 @@ class Runner():
         self._log_episode_reward(episode_idx, step_idx, episode_reward)
 
     def loop(self):
-        #_, R, _ = self.load_schema_matrices()
+        handcrafted_W, handcrafted_R, _ = HardcodedSchemaVectors.gen_schema_matrices()
 
         env = self.env_class(**self.env_params)
         shaper = Shaper()
@@ -147,7 +147,11 @@ class Runner():
 
                 # --- planning ---
 
-                W, R = learner.get_weights()
+                learned_W, learned_R = learner.get_weights()
+
+                W = handcrafted_W if C.USE_HANDCRAFTED_ATTRIBUTE_SCHEMAS else learned_W
+                R = handcrafted_R if C.USE_HANDCRAFTED_REWARD_SCHEMAS else learned_R
+
                 are_weights_ok = W is not None and R is not None
 
                 can_run_planner = are_weights_ok and len(frame_stack) == C.FRAME_STACK_SIZE

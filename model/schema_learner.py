@@ -428,18 +428,20 @@ class GreedySchemaLearner:
 
         augmented_entities, targets, rewards = replay_batch
 
-        for attr_idx in range(C.N_PREDICTABLE_ATTRIBUTES):
-            while self._n_attr_schemas[attr_idx] < C.L:
-                new_schema_vec = self._generate_new_schema(augmented_entities, targets, attr_idx)
+        if not C.USE_HANDCRAFTED_ATTRIBUTE_SCHEMAS:
+            for attr_idx in range(C.N_PREDICTABLE_ATTRIBUTES):
+                while self._n_attr_schemas[attr_idx] < C.L:
+                    new_schema_vec = self._generate_new_schema(augmented_entities, targets, attr_idx)
+                    if new_schema_vec is None:
+                        break
+                    self._add_attr_schema_vec(attr_idx, new_schema_vec)
+
+        if not C.USE_HANDCRAFTED_REWARD_SCHEMAS:
+            while self._n_reward_schemas < C.L:
+                new_schema_vec = self._generate_new_schema(augmented_entities, rewards, None, is_reward=True)
                 if new_schema_vec is None:
                     break
-                self._add_attr_schema_vec(attr_idx, new_schema_vec)
-
-        while self._n_reward_schemas < C.L:
-            new_schema_vec = self._generate_new_schema(augmented_entities, rewards, None, is_reward=True)
-            if new_schema_vec is None:
-                break
-            self._add_reward_schema_vec(new_schema_vec)
+                self._add_reward_schema_vec(new_schema_vec)
 
         if C.VISUALIZE_SCHEMAS:
             learned_W = [W[:, ~np.all(W, axis=0)] for W in self._W]
