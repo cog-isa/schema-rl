@@ -2,11 +2,11 @@ from collections import namedtuple
 import os
 import numpy as np
 import mip.model as mip
-from model.constants import Constants
+from model.constants import Constants as C
 from model.visualizer import Visualizer
 
 
-class MipModel(Constants):
+class MipModel:
     """
     instantiated for single attr_idx
     """
@@ -15,9 +15,9 @@ class MipModel(Constants):
     def __init__(self):
         self._model = mip.Model(mip.MINIMIZE, solver_name=mip.CBC)
         self._model.verbose = 0
-        self._model.threads = self.N_LEARNING_THREADS
+        self._model.threads = C.N_LEARNING_THREADS
 
-        self._w = [self._model.add_var(var_type='B') for _ in range(self.SCHEMA_VEC_SIZE)]
+        self._w = [self._model.add_var(var_type='B') for _ in range(C.SCHEMA_VEC_SIZE)]
         self._constraints_buff = np.empty(0, dtype=object)
 
     def add_to_constraints_buff(self, batch, unique_idx, replay_renewed_indices=None):
@@ -34,7 +34,13 @@ class MipModel(Constants):
 
         if replay_renewed_indices is not None:
             for idx in replay_renewed_indices:
-                self._constraints_buff[idx] = self._constraints_buff[idx] >= 1
+                constr = self._constraints_buff[idx]
+                assert constr.sense == '=', constr.sense
+                assert constr.const == 0, constr.const
+                constr = constr >= 1
+                assert constr.sense == '>', constr.sense
+                assert constr.const == -1, constr.const
+                self._constraints_buff[idx] = constr
 
     def optimize(self, objective_coefficients, zp_nl_mask, solved):
         model = self._model
@@ -74,23 +80,23 @@ class MipModel(Constants):
         return schema_vec
 
 
-class GreedySchemaLearner(Constants):
+class GreedySchemaLearner:
     Batch = namedtuple('Batch', ['x', 'y', 'r'])
 
     def __init__(self):
-        self._W = [np.ones((self.SCHEMA_VEC_SIZE, self.L), dtype=bool)
-                   for _ in range(self.N_PREDICTABLE_ATTRIBUTES)]
-        self._n_attr_schemas = np.ones(self.N_PREDICTABLE_ATTRIBUTES, dtype=np.int)
+        self._W = [np.ones((C.SCHEMA_VEC_SIZE, C.L), dtype=bool)
+                   for _ in range(C.N_PREDICTABLE_ATTRIBUTES)]
+        self._n_attr_schemas = np.ones(C.N_PREDICTABLE_ATTRIBUTES, dtype=np.int)
 
-        self._R = np.ones((self.SCHEMA_VEC_SIZE, self.L), dtype=bool)
+        self._R = np.ones((C.SCHEMA_VEC_SIZE, C.L), dtype=bool)
         self._n_reward_schemas = 1
 
         self._buff = []
-        self._replay = self.Batch(np.empty((0, self.SCHEMA_VEC_SIZE), dtype=bool),
-                                  np.empty((0, self.N_PREDICTABLE_ATTRIBUTES), dtype=bool),
+        self._replay = self.Batch(np.empty((0, C.SCHEMA_VEC_SIZE), dtype=bool),
+                                  np.empty((0, C.N_PREDICTABLE_ATTRIBUTES), dtype=bool),
                                   np.empty((0), dtype=bool))
 
-        self._attr_mip_models = [MipModel() for _ in range(self.N_PREDICTABLE_ATTRIBUTES)]
+        self._attr_mip_models = [MipModel() for _ in range(C.N_PREDICTABLE_ATTRIBUTES)]
         self._reward_mip_model = MipModel()
         self._solved = []
 
@@ -106,6 +112,7 @@ class GreedySchemaLearner(Constants):
             assert part.dtype == bool
 
         if batch.x.size:
+            assert np.all(batch.r == batch.r[0])
             x, y, r = self._handle_duplicates(batch.x, batch.y, batch.r)
             filtered_batch = self.Batch(x, y, r)
             self._buff.append(filtered_batch)
@@ -130,51 +137,60 @@ class GreedySchemaLearner(Constants):
 
             augmented_entities, targets, rewards = self._handle_duplicates(augmented_entities, targets, rewards)
             out = self.Batch(augmented_entities, targets, rewards)
+
+            self._buff.clear()
         return out
 
     def _add_to_replay_and_constraints_buff(self, batch):
-        replay_size = len(self._replay.x)
+        batch_size = len(batch.x)
+        old_replay_size = len(self._replay.x)
 
         # concatenate replay + batch
-        x = np.concatenate((self._replay.x, batch.x), axis=0)
-        y = np.concatenate((self._replay.y, batch.y), axis=0)
-        r = np.concatenate((self._replay.r, batch.r), axis=0)
+        x_concat = np.concatenate((self._replay.x, batch.x), axis=0)
+        y_concat = np.concatenate((self._replay.y, batch.y), axis=0)
+        r_concat = np.concatenate((self._replay.r, batch.r), axis=0)
+
+        concat_size = len(x_concat)
 
         # remove duplicates
-        x_filtered, y_filtered, r_filtered, unique_idx = self._handle_duplicates(x, y, r, return_index=True)
+        x_filtered, y_filtered, r_filtered, unique_idx = self._handle_duplicates(
+            x_concat, y_concat, r_concat, return_index=True)
+
+        # check if np.unique prefer first elements
+        mask_concat = np.zeros(concat_size, dtype=bool)
+        mask_concat[unique_idx] = True
+        assert mask_concat[:old_replay_size].all()
+
         self._replay = self.Batch(x_filtered, y_filtered, r_filtered)
 
         # find r = 0 duplicates (they can only locate in batch)
-        batch_size = len(batch.x)
-        concat_size = len(x)
+        duplicates_mask_concat = np.ones(concat_size, dtype=bool)
+        duplicates_mask_concat[unique_idx] = False
+        zero_reward_mask_concat = (r_concat == 0)
+        reward_renew_indices = np.nonzero(duplicates_mask_concat & zero_reward_mask_concat)[0]
+        assert (reward_renew_indices >= old_replay_size).all()
+        samples_to_update = x_concat[reward_renew_indices]
 
-        duplicates_mask = np.ones(concat_size, dtype=bool)
-        duplicates_mask[unique_idx] = False
-        no_reward_mask = r == 0
-        reward_renew_indices = np.nonzero(duplicates_mask & no_reward_mask)[0]
-        assert (reward_renew_indices >= replay_size).all()
-        reward_renew_samples = x[reward_renew_indices]
-
-        # renew rewards to zero
-        replay_renewed_indices = []
-        for sample in reward_renew_samples:
-            indices = np.nonzero((self._replay.x == sample).all(axis=1))[0]
-            assert len(indices) == 1
-            idx = indices[0]
-            if self._replay.r[idx] != 0:
-                self._replay.r[idx] = 0
-                replay_renewed_indices.append(idx)
-        print('new r=0 samples overwritten: {}'.format(reward_renew_indices.size))
+        # update rewards to zero
+        replay_indices_to_update = []
+        for sample in samples_to_update:
+            new_replay_indices = np.nonzero((self._replay.x == sample).all(axis=1))[0]
+            assert len(new_replay_indices) == 1
+            new_replay_idx = new_replay_indices[0]
+            if self._replay.r[new_replay_idx] != 0:
+                self._replay.r[new_replay_idx] = 0
+                replay_indices_to_update.append(new_replay_idx)
+        print('Nullified rewards of {} old samples.'.format(len(replay_indices_to_update)))
 
         # find non-duplicate indices in new batch (batch-based indexing)
-        new_batch_mask = unique_idx >= replay_size
-        new_non_duplicate_indices = unique_idx[new_batch_mask] - replay_size
+        batch_mask_of_concat = unique_idx >= old_replay_size
+        new_non_duplicate_indices = unique_idx[batch_mask_of_concat] - old_replay_size
 
         # find indices that will index constraints_buff + new_batch_unique synchronously with replay
         constraints_unique_idx = unique_idx.copy()
-        constraints_unique_idx[new_batch_mask] = replay_size + np.arange(len(new_non_duplicate_indices))
+        constraints_unique_idx[batch_mask_of_concat] = old_replay_size + np.arange(len(new_non_duplicate_indices))
 
-        for attr_idx in range(self.N_PREDICTABLE_ATTRIBUTES):
+        for attr_idx in range(C.N_PREDICTABLE_ATTRIBUTES):
             attr_batch = (batch.x[new_non_duplicate_indices],
                           batch.y[new_non_duplicate_indices, attr_idx])
             self._attr_mip_models[attr_idx].add_to_constraints_buff(attr_batch, constraints_unique_idx)
@@ -182,7 +198,7 @@ class GreedySchemaLearner(Constants):
         reward_batch = (batch.x[new_non_duplicate_indices],
                         batch.r[new_non_duplicate_indices])
         self._reward_mip_model.add_to_constraints_buff(reward_batch, constraints_unique_idx,
-                                                       replay_renewed_indices=replay_renewed_indices)
+                                                       replay_renewed_indices=replay_indices_to_update)
 
     def _get_replay_batch(self):
         if self._replay.x.size:
@@ -208,13 +224,13 @@ class GreedySchemaLearner(Constants):
 
     def _add_attr_schema_vec(self, attr_idx, schema_vec):
         vec_idx = self._n_attr_schemas[attr_idx]
-        if vec_idx < self.L:
+        if vec_idx < C.L:
             self._W[attr_idx][:, vec_idx] = schema_vec
             self._n_attr_schemas[attr_idx] += 1
 
     def _add_reward_schema_vec(self, schema_vec):
         vec_idx = self._n_reward_schemas
-        if vec_idx < self.L:
+        if vec_idx < C.L:
             self._R[:, vec_idx] = schema_vec
             self._n_reward_schemas += 1
 
@@ -245,7 +261,7 @@ class GreedySchemaLearner(Constants):
 
     def _delete_incorrect_schemas(self, batch):
         augmented_entities, targets, rewards = batch
-        for attr_idx in range(self.N_PREDICTABLE_ATTRIBUTES):
+        for attr_idx in range(C.N_PREDICTABLE_ATTRIBUTES):
             attr_prediction = self._predict_attribute(augmented_entities, attr_idx)
 
             # false positive predictions
@@ -260,7 +276,7 @@ class GreedySchemaLearner(Constants):
 
             if n_schemas_deleted:
                 print('Deleted incorrect attr schemas: {} of {}'.format(
-                    n_schemas_deleted, self.ENTITY_NAMES[attr_idx]))
+                    n_schemas_deleted, C.ENTITY_NAMES[attr_idx]))
 
         reward_prediction = self._predict_reward(augmented_entities)
 
@@ -276,7 +292,7 @@ class GreedySchemaLearner(Constants):
         if n_schemas_deleted:
             print('Deleted incorrect reward schemas: {}'.format(n_schemas_deleted))
 
-    def _find_cluster(self, zp_pl_mask, zp_nl_mask, augmented_entities, target, attr_idx, is_reward=False):
+    def _find_cluster(self, zp_pl_mask, zp_nl_mask, augmented_entities, target, attr_idx, opt_model):
         """
         augmented_entities: zero-predicted only
         target: scalar vector
@@ -310,11 +326,7 @@ class GreedySchemaLearner(Constants):
         objective_coefficients = (1 - candidates).sum(axis=0)
         objective_coefficients = list(objective_coefficients)
 
-        if not is_reward:
-            new_schema_vector = self._attr_mip_models[attr_idx].optimize(objective_coefficients, zp_nl_mask,
-                                                                         self._solved)
-        else:
-            new_schema_vector = self._reward_mip_model.optimize(objective_coefficients, zp_nl_mask, self._solved)
+        new_schema_vector = opt_model.optimize(objective_coefficients, zp_nl_mask, self._solved)
 
         if new_schema_vector is None:
             print('!!! Cannot find cluster !!!')
@@ -323,28 +335,19 @@ class GreedySchemaLearner(Constants):
         # add all samples that are solved by just learned schema vector
         if candidates.size:
             new_predicted_attribute = (1 - candidates) @ new_schema_vector
-            cluster_members_mask = np.isclose(new_predicted_attribute, 0, rtol=0, atol=self.ADDING_SCHEMA_TOLERANCE)
+            cluster_members_mask = np.isclose(new_predicted_attribute, 0, rtol=0, atol=C.ADDING_SCHEMA_TOLERANCE)
             n_new_members = np.count_nonzero(cluster_members_mask)
 
             if n_new_members:
                 print('Also added to solved: {}'.format(n_new_members))
                 self._solved.extend(zp_pl_indices[cluster_members_mask])
-            #elif is_reward:
-            #    # constraints are satisfied but new vector does not predict any r = 1
-            #    new_schema_vector = None
-            #    print('TRASH REWARD SCHEMA DISCARDED')
 
         return new_schema_vector
 
-    def _simplify_schema(self, zp_nl_mask, schema_vector, augmented_entities, target, attr_idx, is_reward=False):
+    def _simplify_schema(self, zp_nl_mask, schema_vector, opt_model):
         objective_coefficients = [1] * len(schema_vector)
 
-        if not is_reward:
-            model = self._attr_mip_models[attr_idx]
-        else:
-            model = self._reward_mip_model
-
-        new_schema_vector = model.optimize(objective_coefficients, zp_nl_mask, self._solved)
+        new_schema_vector = opt_model.optimize(objective_coefficients, zp_nl_mask, self._solved)
         assert new_schema_vector is not None
 
         return new_schema_vector
@@ -357,9 +360,11 @@ class GreedySchemaLearner(Constants):
         if not is_reward:
             target = targets[:, attr_idx].astype(np.int, copy=False)
             prediction = self._predict_attribute(augmented_entities, attr_idx)
+            opt_model = self._attr_mip_models[attr_idx]
         else:
             target = targets.astype(np.int, copy=False)
             prediction = self._predict_reward(augmented_entities)
+            opt_model = self._reward_mip_model
 
         augmented_entities = augmented_entities.astype(np.int, copy=False)
 
@@ -372,13 +377,11 @@ class GreedySchemaLearner(Constants):
 
         new_schema_vector = self._find_cluster(zp_pl_mask, zp_nl_mask,
                                                augmented_entities, target, attr_idx,
-                                               is_reward=is_reward)
+                                               opt_model)
         if new_schema_vector is None:
             return None
 
-        new_schema_vector = self._simplify_schema(zp_nl_mask, new_schema_vector,
-                                                  augmented_entities, target, attr_idx,
-                                                  is_reward=is_reward)
+        new_schema_vector = self._simplify_schema(zp_nl_mask, new_schema_vector, opt_model)
         if new_schema_vector is None:
             print('!!! Cannot simplify !!!')
             return None
@@ -392,7 +395,7 @@ class GreedySchemaLearner(Constants):
     def dump_weights(self, learned_W, learned_R):
         dir_name = 'dump'
         os.makedirs(dir_name, exist_ok=True)
-        for attr_idx in range(self.N_PREDICTABLE_ATTRIBUTES):
+        for attr_idx in range(C.N_PREDICTABLE_ATTRIBUTES):
             file_name = 'w_{}.pkl'.format(attr_idx)
             path = os.path.join(dir_name, file_name)
             learned_W[attr_idx].dump(path)
@@ -407,6 +410,8 @@ class GreedySchemaLearner(Constants):
             learned_W = None
 
         learned_R = [self._R[:, ~np.all(self._R, axis=0)]]
+        if learned_R[0].size == 0:
+            learned_R = None
         return learned_W, learned_R
 
     def learn(self):
@@ -423,24 +428,26 @@ class GreedySchemaLearner(Constants):
 
         augmented_entities, targets, rewards = replay_batch
 
-        for attr_idx in range(self.N_PREDICTABLE_ATTRIBUTES):
-            while self._n_attr_schemas[attr_idx] < self.L:
-                new_schema_vec = self._generate_new_schema(augmented_entities, targets, attr_idx)
+        if not C.USE_HANDCRAFTED_ATTRIBUTE_SCHEMAS:
+            for attr_idx in range(C.N_PREDICTABLE_ATTRIBUTES):
+                while self._n_attr_schemas[attr_idx] < C.L:
+                    new_schema_vec = self._generate_new_schema(augmented_entities, targets, attr_idx)
+                    if new_schema_vec is None:
+                        break
+                    self._add_attr_schema_vec(attr_idx, new_schema_vec)
+
+        if not C.USE_HANDCRAFTED_REWARD_SCHEMAS:
+            while self._n_reward_schemas < C.L:
+                new_schema_vec = self._generate_new_schema(augmented_entities, rewards, None, is_reward=True)
                 if new_schema_vec is None:
                     break
-                self._add_attr_schema_vec(attr_idx, new_schema_vec)
+                self._add_reward_schema_vec(new_schema_vec)
 
-        while self._n_reward_schemas < self.L:
-            new_schema_vec = self._generate_new_schema(augmented_entities, rewards, None, is_reward=True)
-            if new_schema_vec is None:
-                break
-            self._add_reward_schema_vec(new_schema_vec)
-
-        if self.VISUALIZE_SCHEMAS:
+        if C.VISUALIZE_SCHEMAS:
             learned_W = [W[:, ~np.all(W, axis=0)] for W in self._W]
             learned_R = [self._R[:, ~np.all(self._R, axis=0)]]
             self._visualizer.visualize_schemas(learned_W, learned_R)
             self.dump_weights(learned_W, learned_R)
 
-        if self.VISUALIZE_REPLAY_BUFFER:
+        if C.VISUALIZE_REPLAY_BUFFER:
             self._visualizer.visualize_replay_buffer(self._replay)

@@ -11,23 +11,22 @@ class Constants:
     T: size of look-ahead window
     """
     DEBUG = False
+    N_BALLS = 1
 
-    VISUALIZE_STATE = True
-    VISUALIZE_SCHEMAS = True
+    VISUALIZE_STATE = False
+    VISUALIZE_SCHEMAS = False
     VISUALIZE_INNER_STATE = False
-    VISUALIZE_BACKTRACKING = True
+    VISUALIZE_BACKTRACKING = False
     VISUALIZE_REPLAY_BUFFER = False
     LOG_PLANNED_ACTIONS = True
 
-    USE_LEARNED_SCHEMAS = True
-    EPSILON = 0.8
-    GAMMA = 0.997
+    USE_HANDCRAFTED_ATTRIBUTE_SCHEMAS = False
+    USE_HANDCRAFTED_REWARD_SCHEMAS = False
 
-    LEARNING_PERIOD = 256
+    LEARNING_PERIOD = 32
     N_LEARNING_THREADS = 2
 
-    LEARNING_SCHEMA_TOLERANCE = 1e-8
-    ADDING_SCHEMA_TOLERANCE = 1e-8
+    USE_EMERGENCY_REPLANNING = True
 
     if not DEBUG:
         if ENV_SIZE == 'DEFAULT':
@@ -36,8 +35,8 @@ class Constants:
             EMERGENCY_REPLANNING_PERIOD = 30
         elif ENV_SIZE == 'SMALL':
             T = 60  # min 50
-            PLANNING_PERIOD = 5
-            EMERGENCY_REPLANNING_PERIOD = 5
+            PLANNING_PERIOD = 10
+            EMERGENCY_REPLANNING_PERIOD = 8
         else:
             raise AssertionError
 
@@ -61,6 +60,9 @@ class Constants:
         REWARD_SPACE_DIM = 2
 
         NEIGHBORHOOD_RADIUS = 1
+
+    LEARNING_SCHEMA_TOLERANCE = 1e-8
+    ADDING_SCHEMA_TOLERANCE = 1e-8
 
     L = 220
     FILTER_SIZE = 2 * NEIGHBORHOOD_RADIUS + 1

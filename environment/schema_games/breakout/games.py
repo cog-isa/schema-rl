@@ -32,6 +32,7 @@ class StandardBreakout(BreakoutEngine):
                  brick_reward=DEFAULT_BRICK_REWARD,
                  increment_ball_speed_at_hits=(4, 8, 12),
                  include_accelerator_bricks=True,
+                 n_balls=None,
                  **kwargs
                  ):
         """
@@ -50,6 +51,9 @@ class StandardBreakout(BreakoutEngine):
             One of the layers of bricks permanently accelerates the ball upon
             collision.
         """
+
+        if n_balls is not None:
+            kwargs.setdefault('num_balls', n_balls)
 
         super(StandardBreakout, self).__init__(**kwargs)
 
