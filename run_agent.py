@@ -72,29 +72,25 @@ class Runner():
         return chosen_action
 
     def load_schema_matrices(self):
-        if not C.USE_LEARNED_SCHEMAS:
-            W, R, R_weights = HardcodedSchemaVectors.gen_schema_matrices()
-        else:
-            dir_name = './dump'
-            W = []
-            R = []
-            R_weights = None
-            for idx in range(self.M - 1):
-                file_name = 'w_{}.pkl'.format(idx)
-                path = os.path.join(dir_name, file_name)
-                w = np.load(path, allow_pickle=True).astype(bool)
-                W.append(w)
+        dir_name = './dump'
+        W = []
+        R = []
+        R_weights = None
+        for idx in range(self.M - 1):
+            file_name = 'w_{}.pkl'.format(idx)
+            path = os.path.join(dir_name, file_name)
+            w = np.load(path, allow_pickle=True).astype(bool)
+            W.append(w)
 
-            for idx in range(1):
-                file_name = 'r_pos.pkl'.format(idx)
-                path = os.path.join(dir_name, file_name)
-                if os.path.isfile(path):
-                    r = np.loadtxt(path).astype(bool)
-                else:
-                    r = None
-                R.append(r)
+        for idx in range(1):
+            file_name = 'r_pos.pkl'.format(idx)
+            path = os.path.join(dir_name, file_name)
+            if os.path.isfile(path):
+                r = np.loadtxt(path).astype(bool)
+            else:
+                r = None
+            R.append(r)
 
-            #_, R, _ = HardcodedSchemaVectors.gen_schema_matrices()
         return W, R, R_weights
 
     def _log_episode_reward(self, episode_idx, step_idx, episode_reward):
@@ -147,7 +143,7 @@ class Runner():
                     visualizer.visualize_env_state(obs)
 
                 # --- planning ---
-
+                
                 learned_W, learned_R = learner.get_weights()
 
                 W = handcrafted_W if C.USE_HANDCRAFTED_ATTRIBUTE_SCHEMAS else learned_W
