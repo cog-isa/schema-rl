@@ -34,7 +34,8 @@ class Runner():
     }
     env_params = {
         'report_nzis_as_entities': 'all',
-        'num_lives': 16  # 10 ** 9 + 7
+        'num_lives': 16  # 10 ** 9 + 7,
+        'n_balls': C.N_BALLS
     }
 
     def __init__(self, env_type, n_episodes, n_steps):

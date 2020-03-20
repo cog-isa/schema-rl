@@ -11,6 +11,7 @@ class Constants:
     T: size of look-ahead window
     """
     DEBUG = False
+    N_BALLS = 1
 
     VISUALIZE_STATE = False
     VISUALIZE_SCHEMAS = False
@@ -20,7 +21,6 @@ class Constants:
     LOG_PLANNED_ACTIONS = True
 
     USE_LEARNED_SCHEMAS = True
-
     USE_HANDCRAFTED_ATTRIBUTE_SCHEMAS = False
     USE_HANDCRAFTED_REWARD_SCHEMAS = False
 

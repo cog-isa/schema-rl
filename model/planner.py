@@ -237,7 +237,7 @@ class Planner(Constants):
         planned_actions = None
 
         rewards = self._find_all_rewards(reward_sign)
-        rewards = sorted(rewards, key=lambda node: node.weight, reverse=True)
+        #rewards = sorted(rewards, key=lambda node: node.weight, reverse=True)
 
         for reward_node in rewards:
             target_reward_nodes.append(reward_node)
@@ -257,17 +257,20 @@ class Planner(Constants):
 
                 constraints_before_reward = self._joint_constraints[:reward_node.t]
                 planned_actions = [c.action_idx for c in constraints_before_reward]
+
+                # use plan only if it's not empty, otherwise look for next reward
+                is_plan_empty = planned_actions.count(None) == len(planned_actions)
                 planned_actions = [a if a is not None else 0 for a in planned_actions]
 
-                # remove actions planned for past
-                planned_actions = planned_actions[self.FRAME_STACK_SIZE - 1:]
+                if not is_plan_empty:
+                    # remove actions planned for past
+                    planned_actions = planned_actions[self.FRAME_STACK_SIZE - 1:]
 
-                # picking first action as a result
-                # planned_actions = [actions_at_t[0] if actions_at_t else Action.not_planned_idx
-                #                    for actions_at_t in planned_actions]
-
-                planned_actions = np.array(planned_actions)
-                break
+                    # picking first action as a result
+                    # planned_actions = [actions_at_t[0] if actions_at_t else Action.not_planned_idx
+                    #                    for actions_at_t in planned_actions]
+                    planned_actions = np.array(planned_actions)
+                    break
             else:
                 print('Backtraced {} reward node is unreachable.'.format(reward_sign))
         else:

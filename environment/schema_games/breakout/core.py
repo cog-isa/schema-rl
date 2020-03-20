@@ -1264,17 +1264,20 @@ class BreakoutEngine(gym.Env):
                             for brick in self.bricks]
         maximum_ball_y = min(brick_ordinates)
 
-        for ball in self.balls:
+        for ball_idx, ball in enumerate(self.balls):
             while True:
                 ###############################################################
                 # Below is the correct way to randomize ball ordinate, to avoid
                 # overfitting on the ball/paddle gap modulo _MAX_SPEED.
                 ###############################################################
                 ball_offsets = range(-self.num_balls-1, self.num_balls+2)
-                ball.position = (
-                    self.width // 2 + np.random.choice(ball_offsets),
-                    maximum_ball_y // 2 - random.randrange(_MAX_SPEED)
-                )
+                x = self.width // 2 + np.random.choice(ball_offsets)
+                y = maximum_ball_y // 2
+                if self.num_balls == 2 and ball_idx == 1:
+                    y += (maximum_ball_y // 2 - 1)
+
+                ball.position = (x, y)
+
                 ###############################################################
                 occupied_positions = self.occupied_by(exclude={ball})
 
