@@ -1,7 +1,10 @@
 from collections import namedtuple
 import os
+import time
+
 import numpy as np
 import mip.model as mip
+
 from model.constants import Constants as C
 from model.visualizer import Visualizer
 
@@ -13,9 +16,10 @@ class MipModel:
     MAX_OPT_SECONDS = 60
 
     def __init__(self):
-        self._model = mip.Model(mip.MINIMIZE, solver_name=mip.CBC)
+        self._model = mip.Model(mip.MINIMIZE, solver_name=mip.GUROBI)
         self._model.verbose = 0
         self._model.threads = C.N_LEARNING_THREADS
+        # self._model.emphasis = 1  # feasibility
 
         self._w = [self._model.add_var(var_type='B') for _ in range(C.SCHEMA_VEC_SIZE)]
         self._constraints_buff = np.empty(0, dtype=object)
@@ -71,7 +75,7 @@ class MipModel:
             print('No feasible solution found, lower bound is: {}'.format(
                 model.objective_bound))
         else:
-            print('Optimization FAILED.')
+            print('Optimization FAILED: {}'.format(status))
 
         if status == mip.OptimizationStatus.OPTIMAL or status == mip.OptimizationStatus.FEASIBLE:
             schema_vec = np.array([v.x for v in model.vars])
@@ -80,23 +84,75 @@ class MipModel:
         return schema_vec
 
 
-class GreedySchemaLearner:
-    Batch = namedtuple('Batch', ['x', 'y', 'r'])
-
+class ParamMatrix:
+    """
+    Vectors are stored as columns
+    """
     def __init__(self):
-        self._W = [np.ones((C.SCHEMA_VEC_SIZE, C.L), dtype=bool)
-                   for _ in range(C.N_PREDICTABLE_ATTRIBUTES)]
-        self._n_attr_schemas = np.ones(C.N_PREDICTABLE_ATTRIBUTES, dtype=np.int)
+        self._VEC_SIZE = C.SCHEMA_VEC_SIZE
+        self._CAPACITY = C.L
+        self._data = np.ones((self._VEC_SIZE, self._CAPACITY), dtype=bool)
+        self._n_vectors = 0
 
-        self._R = np.ones((C.SCHEMA_VEC_SIZE, C.L), dtype=bool)
-        self._n_reward_schemas = 1
+    @property
+    def mult_me(self):
+        return self._data[:, :max(self._n_vectors, 1)]
+
+    def has_free_space(self):
+        return self._n_vectors < self._CAPACITY
+
+    def add_vector(self, vec):
+        if self._n_vectors < self._CAPACITY:
+            self._data[:, self._n_vectors] = vec
+            self._n_vectors += 1
+
+    def purge_vectors(self, vec_indices):
+        if not vec_indices.size:
+            return
+
+        assert ((vec_indices >= 0) & (vec_indices < self._n_vectors)).all()
+        n_purged = vec_indices.size
+        purged_matrix = np.delete(self._data, vec_indices, axis=1)
+        padding = np.ones((self._VEC_SIZE, n_purged), dtype=bool)
+
+        self._data = np.hstack((purged_matrix, padding))
+        self._n_vectors -= n_purged
+
+    def get_matrix(self):
+        return self._data[:, :self._n_vectors]
+
+    def set_matrix(self, matrix):
+        if matrix is None:
+            return
+
+        n_rows, n_cols = matrix.shape
+        assert n_rows == self._VEC_SIZE
+        assert n_cols <= self._CAPACITY
+
+        self._data[:, :n_cols] = matrix
+        self._data[:, n_cols:] = 1
+        self._n_vectors = n_cols
+
+
+class GreedySchemaLearner:
+    Batch = namedtuple('Batch', ['x', 'y_creation', 'y_destruction', 'r'])
+    CREATION_T, DESTRUCTION_T, REWARD_T = range(3)
+    ATTR_SCHEMA_TYPES = (CREATION_T, DESTRUCTION_T)
+
+    @Visualizer.measure_time('Learner')
+    def __init__(self):
+        self._params = [[ParamMatrix() for _ in range(C.N_PREDICTABLE_ATTRIBUTES)]
+                        for _ in range(2)]
+        self._R = ParamMatrix()
 
         self._buff = []
         self._replay = self.Batch(np.empty((0, C.SCHEMA_VEC_SIZE), dtype=bool),
                                   np.empty((0, C.N_PREDICTABLE_ATTRIBUTES), dtype=bool),
-                                  np.empty((0), dtype=bool))
+                                  np.empty((0, C.N_PREDICTABLE_ATTRIBUTES), dtype=bool),
+                                  np.empty(0, dtype=bool))
 
-        self._attr_mip_models = [MipModel() for _ in range(C.N_PREDICTABLE_ATTRIBUTES)]
+        self._attr_mip_models = [[MipModel() for _ in range(C.N_PREDICTABLE_ATTRIBUTES)]
+                                 for _ in range(2)]
         self._reward_mip_model = MipModel()
         self._solved = []
 
@@ -107,37 +163,41 @@ class GreedySchemaLearner:
         self._curr_iter = curr_iter
         self._visualizer.set_iter(curr_iter)
 
+    def set_params(self, W_pos, W_neg, R):
+        for schema_type, params in zip(self.ATTR_SCHEMA_TYPES, (W_pos, W_neg)):
+            for attr_idx in range(C.N_PREDICTABLE_ATTRIBUTES):
+                self._params[schema_type][attr_idx].set_matrix(params[attr_idx])
+
+        self._R.set_matrix(R[0])
+
+    def _handle_duplicates(self, batch, return_index=False):
+        augmented_entities, *rest = batch
+        samples, idx = np.unique(augmented_entities, axis=0, return_index=True)
+        out = self.Batch(samples, *[vec[idx] for vec in rest])
+        if return_index:
+            return out, idx
+        return out
+
     def take_batch(self, batch):
         for part in batch:
             assert part.dtype == bool
 
         if batch.x.size:
             assert np.all(batch.r == batch.r[0])
-            x, y, r = self._handle_duplicates(batch.x, batch.y, batch.r)
-            filtered_batch = self.Batch(x, y, r)
+            filtered_batch = self._handle_duplicates(batch)
             self._buff.append(filtered_batch)
-
-    def _handle_duplicates(self, augmented_entities, target, rewards, return_index=False):
-        samples, idx = np.unique(augmented_entities, axis=0, return_index=True)
-        out = [samples, target[idx, :], rewards[idx]]
-        if return_index:
-            out.append(idx)
-        return tuple(out)
 
     def _get_buff_batch(self):
         out = None
         if self._buff:
             # sort buff to keep r = 0 entries
-            self._buff = sorted(self._buff, key=lambda batch: batch.r[0])
+            self._buff = sorted(self._buff, key=lambda b: b.r[0])
 
-            x, y, r = zip(*self._buff)
-            augmented_entities = np.concatenate(x, axis=0)
-            targets = np.concatenate(y, axis=0)
-            rewards = np.concatenate(r, axis=0)
+            batch = self.Batch(*[np.concatenate(minibatches_part, axis=0)
+                                 for minibatches_part in zip(*self._buff)])
 
-            augmented_entities, targets, rewards = self._handle_duplicates(augmented_entities, targets, rewards)
-            out = self.Batch(augmented_entities, targets, rewards)
-
+            out = self._handle_duplicates(batch)
+            assert isinstance(out, self.Batch)
             self._buff.clear()
         return out
 
@@ -146,30 +206,20 @@ class GreedySchemaLearner:
         old_replay_size = len(self._replay.x)
 
         # concatenate replay + batch
-        x_concat = np.concatenate((self._replay.x, batch.x), axis=0)
-        y_concat = np.concatenate((self._replay.y, batch.y), axis=0)
-        r_concat = np.concatenate((self._replay.r, batch.r), axis=0)
-
-        concat_size = len(x_concat)
-
+        concat_batch = self.Batch(*[np.concatenate((a, b), axis=0)
+                                    for a, b in zip(self._replay, batch)])
         # remove duplicates
-        x_filtered, y_filtered, r_filtered, unique_idx = self._handle_duplicates(
-            x_concat, y_concat, r_concat, return_index=True)
+        self._replay, unique_idx = self._handle_duplicates(concat_batch, return_index=True)
 
-        # check if np.unique prefer first elements
-        mask_concat = np.zeros(concat_size, dtype=bool)
-        mask_concat[unique_idx] = True
-        assert mask_concat[:old_replay_size].all()
-
-        self._replay = self.Batch(x_filtered, y_filtered, r_filtered)
+        concat_size = len(concat_batch.x)
 
         # find r = 0 duplicates (they can only locate in batch)
         duplicates_mask_concat = np.ones(concat_size, dtype=bool)
         duplicates_mask_concat[unique_idx] = False
-        zero_reward_mask_concat = (r_concat == 0)
+        zero_reward_mask_concat = (concat_batch.r == 0)
         reward_renew_indices = np.nonzero(duplicates_mask_concat & zero_reward_mask_concat)[0]
         assert (reward_renew_indices >= old_replay_size).all()
-        samples_to_update = x_concat[reward_renew_indices]
+        samples_to_update = concat_batch.x[reward_renew_indices]
 
         # update rewards to zero
         replay_indices_to_update = []
@@ -180,7 +230,9 @@ class GreedySchemaLearner:
             if self._replay.r[new_replay_idx] != 0:
                 self._replay.r[new_replay_idx] = 0
                 replay_indices_to_update.append(new_replay_idx)
-        print('Nullified rewards of {} old samples.'.format(len(replay_indices_to_update)))
+        n_updated_indices = len(replay_indices_to_update)
+        if n_updated_indices:
+            print('Nullified rewards of {} old samples.'.format(n_updated_indices))
 
         # find non-duplicate indices in new batch (batch-based indexing)
         batch_mask_of_concat = unique_idx >= old_replay_size
@@ -190,10 +242,12 @@ class GreedySchemaLearner:
         constraints_unique_idx = unique_idx.copy()
         constraints_unique_idx[batch_mask_of_concat] = old_replay_size + np.arange(len(new_non_duplicate_indices))
 
-        for attr_idx in range(C.N_PREDICTABLE_ATTRIBUTES):
-            attr_batch = (batch.x[new_non_duplicate_indices],
-                          batch.y[new_non_duplicate_indices, attr_idx])
-            self._attr_mip_models[attr_idx].add_to_constraints_buff(attr_batch, constraints_unique_idx)
+        for schema_type in self.ATTR_SCHEMA_TYPES:
+            for attr_idx in range(C.N_PREDICTABLE_ATTRIBUTES):
+                y = batch.y_creation if schema_type == self.CREATION_T else batch.y_destruction
+                attr_batch = (batch.x[new_non_duplicate_indices],
+                              y[new_non_duplicate_indices, attr_idx])
+                self._attr_mip_models[schema_type][attr_idx].add_to_constraints_buff(attr_batch, constraints_unique_idx)
 
         reward_batch = (batch.x[new_non_duplicate_indices],
                         batch.r[new_non_duplicate_indices])
@@ -207,76 +261,38 @@ class GreedySchemaLearner:
             out = None
         return out
 
-    def _predict_attribute(self, augmented_entities, attr_idx):
+    def _predict_attribute_delta(self, augmented_entities, attr_idx, attr_schema_type):
         assert augmented_entities.dtype == bool
-
-        n_schemas = self._n_attr_schemas[attr_idx]
-        W = self._W[attr_idx][:, :n_schemas]
-        attribute_prediction = ~(~augmented_entities @ W)
-        return attribute_prediction
+        delta = ~(~augmented_entities @ self._params[attr_schema_type][attr_idx].mult_me)
+        return delta
 
     def _predict_reward(self, augmented_entities):
         assert augmented_entities.dtype == bool
-
-        R = self._R[:, :self._n_reward_schemas]
-        reward_prediction = ~(~augmented_entities @ R)
+        reward_prediction = ~(~augmented_entities @ self._R.mult_me)
         return reward_prediction
 
-    def _add_attr_schema_vec(self, attr_idx, schema_vec):
-        vec_idx = self._n_attr_schemas[attr_idx]
-        if vec_idx < C.L:
-            self._W[attr_idx][:, vec_idx] = schema_vec
-            self._n_attr_schemas[attr_idx] += 1
-
-    def _add_reward_schema_vec(self, schema_vec):
-        vec_idx = self._n_reward_schemas
-        if vec_idx < C.L:
-            self._R[:, vec_idx] = schema_vec
-            self._n_reward_schemas += 1
-
-    def _purge_matrix_columns(self, matrix, col_indices):
-        n_cols_purged = len(col_indices)
-
-        if n_cols_purged:
-            col_size, _ = matrix.shape
-            matrix = np.delete(matrix, col_indices, axis=1)
-            padding = np.ones((col_size, n_cols_purged), dtype=bool)
-            matrix = np.hstack((matrix, padding))
-
-        return matrix, n_cols_purged
-
-    def _delete_attr_schema_vectors(self, attr_idx, vec_indices):
-        matrix, n_cols_purged = self._purge_matrix_columns(self._W[attr_idx], vec_indices)
-        if n_cols_purged:
-            self._W[attr_idx] = matrix
-            self._n_attr_schemas[attr_idx] -= n_cols_purged
-        return n_cols_purged
-
-    def _delete_reward_schema_vectors(self, vec_indices):
-        matrix, n_cols_purged = self._purge_matrix_columns(self._R, vec_indices)
-        if n_cols_purged:
-            self._R = matrix
-            self._n_reward_schemas -= n_cols_purged
-        return n_cols_purged
-
     def _delete_incorrect_schemas(self, batch):
-        augmented_entities, targets, rewards = batch
-        for attr_idx in range(C.N_PREDICTABLE_ATTRIBUTES):
-            attr_prediction = self._predict_attribute(augmented_entities, attr_idx)
+        augmented_entities, target_creation, target_destruction, rewards = batch
+        for param_type in self.ATTR_SCHEMA_TYPES:
+            for attr_idx in range(C.N_PREDICTABLE_ATTRIBUTES):
+                target = target_creation if param_type == self.CREATION_T else target_destruction
 
-            # false positive predictions
-            mispredicted_samples_mask = attr_prediction.any(axis=1) & ~targets[:, attr_idx]
+                attr_delta = self._predict_attribute_delta(augmented_entities, attr_idx,
+                                                           attr_schema_type=param_type)
+                # false positive predictions
+                mispredicted_samples_mask = attr_delta.any(axis=1) & ~target[:, attr_idx]
 
-            incorrect_schemas_mask = attr_prediction[mispredicted_samples_mask, :].any(axis=0)
-            incorrect_schemas_indices = np.nonzero(incorrect_schemas_mask)[0]
+                incorrect_schemas_mask = attr_delta[mispredicted_samples_mask, :].any(axis=0)
+                incorrect_schemas_indices = np.nonzero(incorrect_schemas_mask)[0]
 
-            assert incorrect_schemas_indices.ndim == 1
+                assert incorrect_schemas_indices.ndim == 1
+                n_incorrect_attr_schemas = incorrect_schemas_indices.size
+                if n_incorrect_attr_schemas:
+                    self._params[param_type][attr_idx].purge_vectors(incorrect_schemas_indices)
+                    print('Deleted incorrect attr ({}) delta schemas: {} of {}'.format(
+                        param_type, n_incorrect_attr_schemas, C.ENTITY_NAMES[attr_idx]))
 
-            n_schemas_deleted = self._delete_attr_schema_vectors(attr_idx, incorrect_schemas_indices)
-
-            if n_schemas_deleted:
-                print('Deleted incorrect attr schemas: {} of {}'.format(
-                    n_schemas_deleted, C.ENTITY_NAMES[attr_idx]))
+        # regarding reward
 
         reward_prediction = self._predict_reward(augmented_entities)
 
@@ -287,10 +303,12 @@ class GreedySchemaLearner:
         incorrect_schemas_indices = np.nonzero(incorrect_schemas_mask)[0]
 
         assert incorrect_schemas_indices.ndim == 1
-        n_schemas_deleted = self._delete_reward_schema_vectors(incorrect_schemas_indices)
+        n_incorrect_reward_schemas = incorrect_schemas_indices.size
+        if n_incorrect_reward_schemas:
+            self._R.purge_vectors(incorrect_schemas_indices)
+            print('Deleted incorrect reward schemas: {}'.format(n_incorrect_reward_schemas))
 
-        if n_schemas_deleted:
-            print('Deleted incorrect reward schemas: {}'.format(n_schemas_deleted))
+        return n_incorrect_attr_schemas, n_incorrect_reward_schemas
 
     def _find_cluster(self, zp_pl_mask, zp_nl_mask, augmented_entities, target, attr_idx, opt_model):
         """
@@ -303,16 +321,14 @@ class GreedySchemaLearner:
         # find all entries, that can be potentially solved (have True labels)
         candidates = augmented_entities[zp_pl_mask]
 
-        print('finding cluster...')
-        print('augmented_entities: {}'.format(augmented_entities.shape[0]))
-        print('zp pos samples: {}'.format(candidates.shape[0]))
-
         if not candidates.size:
             return None
 
+        print('finding cluster...    zp pos samples: {}'.format(candidates.shape[0]))
+        # print('augmented_entities: {}'.format(augmented_entities.shape[0]))
+
         zp_pl_indices = np.nonzero(zp_pl_mask)[0]
 
-        #if not is_reward:
         # sample one entry and add it's idx to 'solved'
         idx = np.random.choice(zp_pl_indices)
         self._solved.append(idx)
@@ -329,7 +345,7 @@ class GreedySchemaLearner:
         new_schema_vector = opt_model.optimize(objective_coefficients, zp_nl_mask, self._solved)
 
         if new_schema_vector is None:
-            print('!!! Cannot find cluster !!!')
+            print('Cannot find cluster!')
             return None
 
         # add all samples that are solved by just learned schema vector
@@ -349,28 +365,29 @@ class GreedySchemaLearner:
 
         new_schema_vector = opt_model.optimize(objective_coefficients, zp_nl_mask, self._solved)
         assert new_schema_vector is not None
-
         return new_schema_vector
 
     def _binarize_schema(self, schema_vector):
         threshold = 0.5
         return schema_vector > threshold
 
-    def _generate_new_schema(self, augmented_entities, targets, attr_idx, is_reward=False):
-        if not is_reward:
+    def _generate_new_schema(self, augmented_entities, targets, attr_idx, schema_type):
+        if schema_type in self.ATTR_SCHEMA_TYPES:
             target = targets[:, attr_idx].astype(np.int, copy=False)
-            prediction = self._predict_attribute(augmented_entities, attr_idx)
-            opt_model = self._attr_mip_models[attr_idx]
-        else:
+            prediction = self._predict_attribute_delta(augmented_entities, attr_idx, schema_type)
+            opt_model = self._attr_mip_models[schema_type][attr_idx]
+        elif schema_type == self.REWARD_T:
             target = targets.astype(np.int, copy=False)
             prediction = self._predict_reward(augmented_entities)
             opt_model = self._reward_mip_model
+        else:
+            assert False
 
         augmented_entities = augmented_entities.astype(np.int, copy=False)
 
         # sample only entries with zero-prediction
         zp_mask = ~prediction.any(axis=1)
-        pl_mask = target == 1
+        pl_mask = (target == 1)
         # pos and neg labels' masks
         zp_pl_mask = zp_mask & pl_mask
         zp_nl_mask = zp_mask & ~pl_mask
@@ -382,72 +399,70 @@ class GreedySchemaLearner:
             return None
 
         new_schema_vector = self._simplify_schema(zp_nl_mask, new_schema_vector, opt_model)
-        if new_schema_vector is None:
-            print('!!! Cannot simplify !!!')
-            return None
-
         new_schema_vector = self._binarize_schema(new_schema_vector)
 
         self._solved.clear()
 
         return new_schema_vector
 
-    def dump_weights(self, learned_W, learned_R):
+    def get_params(self):
+        W_pos = [W.get_matrix() for W in self._params[self.CREATION_T]]
+        W_neg = [W.get_matrix() for W in self._params[self.DESTRUCTION_T]]
+        R = [self._R.get_matrix()]
+        return W_pos, W_neg, R
+
+    def _dump_params(self):
         dir_name = 'dump'
         os.makedirs(dir_name, exist_ok=True)
-        for attr_idx in range(C.N_PREDICTABLE_ATTRIBUTES):
-            file_name = 'w_{}.pkl'.format(attr_idx)
-            path = os.path.join(dir_name, file_name)
-            learned_W[attr_idx].dump(path)
 
-        file_name = 'r_pos.pkl'
-        path = os.path.join(dir_name, file_name)
-        learned_R[0].dump(path)
+        W_pos, W_neg, R = self.get_params()
+        names = ['w_pos', 'w_neg', 'r']
 
-    def get_weights(self):
-        learned_W = [W[:, ~np.all(W, axis=0)] for W in self._W]
-        if any(w.size == 0 for w in learned_W):
-            learned_W = None
+        for params, name in zip((W_pos, W_neg, R), names):
+            for idx, matrix in enumerate(params):
+                file_name = name + '_{}'.format(idx)
+                path = os.path.join(dir_name, file_name)
+                np.save(path, matrix, allow_pickle=False)
 
-        learned_R = [self._R[:, ~np.all(self._R, axis=0)]]
-        if learned_R[0].size == 0:
-            learned_R = None
-        return learned_W, learned_R
-
+    @Visualizer.measure_time('learn()')
     def learn(self):
         # get full batch from buffer
         buff_batch = self._get_buff_batch()
         if buff_batch is not None:
-            self._delete_incorrect_schemas(buff_batch)
             self._add_to_replay_and_constraints_buff(buff_batch)
+            self._delete_incorrect_schemas(buff_batch)
 
         # get all data to learn on
         replay_batch = self._get_replay_batch()
         if replay_batch is None:
             return
 
-        augmented_entities, targets, rewards = replay_batch
+        # check if replay consistent
+        # a, b = self._delete_incorrect_schemas(replay_batch)
+        # assert a == 0 and b == 0
 
-        if not C.USE_HANDCRAFTED_ATTRIBUTE_SCHEMAS:
-            for attr_idx in range(C.N_PREDICTABLE_ATTRIBUTES):
-                while self._n_attr_schemas[attr_idx] < C.L:
-                    new_schema_vec = self._generate_new_schema(augmented_entities, targets, attr_idx)
-                    if new_schema_vec is None:
-                        break
-                    self._add_attr_schema_vec(attr_idx, new_schema_vec)
+        augmented_entities, targets_construction, targets_destruction, rewards = replay_batch
 
-        if not C.USE_HANDCRAFTED_REWARD_SCHEMAS:
-            while self._n_reward_schemas < C.L:
-                new_schema_vec = self._generate_new_schema(augmented_entities, rewards, None, is_reward=True)
+        if C.DO_LEARN_ATTRIBUTE_PARAMS:
+            for schema_type in self.ATTR_SCHEMA_TYPES:
+                params = self._params[schema_type]
+                targets = targets_construction if schema_type == self.CREATION_T else targets_destruction
+
+                for attr_idx in range(C.N_PREDICTABLE_ATTRIBUTES):
+                    while params[attr_idx].has_free_space():
+                        new_schema_vec = self._generate_new_schema(augmented_entities, targets, attr_idx, schema_type)
+                        if new_schema_vec is None:
+                            break
+                        params[attr_idx].add_vector(new_schema_vec)
+
+        if C.DO_LEARN_REWARD_PARAMS:
+            while self._R.has_free_space():
+                new_schema_vec = self._generate_new_schema(augmented_entities, rewards, None, self.REWARD_T)
                 if new_schema_vec is None:
                     break
-                self._add_reward_schema_vec(new_schema_vec)
+                self._R.add_vector(new_schema_vec)
 
+        self._dump_params()
         if C.VISUALIZE_SCHEMAS:
-            learned_W = [W[:, ~np.all(W, axis=0)] for W in self._W]
-            learned_R = [self._R[:, ~np.all(self._R, axis=0)]]
-            self._visualizer.visualize_schemas(learned_W, learned_R)
-            self.dump_weights(learned_W, learned_R)
-
-        if C.VISUALIZE_REPLAY_BUFFER:
-            self._visualizer.visualize_replay_buffer(self._replay)
+            W_pos, W_neg, R = self.get_params()
+            self._visualizer.visualize_schemas(W_pos, W_neg, R)

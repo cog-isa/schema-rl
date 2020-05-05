@@ -1,7 +1,8 @@
 VIS_DIR="./visualization"
 
 TARGET_DIRS="
-attribute_schemas/
+attr_construction_schemas/
+attr_destruction_schemas/
 backtracking/
 backtracking_schemas/
 entities/

@@ -1,10 +1,10 @@
-from collections import defaultdict, namedtuple
+from collections import defaultdict
 import functools
 import itertools
 import numpy as np
 from .constants import Constants
-from .graph_utils import Attribute, Action, Reward, Constraint
-from .visualizer import NodeMetadata
+from .graph_utils import Attribute, Reward, Constraint
+from .visualizer import NodeMetadata, Visualizer
 
 
 class Planner(Constants):
@@ -48,8 +48,19 @@ class Planner(Constants):
                 schema.is_reachable = False
                 break
 
+    def _backtrace_node_by_self_transition(self, node):
+        precondition = node.transition
+
+        if precondition is not None:
+            #print('Called to backtrace self-transition. node.t: {} | precondition.t: {}'.format(
+            #    node.t, precondition.t
+            #))
+            if precondition.is_reachable is None:
+                self._backtrace_node(precondition)
+
+            node.is_reachable = precondition.is_reachable
+
     def _backtrace_node_by_schema(self, node, schema):
-        # assert schema.is_reachable is None, 'SCHEMA_MULTIPLE_BACKTRACKING'
         self._backtrace_schema(schema)
 
         if schema.is_reachable:
@@ -66,37 +77,15 @@ class Planner(Constants):
                 if type(node) is not Reward:
                     self.node2triplets[self.curr_target].append(
                         (node.t, node.entity_idx, node.attribute_idx))
-                else:
-                    pass
-                    """
-                    print('Encountered Reward node during backtracking.')
-                    print(vars(node))
-                    for s in node.schemas:
-                        print(vars(s))
-                    """
 
             # print attribute schemas with filter conditions
             if type(node) is Attribute and node.attribute_idx in (self.BALL_IDX, self.PADDLE_IDX) \
                     and schema.action_preconditions \
                     or type(node) is Reward:
-
                 metadata = NodeMetadata(node.t, type(node).__name__,
                                         node.attribute_idx if type(node) is Attribute else None)
                 self.schema_vectors.append((schema.vector, metadata))
 
-            """ old vis
-            # for visualizing backtracking inner state
-            if self.VISUALIZE_BACKTRACKING_INNER_STATE and type(node) is not Reward:
-                self.node2triplets[self.curr_target].append(
-                    (node.t, node.entity_idx, node.attribute_idx))
-
-            # for visualizing backtracking schemas
-            if self.VISUALIZE_BACKTRACKING_SCHEMAS and \
-                    sum(a.idx != 0 for a in schema.action_preconditions):
-                metadata = NodeMetadata(node.t, str(type(node).__name__),
-                                        node.attribute_idx if type(node) is Attribute else None)
-                self.schema_vectors.append((schema.vector, metadata))
-            """
     def _backtrace_node_by_set_of_schemas(self, node, schemas):
         for schema in schemas:
             self._backtrace_node_by_schema(node, schema)
@@ -118,13 +107,17 @@ class Planner(Constants):
 
         # actual replanning of this node to desired_constraint
         if desired_constraint is not None:
-            target_schemas = node.schemas[desired_constraint]
-            self._backtrace_node_by_set_of_schemas(node, target_schemas)
+            self._backtrace_node_by_set_of_schemas(node, node.schemas[desired_constraint])
             return
 
+        # first, check if node has a self-transition from previous layer
+        if isinstance(node, Attribute):
+            self._backtrace_node_by_self_transition(node)
+            if node.is_reachable:
+                return
+
         # try to activate node using schema without action precondition
-        target_schemas = node.schemas[None]
-        self._backtrace_node_by_set_of_schemas(node, target_schemas)
+        self._backtrace_node_by_set_of_schemas(node, node.schemas[None])
         if node.is_reachable:
             return
 
@@ -146,9 +139,7 @@ class Planner(Constants):
             return
 
         # try to activate node satisfying joint constraint at time (node.t - 1)
-        target_schemas = node.schemas[constraint.action_idx]
-        self._backtrace_node_by_set_of_schemas(node, target_schemas)
-
+        self._backtrace_node_by_set_of_schemas(node, node.schemas[constraint.action_idx])
         if node.is_reachable:
             # add committed node to current constraint and exit
             constraint.committed_nodes.add(node)
@@ -163,22 +154,28 @@ class Planner(Constants):
         negotiated_actions = functools.reduce(
             set.intersection,
             (n.acceptable_constraints for n in constraint.committed_nodes),
-            node.acceptable_constraints)
+            node.acceptable_constraints - {constraint.action_idx})
 
         for action in negotiated_actions:
-            is_success = self._replan_nodes_with_constraint(
-                {node} | constraint.committed_nodes, action, node.t)
+            print('Trying to replan layer to action: {}'.format(action))
+            is_success = self._replan_nodes_with_constraint(node, constraint.committed_nodes,
+                                                            action, node.t)
             if is_success:
                 print('Replanning was successfull.')
                 break
             else:
-                print('Replanning failed.')
+                print('Replanning failed for current action.')
+        else:
+            print('Cannot replan for any of negotiated actions. Dead branch.')
 
-    def _replan_nodes_with_constraint(self, nodes, action, layer_t):
-        print('Replanning committed nodes to action: {}'.format(action))
+    def _replan_nodes_with_constraint(self, curr_node, committed_nodes, action, layer_t):
+        # first try to replan new node, whose subtree is unexplored
+        self._backtrace_node(curr_node, desired_constraint=action)
+        if not curr_node.is_reachable:
+            return False
+
         is_success = True
-
-        for node in nodes:
+        for node in committed_nodes:
             self._backtrace_node(node, desired_constraint=action)
             if not node.is_reachable:
                 node.is_reachable = True
@@ -191,7 +188,7 @@ class Planner(Constants):
             curr_constraint = self._joint_constraints[layer_t - 1]
             curr_constraint.action = action
             curr_constraint.committed_nodes.clear()
-            curr_constraint.committed_nodes.update(nodes)
+            curr_constraint.committed_nodes.update({curr_node} | committed_nodes)
 
         return is_success
 
@@ -237,11 +234,11 @@ class Planner(Constants):
         planned_actions = None
 
         rewards = self._find_all_rewards(reward_sign)
-        #rewards = sorted(rewards, key=lambda node: node.weight, reverse=True)
+        # rewards = sorted(rewards, key=lambda node: node.weight, reverse=True)
 
         for reward_node in rewards:
             target_reward_nodes.append(reward_node)
-            print('Found feasible {} reward node with weight {}...'.format(reward_sign, reward_node.weight))
+            print('Found feasible {} reward node'.format(reward_sign))
 
             # backtrace from it
             self.curr_target = reward_node
@@ -265,12 +262,10 @@ class Planner(Constants):
                 if not is_plan_empty:
                     # remove actions planned for past
                     planned_actions = planned_actions[self.FRAME_STACK_SIZE - 1:]
-
-                    # picking first action as a result
-                    # planned_actions = [actions_at_t[0] if actions_at_t else Action.not_planned_idx
-                    #                    for actions_at_t in planned_actions]
                     planned_actions = np.array(planned_actions)
                     break
+                else:
+                    print('Plan is empty, looking for another reward node...')
             else:
                 print('Backtraced {} reward node is unreachable.'.format(reward_sign))
         else:
@@ -278,24 +273,13 @@ class Planner(Constants):
 
         return planned_actions, target_reward_nodes
 
+    @Visualizer.measure_time('plan()')
     def plan_actions(self):
 
         self._reset()
         planned_actions, target_reward_nodes = self._plan_for_rewards('pos')
 
-        if planned_actions is not None:
-            pass
-            """
-            randomness_mask = np.random.choice([True, False],
-                                               size=planned_actions.size,
-                                               p=[self.EPSILON, 1 - self.EPSILON])
-            randomness_size = randomness_mask.sum()
-
-            planned_actions[randomness_mask] = np.random.randint(low=0,
-                                                                 high=self.ACTION_SPACE_DIM,
-                                                                 size=randomness_size)
-            """
-        else:
+        if planned_actions is None:
             # can't plan anything
             print('Planner failed to plan.')
 
