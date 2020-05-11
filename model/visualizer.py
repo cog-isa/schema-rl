@@ -1,9 +1,13 @@
 import os
 from collections import namedtuple
 from enum import Enum
+import time
+import functools
+
 import numpy as np
 import PIL
 from PIL import Image
+
 from .constants import Constants
 from .graph_utils import Attribute, Action
 
@@ -31,7 +35,8 @@ NodeMetadata = namedtuple('NodeMetadata', ['t', 'type', 'attribute_idx'])
 
 
 class DirName(Enum):
-    ATTRIBUTE_SCHEMAS = 'attribute_schemas'
+    ATTRIBUTE_CONSTRUCTION_SCHEMAS = 'attr_construction_schemas'
+    ATTRIBUTE_DESTRUCTION_SCHEMAS = 'attr_destruction_schemas'
     REWARD_SCHEMAS = 'reward_schemas'
     ENTITIES = 'entities'
     BACKTRACKING = 'backtracking'
@@ -210,36 +215,26 @@ class Visualizer(Constants):
                              resample=PIL.Image.NEAREST)
         image.save(image_path)
 
-    def visualize_schemas(self, W, R):
+    def visualize_schemas(self, W_pos, W_neg, R):
         # attribute schemas
-        for attribute_idx, w in enumerate(W):
-            for vec_idx, vec in enumerate(w.T):
-                # file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
-                #     self._iter, self.ENTITY_NAMES[attribute_idx], vec_idx, ipl=self.ITER_PADDING_LENGTH)
-                file_name = '{}__vec_{:0{ipl}}.png'.format(
-                    self.ENTITY_NAMES[attribute_idx], vec_idx, ipl=self.ITER_PADDING_LENGTH)
-                path = os.path.join(self._dir2path[DirName.ATTRIBUTE_SCHEMAS], file_name)
-                self.save_schema_image(vec, path)
+        dir_names = (DirName.ATTRIBUTE_CONSTRUCTION_SCHEMAS, DirName.ATTRIBUTE_DESTRUCTION_SCHEMAS)
+
+        for W, dir_name in zip((W_pos, W_neg), dir_names):
+            for attr_idx, matrix in enumerate(W):
+                for vec_idx, vec in enumerate(matrix.T):
+                    file_name = '{}__vec_{:0{ipl}}.png'.format(
+                        self.ENTITY_NAMES[attr_idx], vec_idx, ipl=self.ITER_PADDING_LENGTH)
+                    path = os.path.join(self._dir2path[dir_name], file_name)
+                    self.save_schema_image(vec, path)
 
         # reward schemas
-        if R is None:
-            return
-
-        for reward_type, r in enumerate(R):
-            for vec_idx, vec in enumerate(r.T):
-                #file_name = 'iter_{:0{ipl}}__{}__vec_{:0{ipl}}.png'.format(
-                #    self._iter, self.REWARD_NAMES[reward_type], vec_idx, ipl=self.ITER_PADDING_LENGTH)
-                file_name = '{}__vec_{:0{ipl}}.png'.format(
-                    self.REWARD_NAMES[reward_type], vec_idx, ipl=self.ITER_PADDING_LENGTH)
-                path = os.path.join(self._dir2path[DirName.REWARD_SCHEMAS], file_name)
-                self.save_schema_image(vec, path)
-
-    def visualize_replay_buffer(self, replay):
-        for idx, sample_vec in enumerate(replay.x):
-            file_name = 'sample_{:0{ipl}}.png'.format(
-                idx, ipl=self.ITER_PADDING_LENGTH)
-            path = os.path.join(self._dir2path[DirName.REPLAY_BUFFER], file_name)
-            self.save_schema_image(sample_vec, path)
+        if R is not None:
+            for reward_type, r in enumerate(R):
+                for vec_idx, vec in enumerate(r.T):
+                    file_name = '{}__vec_{:0{ipl}}.png'.format(
+                        self.REWARD_NAMES[reward_type], vec_idx, ipl=self.ITER_PADDING_LENGTH)
+                    path = os.path.join(self._dir2path[DirName.REWARD_SCHEMAS], file_name)
+                    self.save_schema_image(vec, path)
 
     # ------------- VISUALIZING BACKTRACKING -------------- #
     def traverse_child_connected_component(self, node, unique_triplets, activating_schema_vectors):
@@ -405,3 +400,16 @@ class Visualizer(Constants):
 
         with open(path, 'wt') as file:
             file.write(' '.join(str(num) for num in planned_actions))
+
+    @staticmethod
+    def measure_time(name):
+        def decorator(f):
+            @functools.wraps(f)
+            def wrapper(*args, **kwargs):
+                start_time = time.time()
+                result = f(*args, **kwargs)
+                end_time = time.time()
+                print(name + ' took {}'.format(end_time - start_time))
+                return result
+            return wrapper
+        return decorator

@@ -8,8 +8,9 @@ import numpy as np
 
 
 # DEFAULT, SMALL
-BRICK_SIZE = 'SMALL'
+BRICK_SIZE = 'DEFAULT'
 ENV_SIZE = 'SMALL'
+SEED = None
 
 ###############################################################################
 #

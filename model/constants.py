@@ -10,71 +10,65 @@ class Constants:
     L: number of schemas
     T: size of look-ahead window
     """
-    DEBUG = False
-    N_BALLS = 1
 
-    VISUALIZE_STATE = False
+    # --- Agent options ---
+
+    DO_PRELOAD_DUMP_PARAMS = False
+
+    DO_PRELOAD_HANDCRAFTED_ATTRIBUTE_PARAMS = False
+    DO_PRELOAD_HANDCRAFTED_REWARD_PARAMS = False
+
+    DO_LEARN_ATTRIBUTE_PARAMS = True
+    DO_LEARN_REWARD_PARAMS = True
+
+    # planning options are ('agent', 'hardcoded', 'random')
+    PLANNING_TYPE = 'agent'
+
+    LEARNING_PERIOD = 128
+    USE_EMERGENCY_PLANNING = True
+
+    VISUALIZE_STATE = True
     VISUALIZE_SCHEMAS = False
-    VISUALIZE_INNER_STATE = False
-    VISUALIZE_BACKTRACKING = False
-    VISUALIZE_REPLAY_BUFFER = False
-    LOG_PLANNED_ACTIONS = True
+    VISUALIZE_INNER_STATE = True
+    VISUALIZE_BACKTRACKING = True
+    LOG_PLANNED_ACTIONS = False
 
-    USE_HANDCRAFTED_ATTRIBUTE_SCHEMAS = False
-    USE_HANDCRAFTED_REWARD_SCHEMAS = False
+    N_LEARNING_THREADS = 16
 
-    LEARNING_PERIOD = 32
-    N_LEARNING_THREADS = 2
+    L = 1000
+    NEIGHBORHOOD_RADIUS = 2
 
-    USE_EMERGENCY_REPLANNING = True
-
-    if not DEBUG:
-        if ENV_SIZE == 'DEFAULT':
-            T = 130  # min 112
-            PLANNING_PERIOD = 10
-            EMERGENCY_REPLANNING_PERIOD = 30
-        elif ENV_SIZE == 'SMALL':
-            T = 60  # min 50
-            PLANNING_PERIOD = 10
-            EMERGENCY_REPLANNING_PERIOD = 8
-        else:
-            raise AssertionError
-
-        SCREEN_HEIGHT = DEFAULT_HEIGHT
-        SCREEN_WIDTH = DEFAULT_WIDTH
-        N = SCREEN_WIDTH * SCREEN_HEIGHT
-        M = 5
-        N_PREDICTABLE_ATTRIBUTES = M - 1
-        ACTION_SPACE_DIM = 3
-        REWARD_SPACE_DIM = 2
-
-        NEIGHBORHOOD_RADIUS = 2
+    if ENV_SIZE == 'SMALL':
+        # T = 112 is enough to hit the furthest brick
+        # EMERG_PERIOD = 15 is enough to plan with ball being near closest brick
+        T = 112  # min 50
+        PLANNING_PERIOD = 10  # run planning every *this* steps
+        EMERGENCY_PLANNING_PERIOD = 10  # run planning every *this* steps if there are no planned actions
+    elif ENV_SIZE == 'DEFAULT':
+        T = 130  # min 112
+        PLANNING_PERIOD = 10
+        EMERGENCY_PLANNING_PERIOD = 30
     else:
-        SCREEN_WIDTH = 3
-        SCREEN_HEIGHT = 3
+        assert False
 
-        N = 9  # SCREEN_WIDTH * SCREEN_HEIGHT
-        M = 2
-        T = 16
-        ACTION_SPACE_DIM = 3
-        REWARD_SPACE_DIM = 2
-
-        NEIGHBORHOOD_RADIUS = 1
+    # --- Constants ---
 
     LEARNING_SCHEMA_TOLERANCE = 1e-8
     ADDING_SCHEMA_TOLERANCE = 1e-8
 
-    L = 220
+    SCREEN_HEIGHT = DEFAULT_HEIGHT
+    SCREEN_WIDTH = DEFAULT_WIDTH
+    N = SCREEN_WIDTH * SCREEN_HEIGHT
+    M = 5
+    N_PREDICTABLE_ATTRIBUTES = M - 1
+    ACTION_SPACE_DIM = 3
+    REWARD_SPACE_DIM = 2
+
     FILTER_SIZE = 2 * NEIGHBORHOOD_RADIUS + 1
     NEIGHBORS_NUM = FILTER_SIZE ** 2 - 1
-
-    FAKE_ENTITY_IDX = N
-    EPSILON = 0
-
     FRAME_STACK_SIZE = 2
     SCHEMA_VEC_SIZE = FRAME_STACK_SIZE * (M * (NEIGHBORS_NUM + 1)) + ACTION_SPACE_DIM
     TIME_SIZE = FRAME_STACK_SIZE + T
-
     LEARNING_BATCH_SIZE = FRAME_STACK_SIZE + 1
 
     # indices of corresponding attributes in entities' vectors
@@ -82,10 +76,8 @@ class Constants:
     PADDLE_IDX = 1
     WALL_IDX = 2
     BRICK_IDX = 3
-    if not DEBUG:
-        VOID_IDX = 4
-    else:
-        VOID_IDX = 1
+    VOID_IDX = 4
+    FAKE_ENTITY_IDX = N
 
     # action indices
     ACTION_NOP = 0
@@ -117,6 +109,7 @@ BOUNCE_STOCHASTICITY = 0.25
 PADDLE_SPEED_DISTRIBUTION[-1] = 0.90
 PADDLE_SPEED_DISTRIBUTION[-2] = 0.10
 _MAX_SPEED = 2
+DEFAULT_PADDLE_SHAPE
 
 DEFAULT_BRICK_SHAPE = np.array([8, 4])
 DEFAULT_NUM_BRICKS_ROWS = 6

@@ -1,12 +1,12 @@
 import numpy as np
 from .constants import Constants
 from .shaper import Shaper
-from .graph_utils import MetaObject, Attribute, FakeAttribute, Action
+from .visualizer import Visualizer
 
 
 class TensorHandler(Constants):
     def __init__(self, attribute_nodes, action_nodes, reward_nodes):
-        self._W = None
+        self._W_pos, self._W_neg = None, None
         self._R = None
         self._R_weights = None
 
@@ -32,8 +32,8 @@ class TensorHandler(Constants):
         self._gen_reward_tensor()
         self._gen_reference_attribute_nodes()
 
-    def set_weights(self, W, R, R_weights):
-        self._W = W
+    def set_weights(self, W_pos, W_neg, R, R_weights):
+        self._W_pos, self._W_neg = W_pos, W_neg
         self._R = R
         self._R_weights = R_weights
 
@@ -45,19 +45,12 @@ class TensorHandler(Constants):
         assert self._entities_stack is not None, 'NO_ENTITIES_STACK'
         assert len(self._entities_stack) == self.FRAME_STACK_SIZE, 'BAD_ENTITIES_STACK'
 
-        if self.DEBUG:
-            print('STUB: get_env_attribute_tensor()')
-            attribute_tensor = np.array([1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
-                                         1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
-            attribute_tensor = np.reshape(attribute_tensor, (2, 9, 2))
-            attribute_tensor = attribute_tensor.astype(bool)
-        else:
-            matrix_shape = (self.N, self.M)
-            attribute_tensor = np.empty((self.FRAME_STACK_SIZE,) + matrix_shape, dtype=bool)
-            for i in range(self.FRAME_STACK_SIZE):
-                matrix = self._entities_stack[i]
-                assert matrix.shape == matrix_shape, 'BAD_MATRIX_SHAPE'
-                attribute_tensor[i, :, :] = matrix
+        matrix_shape = (self.N, self.M)
+        attribute_tensor = np.empty((self.FRAME_STACK_SIZE,) + matrix_shape, dtype=bool)
+        for i in range(self.FRAME_STACK_SIZE):
+            matrix = self._entities_stack[i]
+            assert matrix.shape == matrix_shape, 'BAD_MATRIX_SHAPE'
+            attribute_tensor[i, :, :] = matrix
 
         return attribute_tensor
 
@@ -78,6 +71,16 @@ class TensorHandler(Constants):
 
     def _init_reward_tensor(self):
         self._reward_tensor[:, :] = False
+
+    @Visualizer.measure_time('init_nodes()')
+    def _init_nodes(self):
+        for node in self._attribute_nodes.flat:
+            reachability = (node.t < self.FRAME_STACK_SIZE and
+                            self._attribute_tensor[node.t, node.entity_idx, node.attribute_idx])
+            node.reset(is_initially_reachable=reachability)
+
+        for node in self._reward_nodes.flat:
+            node.reset()
 
     def _gen_reference_attribute_nodes(self):
         # ((FRAME_STACK_SIZE + T) x N x (MR*ss + A))
@@ -122,18 +125,23 @@ class TensorHandler(Constants):
         reference_matrix = self._reference_attribute_nodes[t, :, :]
         return reference_matrix
 
-    def _instantiate_attribute_grounded_schemas(self, attribute_idx, t, reference_matrix, W, predicted_matrix):
+    def _instantiate_attribute_grounded_schemas(self, attribute_idx, t, reference_matrix, W,
+                                                pos_delta, neg_delta):
         """
         :param reference_matrix: (N x (MR + A))
         :param t: schema output time_step
         """
         for entity_idx in range(self.N):
-            activity_mask = predicted_matrix[entity_idx, :]
-            precondition_masks = W[:, activity_mask].T
+            pos_activity_mask = pos_delta[entity_idx, :]
+            active_schemas = W[:, pos_activity_mask].T
 
-            for mask in precondition_masks:
-                preconditions = reference_matrix[entity_idx, mask]
-                self._attribute_nodes[t, entity_idx, attribute_idx].add_schema(preconditions, mask)
+            for schema_vec in active_schemas:
+                preconditions = reference_matrix[entity_idx, schema_vec]
+                self._attribute_nodes[t, entity_idx, attribute_idx].add_schema(preconditions, schema_vec)
+
+        # turn of transitions for nodes, which were predicted by neg_delta
+        for node in self._attribute_nodes[t, neg_delta.any(axis=1), attribute_idx]:
+            node.transition = None
 
     def _instantiate_reward_grounded_schemas(self, reward_idx, t, reference_matrix, R, predicted_matrix):
         """
@@ -168,11 +176,22 @@ class TensorHandler(Constants):
         src_slice = self._get_tensor_slice(t, 'attributes')  # (FRAME_STACK_SIZE x N x M)
         transformed_matrix = self._shaper.transform_matrix(src_slice)
         reference_matrix = self._get_reference_matrix(t)
+        curr_state = src_slice[-1]
 
-        for attr_idx, W in enumerate(self._W):
-            predicted_matrix = ~(~transformed_matrix @ W)
-            self._instantiate_attribute_grounded_schemas(attr_idx, t+1, reference_matrix, W, predicted_matrix)
-            self._attribute_tensor[t + 1, :, attr_idx] = predicted_matrix.any(axis=1)
+        for attr_idx in range(self.N_PREDICTABLE_ATTRIBUTES):
+            pos_delta = ~(~transformed_matrix @ self._W_pos[attr_idx])
+
+            transformed_matrix[:, -self.ACTION_SPACE_DIM+1:] = 0
+            neg_delta = ~(~transformed_matrix @ self._W_neg[attr_idx])
+            transformed_matrix[:, -self.ACTION_SPACE_DIM+1:] = 1
+
+            purged_state = np.subtract(curr_state[:, attr_idx], neg_delta.any(axis=1), dtype=int)\
+                            .clip(min=0).astype(bool)
+            next_state = np.add(purged_state, pos_delta.any(axis=1), dtype=int).clip(max=1).astype(bool)
+            self._attribute_tensor[t + 1, :, attr_idx] = next_state
+
+            self._instantiate_attribute_grounded_schemas(attr_idx, t+1, reference_matrix,
+                                                         self._W_pos[attr_idx], pos_delta, neg_delta)
 
         # raise void bit
         void_entity_mask = ~self._attribute_tensor[t + 1, :, :].any(axis=1)
@@ -207,6 +226,7 @@ class TensorHandler(Constants):
 
         self._init_attribute_tensor(src_tensor)
         self._init_reward_tensor()
+        self._init_nodes()
 
         # propagate forward
         offset = self.FRAME_STACK_SIZE - 1
@@ -214,8 +234,8 @@ class TensorHandler(Constants):
             self._predict_next_attribute_layer(t)
             is_pos_reward_predicted = self._predict_next_reward_layer(t)
 
-            #if is_pos_reward_predicted:
-            #    break
+            if is_pos_reward_predicted:
+                break
 
     def check_entities_for_correctness(self, t):
         n_predicted_balls = np.count_nonzero(self._attribute_tensor[t, :, self.BALL_IDX])
