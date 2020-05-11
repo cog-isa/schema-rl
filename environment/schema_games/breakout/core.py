@@ -22,8 +22,9 @@ from .constants import \
     REWARD_UPON_BALL_LOSS, REWARD_UPON_NO_BRICKS_LEFT, \
     STARTING_BALL_MOVEMENT_RADIUS, SEED
 
-random.seed(SEED)
-np.random.seed(SEED)
+if SEED is not None:
+    random.seed(SEED)
+    np.random.seed(SEED)
 
 
 class ResetHasNeverBeenCalledError(RuntimeError):
@@ -366,7 +367,7 @@ class BreakoutEngine(gym.Env):
         # Step 1: Update ball position and check where we landed
         #######################################################################
         for ball in self.balls:
-            self._resolve_ball_physics(ball)
+            self._resolve_ball_physics(ball, action)
 
         # Step 2: Resolve object collision + destruction
         #######################################################################
@@ -818,7 +819,7 @@ class BreakoutEngine(gym.Env):
     # Game dynamics
     ###########################################################################
 
-    def _resolve_ball_physics(self, ball):
+    def _resolve_ball_physics(self, ball, action):
         """
         Physics resolution for a specific Ball object. To make things simpler,
         Balls are assumed to have zero surface, e.g., two Balls can be in the
@@ -867,7 +868,7 @@ class BreakoutEngine(gym.Env):
         # Step A: Update ball position.
         #######################################################################
         vx_after_paddle_bounce = \
-            self.get_ball_vx_after_paddle_bounce(bx, by, vx, vy)
+            self.get_ball_vx_after_paddle_bounce(bx, by, vx, vy, action)
 
         intangible = [obj for obj in self.walls
                       if isinstance(obj, WallOfPunishment)] + self.balls
@@ -1138,10 +1139,13 @@ class BreakoutEngine(gym.Env):
         prf_left = np.array(prf_left).ravel()
         prf = np.hstack((-prf_left[::-1], prf_center, prf_left))
 
+        # fix (do not care about sign)
+        prf[:] = prf_left[prf_left.size // 2]
+
         assert len(prf) == size
         return prf
 
-    def get_ball_vx_after_paddle_bounce(self, x, y, u, v):
+    def get_ball_vx_after_paddle_bounce(self, x, y, u, v, action):
         """
         Given an integer coordinate (x, y), if the ball hit the paddle, return
         the ball x speed, otherwise return None. The bounce angle is a funtion
@@ -1209,7 +1213,15 @@ class BreakoutEngine(gym.Env):
         # Get integral coordinate of ball impact relatively to paddle left tip
         ball_impact_x_relative = float(ball_impact_x - self.paddle.position[0])
 
-        return prf[int(ball_impact_x_relative)]
+        vx = prf[int(ball_impact_x_relative)]
+        if action == 1:
+            vx = -abs(vx)
+        elif action == 2:
+            vx = abs(vx)
+        else:
+            vx = ((-1, 1)[u > 0]) * abs(vx)
+
+        return vx
 
     def randomize_paddle_position(self):
         """

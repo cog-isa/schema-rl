@@ -10,7 +10,7 @@ import numpy as np
 # DEFAULT, SMALL
 BRICK_SIZE = 'DEFAULT'
 ENV_SIZE = 'SMALL'
-SEED = 220
+SEED = None
 
 ###############################################################################
 #
@@ -30,7 +30,7 @@ _BALL_SHAPE = np.array([1, 1])
 MAX_NZIS_PER_ENTITY = 100
 
 ALLOW_BOUNCE_AGAINST_PHYSICS = False
-BOUNCE_STOCHASTICITY = 0.25  # was 0.25
+BOUNCE_STOCHASTICITY = 0  # was 0.25
 CORRUPT_RENDERED_IMAGE = False
 DEBUGGING = False
 DEFAULT_BRICK_REWARD = 1

@@ -148,7 +148,7 @@ class Planner(Constants):
         # with each loop we stray further from God
         # there is constraint on this level and no schema can be activated without violating it
         # replan all nodes that are committed to current constraint
-        print('Cannot activate schema without replanning.')
+        # print('Cannot activate schema without replanning.')
 
         # find actions, acceptable by conflicting nodes
         negotiated_actions = functools.reduce(
@@ -161,12 +161,14 @@ class Planner(Constants):
             is_success = self._replan_nodes_with_constraint(node, constraint.committed_nodes,
                                                             action, node.t)
             if is_success:
-                print('Replanning was successfull.')
+                # print('Replanning was successfull.')
                 break
             else:
-                print('Replanning failed for current action.')
+                pass
+                # print('Replanning failed for current action.')
         else:
-            print('Cannot replan for any of negotiated actions. Dead branch.')
+            pass
+            # print('Cannot replan for any of negotiated actions. Dead branch.')
 
     def _replan_nodes_with_constraint(self, curr_node, committed_nodes, action, layer_t):
         # first try to replan new node, whose subtree is unexplored

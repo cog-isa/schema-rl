@@ -1,7 +1,9 @@
 import os
+import sys
 from collections import deque
 import time
 import itertools
+import csv
 
 import numpy as np
 
@@ -19,10 +21,10 @@ class LearningHandler:
     """
     Instantiate every episode
     """
-    def __init__(self, learner, shaper, last_iter):
+    def __init__(self, learner, shaper, n_max_steps):
         self._learner = learner
         self._shaper = shaper
-        self._last_iter = last_iter
+        self._n_max_steps = n_max_steps
 
         self._observations = deque(maxlen=C.LEARNING_BATCH_SIZE)
         self._actions_taken = deque(maxlen=C.LEARNING_BATCH_SIZE)
@@ -41,24 +43,28 @@ class LearningHandler:
         batch = GreedySchemaLearner.Batch(augmented_entities, target_creation, target_destruction, rewards)
         return batch
 
-    def learn(self, obs, chosen_action, reward, curr_iter):
+    def learn(self, obs, chosen_action, reward, curr_step, curr_iter):
         if not (C.DO_LEARN_ATTRIBUTE_PARAMS or C.DO_LEARN_REWARD_PARAMS):
             return
+
+        if reward < 0:
+            self._observations.clear()
+            self._actions_taken.clear()
 
         self._observations.append(obs)
         self._actions_taken.append(chosen_action)
 
         if len(self._observations) >= C.LEARNING_BATCH_SIZE:
-            print('adding batch to learner')
             batch = self._make_batch(reward)
 
             self._learner.set_curr_iter(curr_iter)
             self._learner.take_batch(batch)
 
-            is_flush_needed = (curr_iter == self._last_iter)
-            if curr_iter % C.LEARNING_PERIOD == 0 or is_flush_needed:
-                print('Launching learning procedure...')
+            if curr_step % C.LEARNING_PERIOD == 0 or curr_step == self._n_max_steps - 1:
                 self._learner.learn()
+
+    def flush(self):
+        self._learner.learn()
 
 
 class PlanningHandler:
@@ -112,9 +118,16 @@ class PlanningHandler:
         else:
             assert False
 
+        if reward < 0:
+            self._frame_stack.clear()
+            self._planned_actions.clear()
+
+            self._emergency_planning_timer = None
+            self._planning_timer = 0
+
         self._frame_stack.append(obs)
 
-        are_weights_ok = all(matrix.size for matrix in itertools.chain(W_pos, W_neg, R))
+        are_weights_ok = any(matrix.shape[1] > 1 for matrix in itertools.chain(W_pos, W_neg, R))
         can_run_planner = are_weights_ok and len(self._frame_stack) == C.FRAME_STACK_SIZE
 
         if C.USE_EMERGENCY_PLANNING:
@@ -143,7 +156,7 @@ class PlanningHandler:
             chosen_action = self._planned_actions.popleft()
 
             # if this was last planned action, pause planning for a while
-            if len(self._planned_actions) == 0:
+            if can_run_planner and len(self._planned_actions) == 0:
                 self._emergency_planning_timer = C.EMERGENCY_PLANNING_PERIOD
         else:
             chosen_action = np.random.choice(C.ACTION_SPACE_DIM)
@@ -160,7 +173,7 @@ class PlanningHandler:
 
 
 class Runner:
-    def __init__(self, env_type, env_params, n_episodes, n_steps):
+    def __init__(self, env_type, env_params, n_max_iters, n_max_episodes, n_max_steps, print_freq=100):
         self._env_class = {'standard': StandardBreakout,
                           'offset-paddle': OffsetPaddleBreakout,
                           'juggling': JugglingBreakout
@@ -169,8 +182,12 @@ class Runner:
         self._env_params = env_params
         self._env_params.update({'report_nzis_as_entities': 'all'})
 
-        self._n_episodes = n_episodes
-        self._n_steps = n_steps
+        assert n_max_iters is None or n_max_episodes is None
+        self._n_max_steps = n_max_steps
+        self._n_max_iters = n_max_iters or sys.maxsize
+        self._n_max_episodes = n_max_episodes or sys.maxsize
+
+        self._print_freq = print_freq
 
         self.hc_W_pos, self.hc_W_neg, self.hc_R = HardcodedDeltaSchemaVectors.gen_schema_matrices()
 
@@ -200,11 +217,17 @@ class Runner:
         with open(file_path, 'wt') as file:
             file.write('Amazing episode!')
 
-    def _end_of_episode_handler(self, episode_idx, step_idx, episode_reward):
+    def _end_of_episode_handler(self, logger, record):
+        logger.append_record(record)
+
+        step_idx = record['n_steps_taken']
+        episode_idx = record['episode_idx']
+        episode_reward = record['episode_reward']
+
         print('END_OF_EPISODE, step_idx == {}, ep_reward == {}'.format(step_idx, episode_reward))
         self._log_episode_reward(episode_idx, step_idx, episode_reward)
 
-    def loop(self):
+    def loop(self, logger):
         env = self._env_class(**self._env_params)
         shaper = Shaper()
         visualizer = Visualizer(None, None, None)
@@ -213,23 +236,22 @@ class Runner:
         if C.DO_PRELOAD_DUMP_PARAMS:
             W_pos, W_neg, R = self._load_dumped_params()
             learner.set_params(W_pos, W_neg, R)
-
         planner = SchemaNetwork()
 
-        last_iter = self._n_episodes * self._n_steps - 1
+        curr_iter = 0
 
-        for episode_idx in range(self._n_episodes):
+        for episode_idx in range(self._n_max_episodes):
             env.reset()
             reward = 0
             episode_reward = 0
             step_idx = 0
 
-            learning_handler = LearningHandler(learner, shaper, last_iter)
+            learning_handler = LearningHandler(learner, shaper, self._n_max_steps)
             planning_handler = PlanningHandler(planner, env)
 
-            for step_idx in range(self._n_steps):
-                curr_iter = episode_idx * self._n_steps + step_idx
-                print('\ncurr_iter: {}'.format(curr_iter))
+            for step_idx in range(self._n_max_steps):
+                if curr_iter % self._print_freq == 0:
+                    print('\ncurr_iter: {}'.format(curr_iter))
 
                 obs = EntityExtractor.extract(env)
                 if C.VISUALIZE_STATE:
@@ -253,32 +275,69 @@ class Runner:
                 chosen_action = planning_handler.plan(obs, W_pos, W_neg, R, curr_iter, reward)
 
                 # --- learning ---
-                learning_handler.learn(obs, chosen_action, reward, curr_iter)
+                learning_handler.learn(obs, chosen_action, reward, step_idx, curr_iter)
 
                 obs, reward, done, _ = env.step(chosen_action)
+                curr_iter += 1
                 episode_reward += reward
                 if done:
+                    learning_handler.flush()
                     break
 
-            self._end_of_episode_handler(episode_idx, step_idx, episode_reward)
+            record = {
+                'episode_idx': episode_idx,
+                'n_steps_taken': step_idx,
+                'end_iter': curr_iter,
+                'episode_reward': episode_reward
+            }
+            self._end_of_episode_handler(logger, record)
+            if curr_iter >= self._n_max_iters:
+                break
+
+
+class Logger:
+    def __init__(self):
+        LOG_DIR = './logs'
+        LOG_FILE = 'log'
+        self.COLUMNS = ['episode_idx', 'n_steps_taken', 'end_iter', 'episode_reward']
+
+        os.makedirs(LOG_DIR, exist_ok=True)
+        self._fd = open(os.path.join(LOG_DIR, LOG_FILE), 'w')
+        self._writer = csv.DictWriter(self._fd, fieldnames=self.COLUMNS)
+        self._writer.writeheader()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._fd.close()
+
+    def append_record(self, record):
+        self._writer.writerow(record)
+        self._fd.flush()
 
 
 def main():
-    n_episodes = 7
-    n_steps = 5000
+    n_max_iters = 35000
+    n_max_episodes = None
+    n_max_steps = 5000
 
     env_type = 'standard'  # ('standard', 'offset-paddle', 'juggling')
     env_params = {
-        'num_lives': 10 ** 9 + 7,
+        'num_lives': 3,
         'n_balls': 1
     }
 
     start_time = time.time()
     runner = Runner(env_type=env_type,
                     env_params=env_params,
-                    n_episodes=n_episodes,
-                    n_steps=n_steps)
-    runner.loop()
+                    n_max_iters=n_max_iters,
+                    n_max_episodes=n_max_episodes,
+                    n_max_steps=n_max_steps)
+
+    with Logger() as logger:
+        runner.loop(logger)
+
     print('Elapsed time: {}'.format(time.time() - start_time))
 
 

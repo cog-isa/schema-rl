@@ -28,10 +28,10 @@ class Constants:
     USE_EMERGENCY_PLANNING = True
 
     VISUALIZE_STATE = True
-    VISUALIZE_SCHEMAS = True
+    VISUALIZE_SCHEMAS = False
     VISUALIZE_INNER_STATE = True
     VISUALIZE_BACKTRACKING = True
-    LOG_PLANNED_ACTIONS = True
+    LOG_PLANNED_ACTIONS = False
 
     N_LEARNING_THREADS = 16
 
@@ -43,7 +43,7 @@ class Constants:
         # EMERG_PERIOD = 15 is enough to plan with ball being near closest brick
         T = 112  # min 50
         PLANNING_PERIOD = 10  # run planning every *this* steps
-        EMERGENCY_PLANNING_PERIOD = 15  # run planning every *this* steps if there are no planned actions
+        EMERGENCY_PLANNING_PERIOD = 10  # run planning every *this* steps if there are no planned actions
     elif ENV_SIZE == 'DEFAULT':
         T = 130  # min 112
         PLANNING_PERIOD = 10
@@ -109,6 +109,7 @@ BOUNCE_STOCHASTICITY = 0.25
 PADDLE_SPEED_DISTRIBUTION[-1] = 0.90
 PADDLE_SPEED_DISTRIBUTION[-2] = 0.10
 _MAX_SPEED = 2
+DEFAULT_PADDLE_SHAPE
 
 DEFAULT_BRICK_SHAPE = np.array([8, 4])
 DEFAULT_NUM_BRICKS_ROWS = 6

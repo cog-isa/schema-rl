@@ -426,6 +426,8 @@ class GreedySchemaLearner:
 
     @Visualizer.measure_time('learn()')
     def learn(self):
+        print('Launching learning procedure...')
+
         # get full batch from buffer
         buff_batch = self._get_buff_batch()
         if buff_batch is not None:
