@@ -7,6 +7,7 @@
 }
 </style>
 
+> Paper: [https://arxiv.org/pdf/2006.09950.pdf](https://arxiv.org/pdf/2006.09950.pdf)
 
 # Idea
 

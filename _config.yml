@@ -7,5 +7,7 @@ title: >
   in model-based reinforcement learning
 
 description: >-
+  A. Gorodetskiy, A. Shlychkova, A. Panov
+  <br><br>
   Extension of the Schema Network model, which allows to extract
   logical relationships between objects and actions from interactions with environment.
