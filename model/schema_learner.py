@@ -16,7 +16,14 @@ class MipModel:
     MAX_OPT_SECONDS = 60
 
     def __init__(self):
-        self._model = mip.Model(mip.MINIMIZE, solver_name=mip.GUROBI)
+        if C.LEARNING_SOLVER == 'cbc':
+            solver = mip.CBC
+        elif C.LEARNING_SOLVER == 'gurobi':
+            solver = mip.GUROBI
+        else:
+            assert False
+
+        self._model = mip.Model(mip.MINIMIZE, solver_name=solver)
         self._model.verbose = 0
         self._model.threads = C.N_LEARNING_THREADS
         # self._model.emphasis = 1  # feasibility

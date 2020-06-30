@@ -1,19 +1,15 @@
-### Schema Networks: Zero-shot Transfer with a Generative Causal Model of Intuitive Physics
+### Delta Schema Network in model-based reinforcement learning
 
-An object oriented generative model capable of disentangling multiple causes of events and reasoning backward through causes to achieve goals.
+Model for learning environment dynamics as logic relations, predicting future states and planning actions to reach reward.
 
 ### How to try it
 
-Install required packages by running `pip install -r requirements.txt`
+`pip install -r requirements.txt`
 
-Tweak some options in `model/constants.py`, such as:
+Tweak options in `model/constants.py`, such as:
 
-- `USE_HANDCRAFTED_ATTRIBUTE_SCHEMAS` / `USE_HANDCRAFTED_REWARD_SCHEMAS` - use handcrafted vectors instead of learned
+- `DO_PRELOAD_HANDCRAFTED_*` - use handcrafted vectors instead of learned
 - `VISUALIZE_*` - visualize stuff
+- `LEARNING_SOLVER` - one can use Gurobi to accelerate training, default is CBC
 
 Run `python3 run_agent.py`
-
-
-### References
-- [Blog post: General Game Playing with Schema Networks](https://www.vicarious.com/general-game-playing-with-schema-networks.html)
-- [Paper: Kansky, Silver, Mély, Eldawy, Lázaro-Gredilla, Lou, Dorfman, Sidor, Phoenix and George. 2017.](https://www.vicarious.com/img/icml2017-schemas.pdf)

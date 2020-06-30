@@ -25,6 +25,7 @@ class Constants:
     PLANNING_TYPE = 'agent'
 
     LEARNING_PERIOD = 128
+    LEARNING_SOLVER = 'cbc'  # 'cbc', 'gurobi'
     USE_EMERGENCY_PLANNING = True
 
     VISUALIZE_STATE = True
